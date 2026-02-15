@@ -1,0 +1,11 @@
+[project]
+name = "multimodal-drone-detection-backend"
+version = "0.1.0"
+description = "Backend of multimodal drone detection"
+readme = "README.md"
+requires-python = ">=3.12"
+
+# Add more as needed
+dependencies = [
+    
+]

@@ -1,0 +1,7 @@
+version: "3.9"
+
+services:
+  jetson_si_ml:
+    build: ./jetson
+    container_name: jetson_si_ml
+    network_mode: host
