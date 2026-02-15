@@ -1,5 +1,5 @@
 # Multimodal Drone Detection
-**Authors:** 
+**Authors:** Chia-Yu Chang, Yu-Chieh Cheng, Li-Chieh Kung, Ethan Mauger, Aziz Shaik
 **Course:** CS 5934: Capstone Design (Spring 2026)
 
 This MEng capstone project aims to build a drone detection system with an AI-enabled multimodal approach.
