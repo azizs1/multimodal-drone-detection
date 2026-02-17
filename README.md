@@ -78,7 +78,7 @@ Backend requires `uv` for dependency management.
    ```
 3. Install dependencies:
    ```bash
-   uv sync --no-dev
+   uv sync
    ```
 4. Run the development server:
    ```bash
