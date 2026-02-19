@@ -1,0 +1,15 @@
+[project]
+name = "multimodal-drone-detection"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+[tool.uv.workspace]
+members = ["jetson.src", "backend"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.1",
+]
