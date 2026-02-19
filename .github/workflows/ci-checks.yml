@@ -55,16 +55,5 @@ jobs:
               run: uv sync
 
             - name: Run tests
+              working-directory: backend
               run: uv run pytest backend/src/tests/ -v
-
-            - name: Generate coverage report
-              run: |
-                  uv pip install pytest-cov
-                  uv run pytest backend/src/tests/ --cov=backend/src/app --cov-report=xml --cov-report=term
-
-            - name: Upload coverage reports
-              uses: codecov/codecov-action@v4
-              if: always()
-              with:
-                  file: ./coverage.xml
-                  fail_ci_if_error: false
