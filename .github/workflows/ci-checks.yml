@@ -1,8 +1,8 @@
-name: CI
+name: CI Checks
 
 on:
     push:
-        branches: [main, feat-ci-cd-pipeline]
+        branches: [main]
     pull_request:
         branches: [main]
 
