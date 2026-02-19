@@ -52,7 +52,7 @@ jobs:
                   enable-cache: true
 
             - name: Install dependencies
-              run: uv sync --all-extras --dev
+              run: uv sync
 
             - name: Run tests
               run: uv run pytest backend/src/tests/ -v
