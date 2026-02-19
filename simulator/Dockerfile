@@ -22,14 +22,14 @@ RUN apt update && apt install -y bash && rm -rf /var/lib/apt/lists/*
 
 # Create a script that handles seamless looping with minimal interruption
 RUN echo '#!/bin/bash\n\
-while true; do\n\
+    while true; do\n\
     gst-launch-1.0 -q \\\n\
     filesrc location=/app/videos/drone_test.mp4 ! \\\n\
     qtdemux ! h264parse ! \\\n\
     queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! \\\n\
     rtspclientsink location=rtsp://mediamtx:8554/drone protocols=tcp latency=0 \\\n\
-        || echo "Stream ended, restarting immediately...";\n\
-done' > /app/stream.sh && chmod +x /app/stream.sh
+    || echo "Stream ended, restarting immediately...";\n\
+    done' > /app/stream.sh && chmod +x /app/stream.sh
 
 # Stream video in a loop with minimal gap
 CMD ["/app/stream.sh"]
