@@ -4,6 +4,51 @@
 
 This MEng capstone project aims to build a drone detection system with an AI-enabled multimodal approach.
 
+## Architecture
+
+The system consists of four main components:
+
+1. **Simulator** - GStreamer-based video streamer that loops drone footage to RTSP
+2. **MediaMTX** - RTSP/HLS media server that handles stream distribution
+3. **Backend** - FastAPI service providing REST API and stream information
+4. **Jetson** - Edge AI processing on Jetson Nano (ML + sensor ingestion)
+
+### Streaming Pipeline
+
+```
+[Simulator] --RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
+                           ^
+                           |
+                      [Backend API]
+```
+
+## Quick Start
+
+### Using Docker Compose (Recommended)
+
+Start all services:
+```bash
+docker compose -f docker-compose-dev.yml up --build
+```
+
+Access points:
+- **Video Stream (HLS Player):** http://localhost:8888/drone/
+- **Backend API:** http://localhost:8000/
+- **Stream Info:** http://localhost:8000/info/drone
+- **Health Check:** http://localhost:8000/health
+
+### Individual Services
+
+Stop all services:
+```bash
+docker compose -f docker-compose-dev.yml down
+```
+
+Rebuild specific service:
+```bash
+docker compose -f docker-compose-dev.yml up -d --build simulator
+```
+
 ## Prerequisites
 
 ### Python Package Manager: uv
@@ -59,7 +104,37 @@ uv run pytest
 ```
 
 ## How to Use
-This repository essentially contains three smaller repositories within it, separated based on the container that the components will be running on. Two containers, `frontend` and `backend` run on <WHERE DO THESE RUN, PROBS LAPTOP>, while the machine learning and sensor ingestion both run within the same container on a Jetson Nano.
+
+### Simulator
+The simulator streams drone video footage to the MediaMTX server using GStreamer.
+
+**Directory:** `simulator/`
+
+**Configuration:**
+- Video files: Place `.mp4` files in `simulator/videos/`
+- Default video: `drone_test.mp4`
+
+**Standalone Build:**
+```bash
+cd simulator
+docker build -t drone-simulator .
+docker run --network host drone-simulator
+```
+
+### MediaMTX (Streaming Server)
+MediaMTX handles RTSP ingestion and HLS distribution.
+
+**Configuration:** `mediamtx.yml`
+
+**Features:**
+- RTSP server on port 8554
+- HLS server on port 8888
+- Built-in web player
+
+**Access:**
+- RTSP URL: `rtsp://localhost:8554/drone`
+- HLS URL: `http://localhost:8888/drone/index.m3u8`
+- Web Player: `http://localhost:8888/drone/`
 
 ### Frontend
 #### Development
@@ -68,7 +143,16 @@ This repository essentially contains three smaller repositories within it, separ
 \<how to deploy the docker container for this\>
 
 ### Backend
-Backend requires `uv` for dependency management.
+Backend provides REST API for stream information and system management.
+
+**Directory:** `backend/`
+**Tech Stack:** FastAPI, Python 3.12, uv
+
+#### API Endpoints
+- `GET /` - API information and quick links
+- `GET /streams` - List all available streams
+- `GET /info/{stream_name}` - Get stream details
+- `GET /health` - Health check
 
 #### Development
 1. Install uv (see Prerequisites above)
@@ -86,14 +170,23 @@ Backend requires `uv` for dependency management.
    ```
 
 #### Deployment
-Build and run the Docker container from the repository root:
+Using Docker Compose:
 ```bash
-docker build -t drone-detection-backend -f backend/Dockerfile .
+docker compose -f docker-compose-dev.yml up -d backend
+```
+
+Standalone:
+```bash
+docker build -t drone-detection-backend -f backend/Dockerfile ./backend
 docker run -p 8000:8000 drone-detection-backend
 ```
 
 ### Jetson
-Jetson components require `uv` for dependency management.
+Jetson components handle edge AI processing and sensor ingestion.
+
+**Directory:** `jetson/`
+**Hardware:** NVIDIA Jetson Nano
+**Tech Stack:** Python, uv
 
 #### Development
 1. Install uv (see Prerequisites above)
@@ -111,4 +204,78 @@ Jetson components require `uv` for dependency management.
    ```
 
 #### Deployment
-\<how to deploy the docker container for this\>
+Using Docker Compose (Jetson-specific):
+```bash
+docker compose -f docker-compose.jetson.yaml up --build
+```
+
+## Troubleshooting
+
+### No video in HLS player
+1. Check if simulator is streaming:
+   ```bash
+   docker logs gst-simulator --tail 20
+   ```
+2. Verify MediaMTX is receiving the stream:
+   ```bash
+   docker logs mediamtx --tail 20
+   ```
+   Look for: `[HLS] [muxer drone] is converting into HLS`
+
+3. Wait 10-15 seconds after starting services for HLS segments to generate
+
+### Stream keeps reconnecting
+- The simulator loops the video file, causing brief disconnections
+- This is normal behavior; the stream will reconnect automatically
+
+### Port conflicts
+If you get "port already in use" errors:
+```bash
+# Check what's using the ports
+netstat -an | findstr "8000 8554 8888"
+
+# Stop conflicting services or change ports in docker-compose-dev.yml
+```
+
+### Backend can't find HLS files
+- MediaMTX serves HLS dynamically via HTTP, not by writing to disk
+- Access streams via MediaMTX port 8888, not through backend static files
+
+## Project Structure
+
+```
+multimodal-drone-detection/
+├── simulator/              # GStreamer video streamer
+│   ├── Dockerfile
+│   └── videos/            # Video files
+│       └── drone_test.mp4
+├── backend/               # FastAPI backend service
+│   ├── Dockerfile
+│   ├── pyproject.toml
+│   └── src/
+│       └── app/
+│           └── main.py
+├── frontend/              # Frontend application
+│   ├── Dockerfile
+│   └── src/
+├── jetson/                # Jetson Nano components
+│   ├── Dockerfile
+│   ├── pyproject.toml
+│   └── src/
+│       ├── ml/           # Machine learning models
+│       └── sensor_ingestion/
+├── mediamtx.yml          # MediaMTX configuration
+├── docker-compose-dev.yml # Development compose file
+└── docker-compose.jetson.yaml  # Jetson-specific compose
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Run tests: `uv run pytest`
+4. Submit a pull request
+
+## License
+
+[Add license information]

@@ -1,0 +1,8 @@
+rtspAddress: :8554
+hlsAddress: :8888
+hlsDirectory: /hls
+hlsAlwaysRemux: yes
+
+paths:
+  drone:
+    source: publisher

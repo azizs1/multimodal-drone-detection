@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+
+  # Media Server (RTSP Hub)
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx
+    ports:
+      - "8554:8554"   # RTSP
+      - "8888:8888"   # HLS
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+      - hls-data:/hls
+    command: /mediamtx.yml
+    restart: always
+
+  # GStreamer RTSP Simulator (loops video)
+  simulator:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: gst-simulator
+    depends_on:
+      - mediamtx
+    restart: always
+
+  # Backend
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - hls-data:/hls:ro
+    restart: always
+
+volumes:
+  hls-data:
