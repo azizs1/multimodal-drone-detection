@@ -1,152 +1,80 @@
-from datetime import datetime
-from typing import List, Optional
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
+from app.api.routers import detections, health, streams
 
-from app.database import get_db
-from app.repositories import DetectionRepository
-from app.schemas import DetectionCreate, DetectionResponse
+# API metadata
+app = FastAPI(
+    title="Multimodal Drone Detection API",
+    description="""
+    ## Overview
+    API for multimodal drone detection system integrating visual and thermal sensors.
 
-app = FastAPI(title="Multimodal Drone Detection API")
+    ## Features
+    * 📹 **Video Stream Management** - Manage RTSP/HLS video streams
+    * 🎯 **Detection Records** - Store and retrieve drone detection events
+    * 📊 **Statistics** - Aggregate detection data and analytics
+    * ❤️ **Health Checks** - Monitor service and database status
 
-# Available stream configurations
-STREAMS = {
-    "drone": {
-        "name": "drone",
-        "description": "Main drone detection stream",
-        "rtsp_url": "rtsp://localhost:8554/drone",
-        "hls_url": "http://localhost:8888/drone/index.m3u8",
-        "hls_player": "http://localhost:8888/drone/",  # Built-in player
-    }
-}
+    ## Authentication
+    Currently, this API does not require authentication. This will be added in future versions.
+
+    ## Rate Limiting
+    No rate limiting is currently enforced.
+    """,
+    version="1.0.0",
+    contact={
+        "name": "Drone Detection Team",
+        "email": "support@dronedetection.example.com",
+    },
+    license_info={
+        "name": "MIT",
+    },
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify actual origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(health.router)
+app.include_router(streams.router)
+app.include_router(detections.router)
 
 
-@app.get("/")
+@app.get(
+    "/",
+    tags=["root"],
+    summary="API Root",
+    description="Get basic API information and available endpoints",
+)
 async def root():
+    """
+    Welcome endpoint providing API information.
+
+    Returns:
+    - API name and version
+    - Links to documentation
+    - Available endpoint categories
+    """
     return {
-        "message": "Multimodal Drone Detection API",
+        "name": "Multimodal Drone Detection API",
         "version": "1.0.0",
+        "status": "operational",
+        "docs": "/docs",
+        "redoc": "/redoc",
+        "openapi": "/openapi.json",
         "endpoints": {
-            "streams": "/streams",
-            "stream_info": "/info/{stream_name}",
             "health": "/health",
+            "streams": "/streams",
             "detections": "/detections",
-            "detection_stats": "/detections/stats/count",
         },
-        "quick_links": {
-            "watch_stream": "http://localhost:8888/drone/",
-            "hls_url": "http://localhost:8888/drone/index.m3u8",
-        },
-    }
-
-
-@app.get("/streams")
-async def list_streams():
-    """List all available streams"""
-    return {"streams": list(STREAMS.values()), "count": len(STREAMS)}
-
-
-@app.get("/info/{stream_name}")
-async def get_stream(stream_name: str):
-    """Get HLS and RTSP URLs for a specific stream"""
-    if stream_name in STREAMS:
-        return STREAMS[stream_name]
-    return {
-        "error": "Stream not found",
-        "stream": stream_name,
-        "available_streams": list(STREAMS.keys()),
-    }
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "mediamtx_rtsp": "mediamtx:8554",
-        "mediamtx_hls": "mediamtx:8888",
-    }
-
-
-# ============ Detection Endpoints ============
-
-@app.post("/detections", response_model=DetectionResponse, status_code=201)
-async def create_detection(
-    detection: DetectionCreate,
-    db: Session = Depends(get_db)
-):
-    """Create a new detection record"""
-    repo = DetectionRepository(db)
-    db_detection = repo.create(detection)
-    return db_detection
-
-
-@app.get("/detections/{detection_id}", response_model=DetectionResponse)
-async def get_detection(
-    detection_id: int,
-    db: Session = Depends(get_db)
-):
-    """Get a detection by ID"""
-    repo = DetectionRepository(db)
-    detection = repo.get_by_id(detection_id)
-    if not detection:
-        raise HTTPException(status_code=404, detail="Detection not found")
-    return detection
-
-
-@app.get("/detections", response_model=List[DetectionResponse])
-async def list_detections(
-    skip: int = 0,
-    limit: int = 100,
-    stream_name: Optional[str] = None,
-    drone_only: bool = False,
-    db: Session = Depends(get_db)
-):
-    """List detections with optional filters"""
-    repo = DetectionRepository(db)
-
-    if drone_only:
-        detections = repo.get_drone_detections(skip=skip, limit=limit)
-    elif stream_name:
-        detections = repo.get_by_stream(stream_name, skip=skip, limit=limit)
-    else:
-        detections = repo.get_all(skip=skip, limit=limit)
-
-    return detections
-
-
-@app.delete("/detections/{detection_id}", status_code=204)
-async def delete_detection(
-    detection_id: int,
-    db: Session = Depends(get_db)
-):
-    """Delete a detection by ID"""
-    repo = DetectionRepository(db)
-    deleted = repo.delete(detection_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Detection not found")
-    return None
-
-
-@app.get("/detections/stats/count")
-async def get_detection_stats(
-    stream_name: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
-    """Get detection statistics"""
-    repo = DetectionRepository(db)
-
-    if stream_name:
-        total = repo.count_by_stream(stream_name)
-    else:
-        total = repo.count()
-
-    drone_detections = len(repo.get_drone_detections(limit=10000))
-
-    return {
-        "total_detections": total,
-        "drone_detections": drone_detections,
-        "non_drone_detections": total - drone_detections,
     }

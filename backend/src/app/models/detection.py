@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.sql import func
-from app.database import Base
+
+from app.database.database import Base
 
 
 class Detection(Base):
@@ -23,17 +24,17 @@ class Detection(Base):
     def to_dict(self):
         """Convert model to dictionary"""
         return {
-            'id': self.id,
-            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
-            'drone_detected': self.drone_detected,
-            'confidence': self.confidence,
-            'direction': self.direction,
-            'distance_ft': self.distance_ft,
-            'visual_confidence': self.visual_confidence,
-            'thermal_confidence': self.thermal_confidence,
-            'fused_score': self.fused_score,
-            'frame_snapshot_url': self.frame_snapshot_url,
-            'stream_name': self.stream_name,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "drone_detected": self.drone_detected,
+            "confidence": self.confidence,
+            "direction": self.direction,
+            "distance_ft": self.distance_ft,
+            "visual_confidence": self.visual_confidence,
+            "thermal_confidence": self.thermal_confidence,
+            "fused_score": self.fused_score,
+            "frame_snapshot_url": self.frame_snapshot_url,
+            "stream_name": self.stream_name,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
