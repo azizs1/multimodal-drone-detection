@@ -38,14 +38,27 @@ services:
     restart: always
 
   # GStreamer RTSP Simulator (loops video)
-  drone-video-streaming:
+  drone-visual-streaming:
     build:
       context: ./simulator
       dockerfile: Dockerfile
-    container_name: gst-simulator
+    container_name: gst-visual-simulator
     environment:
-      - STREAM_NAME=drone
-      - VIDEO_FILE=drone_test.mp4
+      - STREAM_NAME=visual
+      - VIDEO_FILE=drone_visual.mp4
+    networks:
+      - drone-network
+    depends_on:
+      - mediamtx
+    restart: always
+  drone-thermal-streaming:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: gst-thermal-simulator
+    environment:
+      - STREAM_NAME=thermal
+      - VIDEO_FILE=drone_thermal.mp4
     networks:
       - drone-network
     depends_on:

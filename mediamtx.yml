@@ -4,5 +4,7 @@ hlsDirectory: /hls
 hlsAlwaysRemux: yes
 
 paths:
-  drone:
+  visual:
+    source: publisher
+  thermal:
     source: publisher
