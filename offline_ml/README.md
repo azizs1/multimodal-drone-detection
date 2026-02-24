@@ -37,5 +37,14 @@ This command allows you to update the environment.yml file if new packages are i
 conda env export > environment.yml
 ```
 
+# Datasets
 
+There are two main datasets that will be used for this project. The two datasets are below:
+
+Zenodo Visual Drone Detection Dataset - Non-Augemented: https://zenodo.org/records/15632958
+Zenodo Thermal Drone Detection Dataset - Non-Augemented: https://zenodo.org/records/15633051
+Zenodo Thermal Drone Detection Dataset - Augemented: https://zenodo.org/records/15633098
+Anti-UAV: https://github.com/ZhaoJ9014/Anti-UAV
+
+The two main datasets used will be denoted as the Zenodo Drone Detection Dataset and the Anti-UAV Dataset. The Zenodo Drone Detection Dataset features 
 
