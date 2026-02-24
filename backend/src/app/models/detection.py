@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+import uuid
+
+from sqlalchemy import Boolean, Column, DateTime, Float, String, Text
 from sqlalchemy.sql import func
 
 from app.database.database import Base
@@ -7,7 +9,7 @@ from app.database.database import Base
 class Detection(Base):
     __tablename__ = "detections"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     drone_detected = Column(Boolean, nullable=False)
     confidence = Column(Float, nullable=False)

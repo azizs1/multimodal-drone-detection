@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -48,12 +49,12 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     description="Retrieve a specific detection record by its ID",
 )
 async def get_detection(
-    detection_id: Annotated[int, Path(gt=0, description="The ID of the detection to retrieve")],
+    detection_id: Annotated[uuid.UUID, Path(description="The UUID of the detection to retrieve")],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Get a single detection record by ID"""
     repo = DetectionRepository(db)
-    detection = repo.get_by_id(detection_id)
+    detection = repo.get_by_id(str(detection_id))
     if not detection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -108,12 +109,12 @@ async def list_detections(
     description="Delete a detection record by ID",
 )
 async def delete_detection(
-    detection_id: Annotated[int, Path(gt=0, description="The ID of the detection to delete")],
+    detection_id: Annotated[uuid.UUID, Path(description="The UUID of the detection to delete")],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a detection record"""
     repo = DetectionRepository(db)
-    deleted = repo.delete(detection_id)
+    deleted = repo.delete(str(detection_id))
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

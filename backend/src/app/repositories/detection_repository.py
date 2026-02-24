@@ -19,7 +19,7 @@ class DetectionRepository:
         self.db.refresh(db_detection)
         return db_detection
 
-    def get_by_id(self, detection_id: int) -> Detection | None:
+    def get_by_id(self, detection_id: str) -> Detection | None:
         """Get detection by ID"""
         return self.db.query(Detection).filter(Detection.id == detection_id).first()
 
@@ -63,7 +63,7 @@ class DetectionRepository:
         """Count detections by stream"""
         return self.db.query(Detection).filter(Detection.stream_name == stream_name).count()
 
-    def delete(self, detection_id: int) -> bool:
+    def delete(self, detection_id: str) -> bool:
         """Delete a detection by ID"""
         detection = self.get_by_id(detection_id)
         if detection:
@@ -72,7 +72,7 @@ class DetectionRepository:
             return True
         return False
 
-    def update(self, detection_id: int, **kwargs) -> Detection | None:
+    def update(self, detection_id: str, **kwargs) -> Detection | None:
         """Update detection fields"""
         detection = self.get_by_id(detection_id)
         if detection:

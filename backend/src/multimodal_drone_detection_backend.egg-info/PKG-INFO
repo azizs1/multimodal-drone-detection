@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: multimodal-drone-detection-backend
+Version: 0.1.0
+Summary: Backend of multimodal drone detection
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.129.0
+Requires-Dist: psycopg2-binary>=2.9.11
+Requires-Dist: sqlalchemy>=2.0.46
+Requires-Dist: uvicorn[standard]>=0.40.0

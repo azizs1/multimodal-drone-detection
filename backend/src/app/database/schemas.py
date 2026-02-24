@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from enum import StrEnum
 from typing import Literal
@@ -85,7 +86,7 @@ class DetectionCreate(BaseModel):
 class DetectionResponse(BaseModel):
     """Schema for detection response"""
 
-    id: int = Field(..., gt=0, description="Unique detection ID")
+    id: uuid.UUID = Field(..., description="Unique detection ID (UUID)")
     timestamp: datetime = Field(..., description="Detection timestamp")
     drone_detected: bool = Field(..., description="Whether a drone was detected")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score")
