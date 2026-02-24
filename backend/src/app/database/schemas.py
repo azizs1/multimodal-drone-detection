@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DirectionEnum(StrEnum):
@@ -64,8 +64,8 @@ class DetectionCreate(BaseModel):
             )
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "timestamp": "2026-02-21T14:32:07Z",
                 "drone_detected": True,
@@ -79,6 +79,7 @@ class DetectionCreate(BaseModel):
                 "stream_name": "drone",
             }
         }
+    )
 
 
 class DetectionResponse(BaseModel):
@@ -102,8 +103,7 @@ class DetectionResponse(BaseModel):
     created_at: datetime = Field(..., description="Record creation time")
     updated_at: datetime = Field(..., description="Last update time")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DetectionStats(BaseModel):
@@ -114,8 +114,8 @@ class DetectionStats(BaseModel):
     non_drone_detections: int = Field(..., ge=0, description="Number of non-drone detections")
     stream_name: str | None = Field(None, description="Stream name if filtered")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "total_detections": 1500,
                 "drone_detections": 342,
@@ -123,6 +123,7 @@ class DetectionStats(BaseModel):
                 "stream_name": "drone",
             }
         }
+    )
 
 
 # Query parameter models
@@ -145,8 +146,8 @@ class StreamInfo(BaseModel):
     hls_url: str = Field(..., description="HLS streaming URL")
     status: Literal["active", "inactive", "error"] = Field(..., description="Stream status")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "drone",
                 "description": "Main drone detection stream",
@@ -155,6 +156,7 @@ class StreamInfo(BaseModel):
                 "status": "active",
             }
         }
+    )
 
 
 class StreamListResponse(BaseModel):
