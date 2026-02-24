@@ -1,9 +1,11 @@
+import logging
+
+import httpx
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from app.database.schemas import StreamInfo, StreamListResponse
-import httpx
-from fastapi.responses import StreamingResponse
-import logging
+
 router = APIRouter(
     prefix="/streams",
     tags=["streams"],
@@ -96,7 +98,11 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
                     detail="Stream file not found"
                 )
 
-            content_type = "application/vnd.apple.mpegurl" if file_path.endswith(".m3u8") else "video/mp2t"
+            content_type = (
+                "application/vnd.apple.mpegurl"
+                if file_path.endswith(".m3u8")
+                else "video/mp2t"
+            )
 
             return StreamingResponse(
                 response.iter_bytes(),
@@ -111,4 +117,4 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Failed to connect to MediaMTX: {str(e)}"
-        )
+        ) from None

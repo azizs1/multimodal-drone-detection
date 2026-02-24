@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
 from app.database.database import Base
@@ -7,26 +8,24 @@ from app.database.database import Base
 class Detection(Base):
     __tablename__ = "detections"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4())
     timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    drone_detected = Column(Boolean, nullable=False)
     confidence = Column(Float, nullable=False)
-    direction = Column(String(10))
-    distance_ft = Column(Float)
+    direction = Column(String(3))
+    distance_ft = Column(Integer)
     visual_confidence = Column(Float)
     thermal_confidence = Column(Float)
     fused_score = Column(Float, nullable=False)
     frame_snapshot_url = Column(Text)
-    stream_name = Column(String(100))
+    stream_name = Column(String(50))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def to_dict(self):
         """Convert model to dictionary"""
         return {
-            "id": self.id,
+            "id": str(self.id),
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
-            "drone_detected": self.drone_detected,
             "confidence": self.confidence,
             "direction": self.direction,
             "distance_ft": self.distance_ft,

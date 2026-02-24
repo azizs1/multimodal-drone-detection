@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
@@ -48,7 +49,7 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     description="Retrieve a specific detection record by its ID",
 )
 async def get_detection(
-    detection_id: Annotated[int, Path(gt=0, description="The ID of the detection to retrieve")],
+    detection_id: Annotated[UUID, Path(description="The UUID of the detection to retrieve")],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Get a single detection record by ID"""
@@ -108,7 +109,7 @@ async def list_detections(
     description="Delete a detection record by ID",
 )
 async def delete_detection(
-    detection_id: Annotated[int, Path(gt=0, description="The ID of the detection to delete")],
+    detection_id: Annotated[UUID, Path(description="The UUID of the detection to delete")],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a detection record"""
