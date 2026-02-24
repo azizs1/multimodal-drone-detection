@@ -63,6 +63,10 @@ class DetectionRepository:
         """Count detections by stream"""
         return self.db.query(Detection).filter(Detection.stream_name == stream_name).count()
 
+    def count_drone_detections(self) -> int:
+        """Count all positive drone detections across all streams"""
+        return self.db.query(Detection).filter(Detection.drone_detected).count()
+
     def delete(self, detection_id: int) -> bool:
         """Delete a detection by ID"""
         detection = self.get_by_id(detection_id)

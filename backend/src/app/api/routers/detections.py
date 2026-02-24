@@ -147,7 +147,7 @@ async def get_detection_stats(
 
     total = repo.count_by_stream(stream_name) if stream_name else repo.count()
 
-    drone_detections = len(repo.get_drone_detections(limit=10000))
+    drone_detections = repo.count_drone_detections()
 
     return DetectionStats(
         total_detections=total,
