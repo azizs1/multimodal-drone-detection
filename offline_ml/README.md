@@ -46,5 +46,5 @@ Zenodo Thermal Drone Detection Dataset - Non-Augemented: https://zenodo.org/reco
 Zenodo Thermal Drone Detection Dataset - Augemented: https://zenodo.org/records/15633098
 Anti-UAV: https://github.com/ZhaoJ9014/Anti-UAV
 
-The two main datasets used will be denoted as the Zenodo Drone Detection Dataset and the Anti-UAV Dataset. The Zenodo Drone Detection Dataset features 
+The two main datasets used will be denoted as the Zenodo Drone Detection Dataset and the Anti-UAV Dataset. The Zenodo Drone Detection Dataset features both Thermal and RGB formats of the same images. The Anti-UAV Dataset features the same, but for videos. All datasets are in a YOLO format for easy input to models.
 

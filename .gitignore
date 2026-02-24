@@ -7,3 +7,6 @@ __pycache__/
 
 #IDE
 .vscode/*
+
+#Datasets
+offline_ml/datasets/*
