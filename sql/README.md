@@ -15,6 +15,7 @@ Stores drone detection events with multimodal sensor data.
 | -------------------- | ------------ | ----------------------------------------------- |
 | `id`                 | UUID         | Primary key (auto-generated)                    |
 | `timestamp`          | TIMESTAMPTZ  | Detection timestamp from sensor data            |
+| `drone_detected`     | BOOLEAN      | Whether a drone was detected                    |
 | `confidence`         | NUMERIC(4,3) | Overall detection confidence (0.0-1.0)          |
 | `direction`          | VARCHAR(3)   | Cardinal direction (N, NE, E, SE, S, SW, W, NW) |
 | `distance_ft`        | INTEGER      | Distance to detected drone in feet              |

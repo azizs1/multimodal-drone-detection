@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS detections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    drone_detected BOOLEAN NOT NULL DEFAULT FALSE,
     confidence NUMERIC(4, 3) CHECK (confidence >= 0 AND confidence <= 1),
     direction VARCHAR(3),
     distance_ft INTEGER,
