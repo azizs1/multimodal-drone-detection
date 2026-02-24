@@ -61,9 +61,11 @@ async def get_stream_info(stream_name: str) -> StreamInfo:
     Returns RTSP and HLS connection URLs and stream status.
     """
     if stream_name not in STREAMS:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Stream '{stream_name}' not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Stream '{stream_name}' not found"
+        )
     return STREAMS[stream_name]
+
 
 @router.get(
     "/{stream_name}/hls/{file_path:path}",
@@ -81,8 +83,7 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
     """
     if stream_name not in STREAMS:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Stream '{stream_name}' not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Stream '{stream_name}' not found"
         )
 
     mediamtx_url = f"http://mediamtx:8888/{stream_name}/{file_path}"
@@ -94,14 +95,11 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
 
             if response.status_code != 200:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Stream file not found"
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Stream file not found"
                 )
 
             content_type = (
-                "application/vnd.apple.mpegurl"
-                if file_path.endswith(".m3u8")
-                else "video/mp2t"
+                "application/vnd.apple.mpegurl" if file_path.endswith(".m3u8") else "video/mp2t"
             )
 
             return StreamingResponse(
@@ -110,11 +108,11 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
                 headers={
                     "Cache-Control": "no-cache",
                     "Access-Control-Allow-Origin": "*",
-                }
+                },
             )
     except httpx.RequestError as e:
         logging.error(f"MediaMTX error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Failed to connect to MediaMTX: {str(e)}"
+            detail=f"Failed to connect to MediaMTX: {str(e)}",
         ) from None
