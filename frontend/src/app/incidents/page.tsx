@@ -12,9 +12,6 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -266,13 +263,10 @@ export default function IncidentsPage() {
               <PaginationContent>
                 {visiblePages.map((page) => (
                   <PaginationItem key={page}>
-                    <PaginationLink
-                      href="#"
-                      isActive={safeCurrentPage === page}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        setCurrentPage(page);
-                      }}
+                    <Button
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      aria-current={safeCurrentPage === page ? "page" : undefined}
                       className={`size-9 border border-slate-300 px-0 text-sm font-medium dark:border-slate-700 ${
                         safeCurrentPage === page
                           ? "bg-slate-200 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-700"
@@ -280,38 +274,40 @@ export default function IncidentsPage() {
                       }`}
                     >
                       {page}
-                    </PaginationLink>
+                    </Button>
                   </PaginationItem>
                 ))}
                 <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(event) => {
-                      event.preventDefault();
+                  <Button
+                    type="button"
+                    onClick={() => {
                       if (safeCurrentPage > 1) {
                         setCurrentPage((prev) => Math.max(1, prev - 1));
                       }
                     }}
+                    disabled={safeCurrentPage === 1}
                     aria-disabled={safeCurrentPage === 1}
-                    className={`h-9 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 [&>span]:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${
-                      safeCurrentPage === 1 ? "pointer-events-none opacity-50" : ""
-                    }`}
-                  />
+                    className="h-9 w-10 border border-slate-300 bg-slate-100 px-0 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <span className="sr-only">Previous page</span>
+                    &lt;
+                  </Button>
                 </PaginationItem>
                 <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(event) => {
-                      event.preventDefault();
+                  <Button
+                    type="button"
+                    onClick={() => {
                       if (safeCurrentPage < totalPages) {
                         setCurrentPage((prev) => Math.min(totalPages, prev + 1));
                       }
                     }}
+                    disabled={safeCurrentPage === totalPages}
                     aria-disabled={safeCurrentPage === totalPages}
-                    className={`h-9 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 [&>span]:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${
-                      safeCurrentPage === totalPages ? "pointer-events-none opacity-50" : ""
-                    }`}
-                  />
+                    className="h-9 w-10 border border-slate-300 bg-slate-100 px-0 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <span className="sr-only">Next page</span>
+                    &gt;
+                  </Button>
                 </PaginationItem>
               </PaginationContent>
             </Pagination>

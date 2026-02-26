@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Popover as PopoverPrimitive } from "radix-ui"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
 
@@ -57,7 +57,7 @@ function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
 
 function PopoverTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
-    <div
+    <h2
       data-slot="popover-title"
       className={cn("font-medium", className)}
       {...props}
