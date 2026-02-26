@@ -49,7 +49,7 @@ function generateMockIncidents(count: number): IncidentLogRow[] {
 
     rows.push({
       id: `#${String(i).padStart(3, "0")}`,
-      timestamp: `2026-02-${String(day).padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(
+      timestamp: `2026-02-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(
         minute,
       ).padStart(2, "0")}:${String(second).padStart(2, "0")}`,
       confidence: 70 + (i % 26),
@@ -234,7 +234,9 @@ export default function IncidentsPage() {
               {pagedRows.map((row) => (
                 <TableRow key={`${row.id}-${row.timestamp}`} className="border-b border-slate-200 dark:border-slate-800">
                   <TableCell className="px-2 py-3">{row.id}</TableCell>
-                  <TableCell className="px-2 py-3">{row.timestamp}</TableCell>
+                  <TableCell className="px-2 py-3">
+                    {format(new Date(row.timestamp), "yyyy-MM-dd HH:mm:ss")}
+                  </TableCell>
                   <TableCell className="px-2 py-3">{row.confidence}%</TableCell>
                   <TableCell className="px-2 py-3">{row.distanceFt}ft</TableCell>
                   <TableCell className="px-2 py-3">{row.model}</TableCell>

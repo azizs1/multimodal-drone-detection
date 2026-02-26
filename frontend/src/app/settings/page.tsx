@@ -8,14 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type SettingsForm = {
-  retentionDays: string;
-  alertThreshold: string;
+  retentionDays: number;
+  alertThreshold: number;
   autoAcknowledge: "Off" | "5 min" | "15 min";
 };
 
 const DEFAULT_SETTINGS: SettingsForm = {
-  retentionDays: "14",
-  alertThreshold: "0.90",
+  retentionDays: 14,
+  alertThreshold: 0.9,
   autoAcknowledge: "Off",
 };
 
@@ -61,7 +61,12 @@ export default function SettingsPage() {
               <Input
                 type="number"
                 value={form.retentionDays}
-                onChange={(event) => updateField("retentionDays", event.target.value)}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (!Number.isNaN(value)) {
+                    updateField("retentionDays", value);
+                  }
+                }}
                 className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </label>
@@ -74,7 +79,12 @@ export default function SettingsPage() {
                 max="1"
                 step="0.01"
                 value={form.alertThreshold}
-                onChange={(event) => updateField("alertThreshold", event.target.value)}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (!Number.isNaN(value)) {
+                    updateField("alertThreshold", value);
+                  }
+                }}
                 className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </label>
@@ -120,6 +130,7 @@ export default function SettingsPage() {
           </Button>
           <Button
             type="button"
+            disabled={!isDirty}
             onClick={() => setSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}
             className="bg-cyan-500 text-white hover:bg-cyan-600"
           >

@@ -18,7 +18,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-RUN printf '%s\n' '/** @type {import("next").NextConfig} */' 'const nextConfig = {};' 'export default nextConfig;' > next.config.mjs
+COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
 EXPOSE 3000
 CMD ["npm", "run", "start"]
