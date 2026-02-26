@@ -45,17 +45,17 @@ function VideoPanel({
   boxLabel: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-sm border border-slate-200 bg-slate-50">
-      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
-        <div className="flex items-center gap-2 text-slate-700">
+    <section className="overflow-hidden rounded-sm border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
           <span className="size-3 rounded-full bg-emerald-500" />
           <span className="text-base font-semibold">{title}</span>
         </div>
-        <span className="text-sm font-medium text-slate-500">Live {fps} fps</span>
+        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Live {fps} fps</span>
       </div>
 
-      <div className="relative h-[280px] bg-slate-100 sm:h-[320px] lg:h-[360px]">
-        <div className="absolute inset-0 flex items-center justify-center text-5xl text-slate-400">+</div>
+      <div className="relative h-[280px] bg-slate-100 sm:h-[320px] lg:h-[360px] dark:bg-slate-800">
+        <div className="absolute inset-0 flex items-center justify-center text-5xl text-slate-400 dark:text-slate-500">+</div>
         <div
           className={`absolute left-1/2 top-1/2 h-20 w-28 -translate-x-1/2 -translate-y-1/2 border-4 ${boxColor}`}
         >
@@ -65,42 +65,42 @@ function VideoPanel({
         </div>
       </div>
 
-      <div className="px-3 py-2 text-sm text-slate-500">{resolution}</div>
+      <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{resolution}</div>
     </section>
   );
 }
 
 function ConfidencePanel() {
   return (
-    <section className="rounded-sm border border-slate-200 bg-slate-50 p-4">
+    <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Primary Metrics</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Primary Metrics</p>
         <div className="mt-2 grid gap-3">
-          <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Fused Confidence</p>
-            <p className="mt-1 text-4xl font-extrabold text-cyan-500">94%</p>
+          <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center dark:border-cyan-700/50 dark:bg-slate-800">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Fused Confidence</p>
+            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">94%</p>
           </div>
 
-          <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Distance</p>
-            <p className="mt-1 text-4xl font-extrabold text-cyan-500">~14ft</p>
+          <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center dark:border-cyan-700/50 dark:bg-slate-800">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Distance</p>
+            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">~14ft</p>
           </div>
         </div>
       </div>
 
       <div className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Secondary Metrics
         </p>
-        <div className="mt-2 rounded-md border border-slate-200 bg-slate-100 p-3 text-center">
+        <div className="mt-2 rounded-md border border-slate-200 bg-slate-100 p-3 text-center dark:border-slate-700 dark:bg-slate-800">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-sm font-medium text-slate-500">Visual Confidence</p>
-              <p className="mt-1 text-3xl font-bold text-slate-400">92%</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Visual Confidence</p>
+              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">92%</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Thermal Confidence</p>
-              <p className="mt-1 text-3xl font-bold text-slate-400">89%</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Thermal Confidence</p>
+              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">89%</p>
             </div>
           </div>
         </div>
@@ -111,15 +111,15 @@ function ConfidencePanel() {
 
 function RecentIncidentsTable() {
   return (
-    <section className="rounded-sm border border-slate-200 bg-slate-50 p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Recent Incidents
       </h2>
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm text-slate-600">
-          <thead className="text-slate-500">
-            <tr className="border-b border-slate-200">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm text-slate-600 dark:text-slate-300">
+          <thead className="text-slate-500 dark:text-slate-400">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
               <th className="px-3 py-3 font-semibold">ID</th>
               <th className="px-3 py-3 font-semibold">Time</th>
               <th className="px-3 py-3 font-semibold">Fused Confidence</th>
@@ -130,20 +130,20 @@ function RecentIncidentsTable() {
           </thead>
           <tbody>
             {INCIDENT_ROWS.map((row) => (
-              <tr key={row.id + row.time} className="border-b border-slate-200/80">
+              <tr key={row.id + row.time} className="border-b border-slate-200/80 dark:border-slate-800">
                 <td className="px-3 py-3">{row.id}</td>
                 <td className="px-3 py-3">{row.time}</td>
                 <td className="px-3 py-3">{row.fusedConfidence}%</td>
                 <td className="px-3 py-3">~{row.distanceFt}ft</td>
                 <td className="px-3 py-3">
-                  <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                  <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                     {row.status}
                   </span>
                 </td>
                 <td className="px-3 py-3">
                   <button
                     type="button"
-                    className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-4 py-1 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
+                    className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-4 py-1 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     View
                   </button>
@@ -171,9 +171,9 @@ function SystemStatusPanel() {
   };
 
   return (
-    <section className="rounded-sm border border-slate-200 bg-slate-50 p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">System Status</h2>
-      <ul className="mt-4 space-y-2 text-sm text-slate-700">
+    <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">System Status</h2>
+      <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
         {SYSTEM_STATUS.map((service) => (
           <li key={service.name} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">

@@ -65,9 +65,10 @@ function generateMockIncidents(count: number): IncidentLogRow[] {
 const INCIDENT_LOG_ROWS: IncidentLogRow[] = generateMockIncidents(48);
 
 const STATUS_BADGE_CLASSES: Record<IncidentLogRow["status"], string> = {
-  Confirmed: "border-transparent bg-emerald-100 text-emerald-700",
-  Pending: "border-transparent bg-amber-100 text-amber-700",
-  "False Positive": "border-transparent bg-rose-100 text-rose-700",
+  Confirmed:
+    "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  Pending: "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  "False Positive": "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
 export default function IncidentsPage() {
@@ -108,21 +109,21 @@ export default function IncidentsPage() {
   return (
     <DashboardShell>
       <section className="space-y-4">
-        <div className="rounded-sm border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-            <div className="text-sm font-medium text-slate-700">
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Start Date
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="mt-1 w-full justify-between border-slate-300 bg-slate-50 text-sm font-normal text-slate-700 hover:bg-slate-100"
+                    className="mt-1 w-full justify-between border-slate-300 bg-slate-50 text-sm font-normal text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
                     {startDate ? toDateKey(startDate) : "Select date"}
-                    <CalendarIcon className="size-4 text-slate-500" />
+                    <CalendarIcon className="size-4 text-slate-500 dark:text-slate-400" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto border-slate-300 p-0" align="start">
+                <PopoverContent className="w-auto border-slate-300 p-0 dark:border-slate-700" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -135,19 +136,19 @@ export default function IncidentsPage() {
               </Popover>
             </div>
 
-            <div className="text-sm font-medium text-slate-700">
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
               End Date
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="mt-1 w-full justify-between border-slate-300 bg-slate-50 text-sm font-normal text-slate-700 hover:bg-slate-100"
+                    className="mt-1 w-full justify-between border-slate-300 bg-slate-50 text-sm font-normal text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
                     {endDate ? toDateKey(endDate) : "Select date"}
-                    <CalendarIcon className="size-4 text-slate-500" />
+                    <CalendarIcon className="size-4 text-slate-500 dark:text-slate-400" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto border-slate-300 p-0" align="start">
+                <PopoverContent className="w-auto border-slate-300 p-0 dark:border-slate-700" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
@@ -160,7 +161,7 @@ export default function IncidentsPage() {
               </Popover>
             </div>
 
-            <label className="text-sm font-medium text-slate-700">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Status
               <Select
                 value={status}
@@ -169,7 +170,7 @@ export default function IncidentsPage() {
                   setCurrentPage(1);
                 }}
               >
-                <SelectTrigger className="mt-1 w-full border-slate-300 bg-slate-50 text-sm text-slate-700">
+                <SelectTrigger className="mt-1 w-full border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -182,7 +183,7 @@ export default function IncidentsPage() {
               </Select>
             </label>
 
-            <label className="text-sm font-medium text-slate-700 xl:col-span-2">
+            <label className="text-sm font-medium text-slate-700 xl:col-span-2 dark:text-slate-300">
               Search
               <Input
                 type="text"
@@ -192,11 +193,11 @@ export default function IncidentsPage() {
                   setCurrentPage(1);
                 }}
                 placeholder="Search ID or model..."
-                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400"
+                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
 
-            <div className="text-sm font-medium text-slate-700">
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Reset
               <Button
                 type="button"
@@ -209,7 +210,7 @@ export default function IncidentsPage() {
                   setSearchTerm("");
                   setCurrentPage(1);
                 }}
-                className="mt-1 w-full border-slate-300 bg-slate-100 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                className="mt-1 w-full border-slate-300 bg-slate-100 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               >
                 Reset Filters
               </Button>
@@ -217,10 +218,10 @@ export default function IncidentsPage() {
           </div>
         </div>
 
-        <div className="rounded-sm border border-slate-200 bg-slate-50 p-4">
-          <Table className="min-w-[880px] text-left text-sm text-slate-700">
-            <TableHeader className="text-slate-500">
-              <TableRow className="border-b border-slate-300 hover:bg-transparent">
+        <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+          <Table className="min-w-[880px] text-left text-sm text-slate-700 dark:text-slate-200">
+            <TableHeader className="text-slate-500 dark:text-slate-400">
+              <TableRow className="border-b border-slate-300 hover:bg-transparent dark:border-slate-700">
                 <TableHead className="px-2 py-3 font-semibold">ID</TableHead>
                 <TableHead className="px-2 py-3 font-semibold">Timestamp</TableHead>
                 <TableHead className="px-2 py-3 font-semibold">Confidence</TableHead>
@@ -231,7 +232,7 @@ export default function IncidentsPage() {
             </TableHeader>
             <TableBody>
               {pagedRows.map((row) => (
-                <TableRow key={`${row.id}-${row.timestamp}`} className="border-b border-slate-200">
+                <TableRow key={`${row.id}-${row.timestamp}`} className="border-b border-slate-200 dark:border-slate-800">
                   <TableCell className="px-2 py-3">{row.id}</TableCell>
                   <TableCell className="px-2 py-3">{row.timestamp}</TableCell>
                   <TableCell className="px-2 py-3">{row.confidence}%</TableCell>
@@ -246,7 +247,7 @@ export default function IncidentsPage() {
               ))}
               {pagedRows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell className="px-2 py-6 text-center text-slate-500" colSpan={6}>
+                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={6}>
                     No incidents found for current filters.
                   </TableCell>
                 </TableRow>
@@ -254,7 +255,7 @@ export default function IncidentsPage() {
             </TableBody>
           </Table>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+          <div className="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
             <p>
               Showing {pagedRows.length === 0 ? 0 : pageStart + 1}-{pageStart + pagedRows.length} of{" "}
               {filteredRows.length}
@@ -270,10 +271,10 @@ export default function IncidentsPage() {
                         event.preventDefault();
                         setCurrentPage(page);
                       }}
-                      className={`size-9 border border-slate-300 px-0 text-sm font-medium ${
+                      className={`size-9 border border-slate-300 px-0 text-sm font-medium dark:border-slate-700 ${
                         safeCurrentPage === page
-                          ? "bg-slate-200 text-slate-800 hover:bg-slate-200"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? "bg-slate-200 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-700"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                       }`}
                     >
                       {page}
@@ -290,7 +291,7 @@ export default function IncidentsPage() {
                       }
                     }}
                     aria-disabled={safeCurrentPage === 1}
-                    className={`h-9 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 [&>span]:hidden ${
+                    className={`h-9 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 [&>span]:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${
                       safeCurrentPage === 1 ? "pointer-events-none opacity-50" : ""
                     }`}
                   />
@@ -305,7 +306,7 @@ export default function IncidentsPage() {
                       }
                     }}
                     aria-disabled={safeCurrentPage === totalPages}
-                    className={`h-9 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 [&>span]:hidden ${
+                    className={`h-9 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 [&>span]:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${
                       safeCurrentPage === totalPages ? "pointer-events-none opacity-50" : ""
                     }`}
                   />
