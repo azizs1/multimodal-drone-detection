@@ -1,17 +1,11 @@
-# https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-base
-FROM nvcr.io/nvidia/l4t-base:r35.3.1
+# https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
+# this is for JetPack 4.6.1 and has DeepStream
+FROM nvcr.io/nvidia/deepstream-l4t:6.0.1-devel
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     python3 python3-pip python3-dev \
-    gstreamer1.0-tools \
-    gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad \
-    gstreamer1.0-plugins-ugly \
-    gstreamer1.0-libav \
-    libopenblas-base libopenmpi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install uv
@@ -19,9 +13,10 @@ RUN pip3 install uv
 COPY pyproject.toml uv.lock ./
 COPY src ./src
 
-# install everything except torch. install jetson torch separately
-RUN uv sync --frozen --no-install torch
+# JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
 RUN pip3 install \
-    https://developer.download.nvidia.com/compute/redist/jp/v50/pytorch/torch-2.1.0-cp38-cp38-linux_aarch64.whl
+  https://developer.download.nvidia.com/compute/redist/jp/v46/pytorch/torch-1.10.0-cp36-cp36m-linux_aarch64.whl
+
+RUN uv sync --frozen --no-install torch
 
 CMD ["uv", "run", "python3", "-m", "run_both"]
