@@ -5,18 +5,18 @@
 ```mermaid
 erDiagram
     detections {
-        uuid id
-        timestamp timestamp
-        float confidence
-        string direction
-        int distance_ft
-        float visual_confidence
-        float thermal_confidence
-        float fused_score
-        string frame_snapshot_url
-        string stream_name
-        timestamp created_at
-        timestamp updated_at
+        UUID id PK
+        TIMESTAMPTZ detected_at NN
+        NUMERIC(4,3) confidence NN
+        NVARCHAR(2) direction NN
+        INTEGER distance_ft N
+        NUMERIC(4,3) visual_confidence N
+        NUMERIC(4,3) thermal_confidence N
+        NUMERIC(4,3) fused_score NN
+        NVARCAHR(100) frame_snapshot_url NN
+        NVARCHAR(20) stream_name NN
+        TIMESTAMPTZ created_at NN
+        TIMESTAMPTZ updated_at NN
     }
 
 ```
@@ -29,7 +29,7 @@ Stores drone detection events with multimodal sensor data.
 
 **Columns:**
 - `id` (UUID, PK): Unique identifier for each detection record
-- `timestamp` (TIMESTAMPTZ, NOT NULL): When the detection occurred
+- `detected_at` (TIMESTAMPTZ, NOT NULL): When the detection occurred
 - `confidence` (NUMERIC(4,3)): Overall detection confidence score (0.000-1.000)
 - `direction` (VARCHAR(3)): Compass direction of detection (e.g., NE, SW)
 - `distance_ft` (INTEGER): Distance to detected object in feet
