@@ -63,9 +63,42 @@ This repository essentially contains three smaller repositories within it, separ
 
 ### Frontend
 #### Development
-\<how to initialize this for dev\>
+The frontend dashboard is built with:
+- Next.js 16
+- React 19
+- Tailwind CSS v4
+- shadcn/ui + Lucide icons
+
+1. Go to the frontend folder:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. Open:
+   - `http://localhost:3000`
+
+Current routes:
+- `/live-feed`
+- `/incidents`
+- `/settings`
+
+Theme support:
+- Light / Dark toggle is available in the top navigation bar.
+- Theme preference is saved in browser local storage.
+
 #### Deployment
-\<how to deploy the docker container for this\>
+Build and run the frontend container from repository root:
+```bash
+docker build -t drone-detection-frontend -f frontend/Dockerfile frontend
+docker run --rm -p 3000:3000 drone-detection-frontend
+```
 
 ### Backend
 Backend requires `uv` for dependency management.
