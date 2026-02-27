@@ -12,9 +12,9 @@ import numpy as np
 import sys
 
 import gi
-gi.require_version('GLib', '3.0')
-gi.require_version('GObject', '3.0')
-gi.require_version('Gst', '3.0')
+gi.require_version('GLib', '2.0')
+gi.require_version('GObject', '2.0')
+gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib, GObject
 
 from shared_buffer import buffer
@@ -165,7 +165,7 @@ def on_message(_bus, message, loop):
     t = message.type
     if t == Gst.MessageType.ERROR:
         err, debug = message.parse_error()
-        print("ERROR:", err, debug, file=sys.stderr)
+        print("ERROR:", err, debug)
         loop.quit()
     elif t == Gst.MessageType.EOS:
         print("END OF STREAM")
