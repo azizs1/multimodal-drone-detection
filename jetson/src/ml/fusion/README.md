@@ -1,7 +1,3 @@
-# Fusion Framework Design (Sprint 1)
-
-Owner: Chia Yu Chang — Multimodal Fusion & Data Transport
-
 ## Objectives
 - Fuse RGB and thermal/IR detector outputs into a single drone/none decision with per-class confidence.
 - Achieve product targets from proposal: ≥90% detection probability, ≤5% false positive rate, decision within ~5–15 s window.
