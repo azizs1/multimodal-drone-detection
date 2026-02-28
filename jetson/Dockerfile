@@ -29,8 +29,9 @@ COPY pyproject.toml ./
 COPY src ./src
 
 # JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
-RUN pip3 install --no-cache-dir \
-    https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
+# figure this out later
+# RUN pip3 install --no-cache-dir \
+#     https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
 
 # RUN uv sync --frozen --no-install torch
 
