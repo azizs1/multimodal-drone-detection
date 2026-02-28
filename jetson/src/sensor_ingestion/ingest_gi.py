@@ -17,7 +17,7 @@ gi.require_version('GObject', '2.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib, GObject
 
-from shared_buffer import buffer
+from sensor_ingestion import buffer
 
 latest_rgb = None
 latest_thermal = None
