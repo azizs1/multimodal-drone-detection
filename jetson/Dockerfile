@@ -1,5 +1,5 @@
 # https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
-# this is for JetPack 4.6.1 and has DeepStream
+# this is for JetPack 4.6.1, but NO DEEPSTREAM (switch later if needed)
 FROM nvcr.io/nvidia/l4t-multimedia:r32.7.1
 
 WORKDIR /app
