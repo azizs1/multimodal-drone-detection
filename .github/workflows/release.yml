@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   frontend-build:
     name: Build frontend
@@ -121,6 +124,5 @@ jobs:
           artifacts: |
             artifacts/frontend-build/frontend-build.tgz
             artifacts/backend-image/backend-image.tar
-            artifacts/jetson-image/jetson-image.tar
           artifactContentType: application/octet-stream
           generateReleaseNotes: true
