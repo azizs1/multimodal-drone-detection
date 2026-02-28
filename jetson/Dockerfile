@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
+    v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install uv
@@ -29,4 +30,5 @@ RUN pip3 install \
 
 RUN uv sync --frozen --no-install torch
 
-CMD ["uv", "run", "python3", "-m", "run_both"]
+#CMD ["uv", "run", "python3", "-m", "run_both"]
+CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
