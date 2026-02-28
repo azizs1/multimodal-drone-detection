@@ -67,7 +67,8 @@ def build_gst_pipeline():
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
     rgb_rtp_queue.set_property("max-size-buffers", 5)
     rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
+    # rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
+    rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # H.264 encoder
     rgb_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     rgb_rtp_payload = Gst.ElementFactory.make("rtph264pay", "rgb_rtp_payload")
     rgb_rtp_payload.set_property("config-interval", 1)
@@ -99,7 +100,8 @@ def build_gst_pipeline():
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     thermal_rtp_queue.set_property("max-size-buffers", 5)
     thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
+    # thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
+    thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("config-interval", 1)
