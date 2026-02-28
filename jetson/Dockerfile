@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y \
 
 # RUN pip3 install uv
 
-COPY pyproject.toml uv.lock ./
+#COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 COPY src ./src
 
 # JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
