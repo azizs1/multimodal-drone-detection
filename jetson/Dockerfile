@@ -4,7 +4,10 @@ FROM nvcr.io/nvidia/l4t-base:r32.7.1
 
 WORKDIR /app
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y \
+    tzdata \
     python3 python3-pip python3-dev \
     python3-opencv \
     python3-gi \
