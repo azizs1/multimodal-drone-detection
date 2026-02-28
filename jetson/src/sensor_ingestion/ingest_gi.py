@@ -46,12 +46,14 @@ def build_gst_pipeline():
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
     # rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
     rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,framerate=30/1"))
-    rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
+    # rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
+    rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv") # this is needed for nvstreammux later
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
     # RGB into inference
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
-    rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
+    # rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
+    rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
     rgb_inf_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_caps")
     rgb_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
     rgb_appsink = Gst.ElementFactory.make("appsink", "rgb_appsink")
@@ -76,7 +78,8 @@ def build_gst_pipeline():
     # Thermal caps and conv (raw video at 320x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
     thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=320,height=240,format=GRAY16_LE,framerate=30/1"))
-    thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
+    # thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
+    thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
