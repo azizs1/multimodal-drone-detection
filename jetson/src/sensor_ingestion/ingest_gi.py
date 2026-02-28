@@ -61,6 +61,7 @@ def build_gst_pipeline():
     rgb_appsink.set_property("sync", False)
     rgb_appsink.set_property("max-buffers", 1)
     rgb_appsink.set_property("drop", True)
+    rgb_appsink.set_property("block", False)
 
     # RTP stream udpsink to stream RGB to backend
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
@@ -90,6 +91,7 @@ def build_gst_pipeline():
     thermal_appsink.set_property("sync", False)
     thermal_appsink.set_property("max-buffers", 1)
     thermal_appsink.set_property("drop", True)
+    thermal_appsink.set_property("block", False)
 
     # RTP stream udpsink to stream thermal to backend
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
@@ -97,7 +99,7 @@ def build_gst_pipeline():
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("config-interval", 1)
-    thermal_rtp_payload.set_property("pt", 96)
+    thermal_rtp_payload.set_property("pt", 97) # differnt payload type than rgb
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
     thermal_udpsink.set_property("host", BACKEND_IP)
     thermal_udpsink.set_property("port", BACKEND_PORT+1)
