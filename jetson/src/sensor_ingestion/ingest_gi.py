@@ -44,7 +44,8 @@ def build_gst_pipeline():
 
     # RGB caps and conv (raw video in NVMM at 1280x720 at 30FPS)
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
-    rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
+    # rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
+    rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,framerate=30/1"))
     rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
