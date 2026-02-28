@@ -23,7 +23,7 @@ latest_rgb = None
 latest_thermal = None
 
 # CHANGE THIS WHEN BACKEND CONTAINER IS SETUP
-BACKEND_IP = "192.168.1.23"
+BACKEND_IP = "192.168.137.47"
 BACKEND_PORT = 3000
 
 def build_gst_pipeline():
