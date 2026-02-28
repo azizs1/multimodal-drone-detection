@@ -109,11 +109,12 @@ def build_gst_pipeline():
         thermal_rtp_queue, thermal_encoder, thermal_rtp_payload, thermal_udpsink
     ]
 
-    if any(e is None for e in elements):
-        print("GSTREAMER ELEMENT FAILED TO GET CREATED!!!!!!!!!!!")
-
     # Add all of the elements to the pipeline
-    pipeline.add(*elements)
+    for e in elements:
+        if e is None:
+            print("GSTREAMER ELEMENT FAILED TO GET CREATED!!!!!!!!!!!")
+        else:
+            pipeline.add(e)
 
     # Linking RGB stuff
     rgb_src.link(rgb_caps)
