@@ -115,6 +115,7 @@ def build_gst_pipeline():
         if e is None:
             print("GSTREAMER ELEMENT FAILED TO GET CREATED!!!!!!!!!!!")
         else:
+            print(f"Adding {e.get_name()}", flush=True)
             pipeline.add(e)
 
     # Linking RGB stuff
