@@ -82,7 +82,7 @@ def build_gst_pipeline():
 
     # Thermal caps and conv (raw video at 320x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=320,height=240,format=GRAY16_LE,framerate=30/1"))
+    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=320,height=240,format=GRAY8,framerate=30/1"))
     # thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
     thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
 
@@ -210,7 +210,7 @@ def on_new_thermal_sample(appsink):
         return Gst.FlowReturn.ERROR
 
     try:
-        frame = np.frombuffer(map_info.data, dtype=np.uint16) # format is GRAY16_LE so 16bit
+        frame = np.frombuffer(map_info.data, dtype=np.uint8) # format is GRAY16_LE so 16bit
         frame = frame.reshape((height, width))
         latest_thermal = frame
         update_buffer()
