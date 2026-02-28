@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install uv
+# RUN pip3 install uv
 
 COPY pyproject.toml uv.lock ./
 COPY src ./src
@@ -31,7 +31,8 @@ COPY src ./src
 RUN pip3 install \
   https://developer.download.nvidia.com/compute/redist/jp/v46/pytorch/torch-1.10.0-cp36-cp36m-linux_aarch64.whl
 
-RUN uv sync --frozen --no-install torch
+# RUN uv sync --frozen --no-install torch
 
 #CMD ["uv", "run", "python3", "-m", "run_both"]
-CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
+# CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
+CMD ["python3", "sensor_ingestion.ingest_gi"]
