@@ -61,10 +61,11 @@ def build_gst_pipeline():
     rgb_appsink.set_property("sync", False)
     rgb_appsink.set_property("max-buffers", 1)
     rgb_appsink.set_property("drop", True)
-    rgb_appsink.set_property("block", False)
 
     # RTP stream udpsink to stream RGB to backend
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
+    rgb_rtp_queue.set_property("max-size-buffers", 5)
+    rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
     rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
     rgb_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     rgb_rtp_payload = Gst.ElementFactory.make("rtph264pay", "rgb_rtp_payload")
@@ -91,10 +92,11 @@ def build_gst_pipeline():
     thermal_appsink.set_property("sync", False)
     thermal_appsink.set_property("max-buffers", 1)
     thermal_appsink.set_property("drop", True)
-    thermal_appsink.set_property("block", False)
 
     # RTP stream udpsink to stream thermal to backend
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
+    thermal_rtp_queue.set_property("max-size-buffers", 5)
+    thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
@@ -126,14 +128,14 @@ def build_gst_pipeline():
     # Linking RGB stuff
     rgb_src.link(rgb_caps)
     rgb_caps.link(rgb_conv)
-    rgb_conv.link(rgb_tee)
+    rgb_conv.link(rgb_rtp_queue)
     
-    rgb_tee.link(rgb_inf_queue)
-    rgb_inf_queue.link(rgb_inf_conv)
-    rgb_inf_conv.link(rgb_inf_caps)
-    rgb_inf_caps.link(rgb_appsink)
+    # rgb_tee.link(rgb_inf_queue)
+    # rgb_inf_queue.link(rgb_inf_conv)
+    # rgb_inf_conv.link(rgb_inf_caps)
+    # rgb_inf_caps.link(rgb_appsink)
 
-    rgb_tee.link(rgb_rtp_queue)
+    # rgb_tee.link(rgb_rtp_queue)
     rgb_rtp_queue.link(rgb_encoder)
     rgb_encoder.link(rgb_rtp_payload)
     rgb_rtp_payload.link(rgb_udpsink)
