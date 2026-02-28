@@ -50,7 +50,7 @@ def build_gst_pipeline():
 
     # RGB into inference
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
-    rgb_inf_conv = Gst.ElementFactory.make("nvvideoconvert", "rgb_inf_conv") # NV12 to BGR
+    rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
     rgb_inf_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_caps")
     rgb_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
     rgb_appsink = Gst.ElementFactory.make("appsink", "rgb_appsink")
