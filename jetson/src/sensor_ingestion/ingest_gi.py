@@ -22,6 +22,7 @@ from sensor_ingestion import buffer
 latest_rgb = None
 latest_thermal = None
 
+BIND_IP = "192.168.137.47"
 # CHANGE THIS WHEN BACKEND CONTAINER IS SETUP
 BACKEND_IP = "192.168.137.1"
 BACKEND_PORT = 3000
@@ -72,6 +73,7 @@ def build_gst_pipeline():
     rgb_rtp_payload.set_property("config-interval", 1)
     rgb_rtp_payload.set_property("pt", 96) # Payload type for H.264 rtp streams
     rgb_udpsink = Gst.ElementFactory.make("udpsink", "rgb_udpsink")
+    rgb_udpsink.set_property("bind-address", BIND_IP)
     rgb_udpsink.set_property("host", BACKEND_IP)
     rgb_udpsink.set_property("port", BACKEND_PORT)
     rgb_udpsink.set_property("sync", False)
@@ -103,6 +105,7 @@ def build_gst_pipeline():
     thermal_rtp_payload.set_property("config-interval", 1)
     thermal_rtp_payload.set_property("pt", 97) # differnt payload type than rgb
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
+    thermal_udpsink.set_property("bind-address", BIND_IP)
     thermal_udpsink.set_property("host", BACKEND_IP)
     thermal_udpsink.set_property("port", BACKEND_PORT+1)
     thermal_udpsink.set_property("sync", False)
