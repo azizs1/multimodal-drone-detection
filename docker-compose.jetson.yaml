@@ -3,5 +3,13 @@ version: "3.9"
 services:
   jetson_si_ml:
     build: ./jetson
-    container_name: jetson_si_ml
+    container_name: jetson-si-ml
     network_mode: host
+    runtime: nvidia
+    privileged: true
+    environment:
+      # this and X11 stuff is just used for debugging output
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    command: uv run python3 src/ingest_gi.py
