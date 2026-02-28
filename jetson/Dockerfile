@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
 #COPY pyproject.toml uv.lock ./
 COPY pyproject.toml ./
 COPY src/sensor_ingestion ./sensor_ingestion
+COPY src/ml ./ml
 
 # JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
 # figure this out later
