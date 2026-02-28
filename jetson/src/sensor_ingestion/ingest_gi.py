@@ -128,14 +128,14 @@ def build_gst_pipeline():
     # Linking RGB stuff
     rgb_src.link(rgb_caps)
     rgb_caps.link(rgb_conv)
-    rgb_conv.link(rgb_rtp_queue)
+    rgb_conv.link(rgb_tee)
     
-    # rgb_tee.link(rgb_inf_queue)
-    # rgb_inf_queue.link(rgb_inf_conv)
-    # rgb_inf_conv.link(rgb_inf_caps)
-    # rgb_inf_caps.link(rgb_appsink)
+    rgb_tee.link(rgb_inf_queue)
+    rgb_inf_queue.link(rgb_inf_conv)
+    rgb_inf_conv.link(rgb_inf_caps)
+    rgb_inf_caps.link(rgb_appsink)
 
-    # rgb_tee.link(rgb_rtp_queue)
+    rgb_tee.link(rgb_rtp_queue)
     rgb_rtp_queue.link(rgb_encoder)
     rgb_encoder.link(rgb_rtp_payload)
     rgb_rtp_payload.link(rgb_udpsink)
