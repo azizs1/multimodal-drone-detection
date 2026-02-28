@@ -63,7 +63,7 @@ jobs:
     name: Build Jetson image
     runs-on: ubuntu-latest
     # Skip if no NGC API key is configured (nvcr.io requires auth)
-    if: ${{ secrets.NGC_API_KEY != '' }}
+    if: secrets.NGC_API_KEY != ''
     steps:
       - uses: actions/checkout@v4
 
