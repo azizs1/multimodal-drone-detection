@@ -13,7 +13,7 @@ erDiagram
         NUMERIC(4,3) visual_confidence N
         NUMERIC(4,3) thermal_confidence N
         NUMERIC(4,3) fused_score NN
-        VARCAHR(100) frame_snapshot_url NN
+        VARCHAR(100) frame_snapshot_url NN
         VARCHAR(20) stream_name NN
         TIMESTAMPTZ created_at NN
         TIMESTAMPTZ updated_at NN
@@ -36,8 +36,8 @@ Stores drone detection events with multimodal sensor data.
 - `visual_confidence` (NUMERIC(4,3)): Confidence from visual camera model (0.000-1.000)
 - `thermal_confidence` (NUMERIC(4,3)): Confidence from thermal camera model (0.000-1.000)
 - `fused_score` (NUMERIC(4,3)): Fused/combined confidence score (0.000-1.000)
-- `frame_snapshot_url` (VARCAHR(100)): URL to stored frame snapshot
-- `stream_name` (VARCHAR(50)): Identifier for the video stream (default: 'drone')
+- `frame_snapshot_url` (VARCHAR(100)): URL to stored frame snapshot
+- `stream_name` (VARCHAR(20)): Identifier for the video stream (default: 'drone')
 - `created_at` (TIMESTAMPTZ): Record creation timestamp
 - `updated_at` (TIMESTAMPTZ): Last update timestamp (auto-updated via trigger)
 
