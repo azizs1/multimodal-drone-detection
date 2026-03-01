@@ -121,7 +121,7 @@ def build_gst_pipeline():
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
     # thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
     thermal_nvmm_caps = Gst.ElementFactory.make("capsfilter", "thermal_nvmm_caps")
-    thermal_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    thermal_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
@@ -255,7 +255,7 @@ def on_new_rgb_sample(appsink):
         save_frame(frame, "rgb")
         frame_num+=1
         update_buffer()
-        # print("RGB frame received", flush=True)
+        print("RGB frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
@@ -286,7 +286,7 @@ def on_new_thermal_sample(appsink):
         save_frame(frame, "thermal")
         frame_num+=1
         update_buffer()
-        # print("Thermal frame received", flush=True)
+        print("Thermal frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
