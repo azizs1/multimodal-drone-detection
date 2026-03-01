@@ -3,6 +3,7 @@
 This is a design-time scaffold for Sprint 1. It shows how the fusion engine will expose
 results via FastAPI and ZeroMQ. Real wiring will happen once modality workers are in place.
 """
+
 from __future__ import annotations
 
 try:

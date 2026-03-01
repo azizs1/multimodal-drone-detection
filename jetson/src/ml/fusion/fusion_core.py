@@ -1,4 +1,5 @@
 """Weighted late-fusion with gating (design stub for Sprint 1)."""
+
 from __future__ import annotations
 
 import time

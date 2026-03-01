@@ -2,6 +2,7 @@
 
 Run with: python -m pytest jetson/src/ml/fusion/test_ingest_contract.py
 """
+
 import time
 
 from fastapi import FastAPI
