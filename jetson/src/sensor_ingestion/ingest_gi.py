@@ -280,8 +280,12 @@ def on_new_thermal_sample(appsink):
     try:
         size = buf.get_size()
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
-        real_width = size // height
-        frame = frame.reshape((height, real_width))
+        print(f"Buffer size: {size}, height: {height}")
+        caps = buf.get_caps()
+        structure = caps.get_structure(0)
+        width_from_caps = structure.get_value("width")
+        print(f"Width from caps: {width_from_caps}")
+        frame = frame.reshape((height, width_from_caps))
         latest_thermal = frame
         save_frame(frame, "thermal")
         frame_num+=1
