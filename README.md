@@ -17,9 +17,9 @@ The system consists of four main components:
 
 The streaming pipeline uses different encoders depending on the environment:
 
-| Environment | Encoder | Compose File | Notes |
-|---|---|---|---|
-| **Local Development** | FFmpeg | `docker-compose-dev.yml` | Software encoding; runs on any machine |
+| Environment                  | Encoder   | Compose File                 | Notes                                                      |
+| ---------------------------- | --------- | ---------------------------- | ---------------------------------------------------------- |
+| **Local Development**        | FFmpeg    | `docker-compose-dev.yml`     | Software encoding; runs on any machine                     |
 | **Production (Jetson Nano)** | GStreamer | `docker-compose.jetson.yaml` | Hardware-accelerated encoding via NVENC on the Jetson Nano |
 
 ```
@@ -53,7 +53,7 @@ docker compose -f docker-compose-dev.yml down
 
 Rebuild specific service:
 ```bash
-docker compose -f docker-compose-dev.yml up -d --build simulator
+docker compose -f docker-compose-dev.yml up -d --build backend
 ```
 
 ## Prerequisites
@@ -113,22 +113,36 @@ uv run pytest
 ## How to Use
 
 ### Simulator
-The simulator streams drone video footage to the MediaMTX server.
+The simulator loops drone video footage over RTSP to the MediaMTX server using **FFmpeg**.
 
-- **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** for software-based RTSP streaming. This works on any development machine without special hardware.
+- **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** (`libx264`, `ultrafast` preset) for software-based RTSP streaming. Works on any development machine without special hardware.
 - **Production (`docker-compose.jetson.yaml`):** Uses **GStreamer** with hardware-accelerated encoding on the **Jetson Nano**.
 
 **Directory:** `simulator/`
 
+The Docker Compose dev file launches **two simulator containers** — one per stream:
+
+| Container               | Stream Name | Video File          | RTSP URL                       |
+| ----------------------- | ----------- | ------------------- | ------------------------------ |
+| `gst-visual-simulator`  | `visual`    | `drone_visual.mp4`  | `rtsp://mediamtx:8554/visual`  |
+| `gst-thermal-simulator` | `thermal`   | `drone_thermal.mp4` | `rtsp://mediamtx:8554/thermal` |
+
+Both containers use the same Dockerfile; behavior is controlled by the `STREAM_NAME` and `VIDEO_FILE` environment variables.
+
 **Configuration:**
 - Video files: Place `.mp4` files in `simulator/videos/`
-- Default video: `drone_test.mp4`
+- Default videos: `drone_visual.mp4`, `drone_thermal.mp4`
 
 **Standalone Build:**
 ```bash
 cd simulator
 docker build -t drone-simulator .
-docker run --network host drone-simulator
+
+# Stream visual feed
+docker run --network host -e STREAM_NAME=visual -e VIDEO_FILE=drone_visual.mp4 drone-simulator
+
+# Stream thermal feed
+docker run --network host -e STREAM_NAME=thermal -e VIDEO_FILE=drone_thermal.mp4 drone-simulator
 ```
 
 ### MediaMTX (Streaming Server)
@@ -224,7 +238,7 @@ docker compose -f docker-compose.jetson.yaml up --build
 ### No video in HLS player
 1. Check if simulator is streaming:
    ```bash
-   docker logs gst-simulator --tail 20
+   docker logs gst-visual-simulator --tail 20
    ```
 2. Verify MediaMTX is receiving the stream:
    ```bash
@@ -258,7 +272,8 @@ multimodal-drone-detection/
 ├── simulator/              # GStreamer video streamer
 │   ├── Dockerfile
 │   └── videos/            # Video files
-│       └── drone_test.mp4
+│       └── drone_visual.mp4
+|       └── drone_thermal.mp4
 ├── backend/               # FastAPI backend service
 │   ├── Dockerfile
 │   ├── pyproject.toml
