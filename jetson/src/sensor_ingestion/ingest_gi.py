@@ -194,12 +194,12 @@ def build_gst_pipeline():
     link_check(thermal_conv, thermal_nvmm_caps)
     link_check(thermal_nvmm_caps, thermal_tee)
 
-    link_tee(rgb_tee, rgb_inf_queue)
-    link_check(rgb_inf_queue, rgb_inf_nvconv)
-    link_check(rgb_inf_nvconv, rgb_inf_nv12_caps)
-    link_check(rgb_inf_nv12_caps, rgb_inf_videoconv)
-    link_check(rgb_inf_videoconv, rgb_inf_bgr_caps)
-    link_check(rgb_inf_bgr_caps, rgb_appsink)
+    link_tee(thermal_tee, thermal_inf_queue)
+    link_check(thermal_inf_queue, thermal_inf_nvconv)
+    link_check(thermal_inf_nvconv, thermal_inf_nv12_caps)
+    link_check(thermal_inf_nv12_caps, thermal_inf_videoconv)
+    link_check(thermal_inf_videoconv, thermal_inf_bgr_caps)
+    link_check(thermal_inf_bgr_caps, thermal_appsink)
 
     link_tee(thermal_tee, thermal_inf_queue)
     link_check(thermal_inf_queue, thermal_inf_nvconv)
