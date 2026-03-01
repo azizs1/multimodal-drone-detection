@@ -115,7 +115,8 @@ def build_gst_pipeline():
     # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
     thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=GRAY8,width=160,height=120,framerate=30/1"))
-    thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
+    thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12
+    thermal_nvmm_conv = Gst.ElementFactory.make("nvvidconv", "thermal_nvmm_conv") # convert to NVMM
     # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
     # thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
@@ -168,7 +169,8 @@ def build_gst_pipeline():
         rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
         rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps, 
         rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
-        thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_inf_videoconv, thermal_inf_bgr_caps,
+        thermal_src, thermal_caps, thermal_conv, thermal_nvmm_conv, 
+        thermal_nvmm_caps, thermal_inf_videoconv, thermal_inf_bgr_caps,
         thermal_tee,
         thermal_inf_queue, thermal_inf_nvconv, thermal_inf_nv12_caps, thermal_appsink,
         thermal_rtp_queue, thermal_rtp_nvconv, thermal_rtp_nvconv_caps, thermal_rtp_caps, 
@@ -204,7 +206,8 @@ def build_gst_pipeline():
     # Linking thermal stuff
     link_check(thermal_src, thermal_caps)
     link_check(thermal_caps, thermal_conv)
-    link_check(thermal_conv, thermal_nvmm_caps)
+    link_check(thermal_conv, thermal_nvmm_conv)
+    link_check(thermal_nvmm_conv, thermal_nvmm_caps)
     link_check(thermal_nvmm_caps, thermal_tee)
 
     link_tee(thermal_tee, thermal_inf_queue)
