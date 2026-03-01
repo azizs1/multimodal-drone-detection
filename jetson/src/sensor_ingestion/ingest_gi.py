@@ -66,8 +66,8 @@ def build_gst_pipeline():
 
     # RTP stream udpsink to stream RGB to backend
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
-    # rgb_rtp_queue.set_property("max-size-buffers", 5)
-    # rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
+    rgb_rtp_queue.set_property("max-size-buffers", 5)
+    rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
     # rgb_rtp_caps = Gst.ElementFactory.make("capsfilter", "rgb_rtp_caps")
     # rgb_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
@@ -109,8 +109,8 @@ def build_gst_pipeline():
 
     # RTP stream udpsink to stream thermal to backend
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
-    # thermal_rtp_queue.set_property("max-size-buffers", 5)
-    # thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
+    thermal_rtp_queue.set_property("max-size-buffers", 5)
+    thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
     # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
     # thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
