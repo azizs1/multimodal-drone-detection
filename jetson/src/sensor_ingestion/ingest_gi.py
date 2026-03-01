@@ -114,7 +114,7 @@ def build_gst_pipeline():
 
     # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=720,height=256,framerate=30/1"))
+    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=GRAY8,width=160,height=120,framerate=30/1"))
     thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
     # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
