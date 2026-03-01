@@ -151,7 +151,8 @@ def build_gst_pipeline():
         rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
         thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_tee,
         thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
-        thermal_rtp_queue, thermal_encoder, thermal_rtp_payload, thermal_udpsink
+        thermal_rtp_queue, thermal_rtp_nvconv, thermal_rtp_caps, thermal_encoder,
+        thermal_rtp_payload, thermal_udpsink
     ]
 
     # Add all of the elements to the pipeline
