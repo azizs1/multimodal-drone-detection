@@ -44,5 +44,5 @@ def test_ingest_returns_fused_decision():
     assert body["decision"] == "drone"
     assert isinstance(body["incident_id"], str) and body["incident_id"]
     assert body["confidence_band"] in {"low", "medium", "high"}
-    assert "per_modality_scores" in body and set(body["per_modality_scores"].keys()) == {"rgb", "thermal"}
-
+    assert "per_modality_scores" in body
+    assert set(body["per_modality_scores"]) == {"rgb", "thermal"}

@@ -4,7 +4,6 @@ This is a design-time scaffold for Sprint 1. It shows how the fusion engine will
 results via FastAPI and ZeroMQ. Real wiring will happen once modality workers are in place.
 """
 from __future__ import annotations
-from typing import List
 
 try:
     from fastapi import APIRouter
@@ -27,7 +26,7 @@ def build_router(fusion_engine: FusionEngine) -> APIRouter:
     router = APIRouter(prefix="/fusion", tags=["fusion"])
 
     @router.post("/ingest", response_model=FusedDecision | None)
-    def ingest(predictions: List[ModalityPrediction]):
+    def ingest(predictions: list[ModalityPrediction]):
         """HTTP ingest endpoint for modality predictions; returns fused decision."""
         return fusion_engine.fuse(predictions)
 

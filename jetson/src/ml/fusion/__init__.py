@@ -1,6 +1,6 @@
-from .config import FusionConfig, DEFAULT_CONFIG
+from .config import DEFAULT_CONFIG, FusionConfig
 from .fusion_core import FusionEngine
-from .schemas import ModalityPrediction, FusedDecision
+from .schemas import FusedDecision, ModalityPrediction
 
 __all__ = [
     "FusionConfig",

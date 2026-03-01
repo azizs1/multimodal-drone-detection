@@ -1,11 +1,12 @@
 """Weighted late-fusion with gating (design stub for Sprint 1)."""
 from __future__ import annotations
-from collections import deque
-from typing import Iterable, List, Optional
+
 import time
 import uuid
+from collections import deque
+from collections.abc import Iterable
 
-from .config import FusionConfig, DEFAULT_CONFIG
+from .config import DEFAULT_CONFIG, FusionConfig
 from .schemas import ConfidenceBand, FusedDecision, ModalityPrediction
 
 
@@ -14,7 +15,7 @@ class FusionEngine:
         self.config = config
         self.buffer = deque(maxlen=config.buffer_size)
 
-    def fuse(self, preds: Iterable[ModalityPrediction]) -> Optional[FusedDecision]:
+    def fuse(self, preds: Iterable[ModalityPrediction]) -> FusedDecision | None:
         filtered = [p for p in preds if p]
         if not filtered:
             return None
@@ -49,7 +50,9 @@ class FusionEngine:
             return fused
         return None
 
-    def _weighted_score(self, preds: List[ModalityPrediction]):
+    def _weighted_score(
+        self, preds: list[ModalityPrediction]
+    ) -> tuple[float, str, dict[str, float]]:
         weights = self.config.weights
         score = 0.0
         per_modality_scores = {"rgb": 0.0, "thermal": 0.0}
@@ -65,7 +68,7 @@ class FusionEngine:
         reason = "no-modality-passed-gate" if not used else "+".join(sorted(set(used)))
         return score, reason, per_modality_scores
 
-    def _gate(self, score: float, preds: List[ModalityPrediction]):
+    def _gate(self, score: float, preds: list[ModalityPrediction]) -> str:
         if score >= self.config.alert_threshold:
             # optional EO/IR confirmation
             if self.config.eo_ir_required:
@@ -77,7 +80,9 @@ class FusionEngine:
             return "none"  # hold/buffer state is handled by caller; no alert yet
         return "none"
 
-    def _latest_by_modality(self, preds: List[ModalityPrediction]):
+    def _latest_by_modality(
+        self, preds: list[ModalityPrediction]
+    ) -> dict[str, ModalityPrediction | None]:
         latest = {"rgb": None, "thermal": None}
         for p in preds:
             if latest[p.modality] is None or p.timestamp > latest[p.modality].timestamp:
