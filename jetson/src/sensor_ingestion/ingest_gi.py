@@ -65,7 +65,7 @@ def build_gst_pipeline():
     rgb_src = Gst.ElementFactory.make("videotestsrc", "rgb_src")
     rgb_src.set_property("pattern", 0)  # This gives SMPTE color bars
     thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
-    thermal_src.set_property("pattern", 1)  # This gives moving ball pattern
+    thermal_src.set_property("pattern", 18)  # This gives moving ball pattern
 
     # RGB caps and conv (raw video in NVMM at 1280x720 at 30FPS)
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
