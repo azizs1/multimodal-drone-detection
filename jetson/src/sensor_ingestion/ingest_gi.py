@@ -30,6 +30,7 @@ BACKEND_PORT = 3000
 def link_check(first, second):
     if not first.link(second):
         raise RuntimeError(f"Failed to link {first.name} to {second.name}")
+    print(f"Linked {first.name} to {second.name}")
     
 def link_tee(tee, element):
     tee_pad = tee.get_request_pad("src_%u")
