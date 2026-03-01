@@ -26,7 +26,7 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     """
     Create a new detection record with the following information:
 
-    - **timestamp**: Time when detection occurred
+    - **detected_at**: Time when detection occurred
     - **confidence**: Overall confidence score (0-1)
     - **direction**: Direction of detected object (e.g., "NE", "SW")
     - **distance_ft**: Distance in feet

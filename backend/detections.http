@@ -1,6 +1,6 @@
 ### Variables
 @baseUrl = http://localhost:8000
-@detectionId = 639fccc7-d174-4aad-ac71-e98e7311cb24
+@detectionId = b61e3642-5628-4032-9b33-166963ed8ea1
 ### ───────────────────────────────────────────
 ### Create a new detection
 ### ───────────────────────────────────────────
@@ -8,7 +8,7 @@ POST {{baseUrl}}/detections
 Content-Type: application/json
 
 {
-  "timestamp": "2026-03-01T10:15:00Z",
+  "detected_at": "2026-03-01T10:15:00Z",
   "confidence": 0.94,
   "direction": "NE",
   "distance_ft": 125.5,

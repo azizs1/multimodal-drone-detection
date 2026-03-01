@@ -161,7 +161,7 @@ Backend provides REST API for stream information and system management.
 #### API Endpoints
 - `GET /` - API information and quick links
 - `GET /streams` - List all available streams
-- `GET /info/{stream_name}` - Get stream details
+- `GET /streams/{stream_name}` - Get stream details
 - `GET /health` - Health check
 
 #### Development

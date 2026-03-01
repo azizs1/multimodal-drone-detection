@@ -22,7 +22,7 @@ class DirectionEnum(StrEnum):
 class DetectionCreate(BaseModel):
     """Schema for creating a new detection"""
 
-    timestamp: datetime = Field(..., description="Time when detection occurred")
+    detected_at: datetime = Field(..., description="Time when detection occurred")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score")
     direction: DirectionEnum | None = Field(
         None, description="Direction of detected object (N, NE, E, SE, S, SW, W, NW)"
@@ -67,7 +67,7 @@ class DetectionCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "timestamp": "2026-02-21T14:32:07Z",
+                "detected_at": "2026-02-21T14:32:07Z",
                 "confidence": 0.94,
                 "direction": "NE",
                 "distance_ft": 125.5,
@@ -85,7 +85,7 @@ class DetectionResponse(BaseModel):
     """Schema for detection response"""
 
     id: UUID = Field(..., description="Unique detection ID")
-    timestamp: datetime = Field(..., description="Detection timestamp")
+    detected_at: datetime = Field(..., description="Detection timestamp")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score")
     direction: str | None = Field(None, description="Direction of detected object")
     distance_ft: float | None = Field(None, description="Distance in feet")

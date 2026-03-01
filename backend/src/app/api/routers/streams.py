@@ -87,7 +87,6 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
         )
 
     mediamtx_url = f"http://mediamtx:8888/{stream_name}/{file_path}"
-    logging.info(f"Proxying HLS: {mediamtx_url}")
 
     try:
         async with httpx.AsyncClient() as client:

@@ -29,7 +29,7 @@ class DetectionRepository:
         """Get all detections with pagination"""
         return (
             self.db.query(Detection)
-            .order_by(desc(Detection.timestamp))
+            .order_by(desc(Detection.detected_at))
             .offset(skip)
             .limit(limit)
             .all()
@@ -40,7 +40,7 @@ class DetectionRepository:
         return (
             self.db.query(Detection)
             .filter(Detection.stream_name == stream_name)
-            .order_by(desc(Detection.timestamp))
+            .order_by(desc(Detection.detected_at))
             .offset(skip)
             .limit(limit)
             .all()
