@@ -53,8 +53,6 @@ def build_gst_pipeline():
     rgb_src.set_property("pattern", 0)  # This gives SMPTE color bars
     thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
     thermal_src.set_property("pattern", 18)  # This gives moving ball pattern
-    thermal_src.set_property("width", 256)
-    thermal_src.set_property("height", 256)
 
     # RGB caps and conv (raw video in NVMM at 1280x720 at 30FPS)
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
@@ -103,8 +101,7 @@ def build_gst_pipeline():
 
     # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    # thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=720,height=256,framerate=30/1"))
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=256,height=256,framerate=30/1,format=GRAY8"))
+    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=720,height=256,framerate=30/1"))
     thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
     # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
@@ -132,7 +129,7 @@ def build_gst_pipeline():
     thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
     thermal_rtp_nvconv.set_property("output-buffers", 1)
     thermal_rtp_nvconv_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_nvconv_caps")
-    thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=256,height=256,framerate=30/1"))
+    thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=720,height=256,framerate=30/1"))
     thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
     thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
