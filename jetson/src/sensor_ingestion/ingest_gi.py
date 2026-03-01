@@ -145,7 +145,7 @@ def build_gst_pipeline():
     thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
     thermal_rtp_nvconv.set_property("output-buffers", 1)
     thermal_rtp_nvconv_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_nvconv_caps")
-    thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=720,height=256,framerate=30/1"))
+    thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
     thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
     thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
