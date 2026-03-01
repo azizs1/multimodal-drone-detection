@@ -85,6 +85,8 @@ def build_gst_pipeline():
     thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=320,height=240,format=GRAY8,framerate=30/1"))
     # thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
     thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
+    thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
+    thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
@@ -100,8 +102,8 @@ def build_gst_pipeline():
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     thermal_rtp_queue.set_property("max-size-buffers", 5)
     thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    # thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
-    thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
+    thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
+    # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("config-interval", 1)
@@ -117,7 +119,7 @@ def build_gst_pipeline():
         rgb_src, rgb_caps, rgb_conv, rgb_tee,
         rgb_inf_queue, rgb_inf_conv, rgb_inf_caps, rgb_appsink,
         rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
-        thermal_src, thermal_caps, thermal_conv, thermal_tee,
+        thermal_src, thermal_caps, thermal_caps_nv12, thermal_conv, thermal_tee,
         thermal_inf_queue, thermal_appsink,
         thermal_rtp_queue, thermal_encoder, thermal_rtp_payload, thermal_udpsink
     ]
@@ -148,7 +150,8 @@ def build_gst_pipeline():
     # Linking thermal stuff
     thermal_src.link(thermal_caps)
     thermal_caps.link(thermal_conv)
-    thermal_conv.link(thermal_tee)
+    thermal_conv.link(thermal_caps_nv12)
+    thermal_caps_nv12.link(thermal_tee)
     
     thermal_tee.link(thermal_inf_queue)
     thermal_inf_queue.link(thermal_appsink)
