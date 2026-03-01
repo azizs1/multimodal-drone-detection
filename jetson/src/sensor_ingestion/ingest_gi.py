@@ -30,6 +30,14 @@ BACKEND_PORT = 3000
 def link_check(first, second):
     if not first.link(second):
         raise RuntimeError(f"Failed to link {first.name} to {second.name}")
+    
+def link_tee(tee, element):
+    tee_pad = tee.get_request_pad("src_%u")
+    sink_pad = element.get_static_pad("sink")
+    if tee_pad is None or sink_pad is None: 
+        raise RuntimeError("Failed to get pads for tee link") 
+    if tee_pad.link(sink_pad) != Gst.PadLinkReturn.OK: 
+        raise RuntimeError(f"Failed to link tee {tee.name} to {element.name}")
 
 def build_gst_pipeline():
     Gst.init(None)
@@ -58,12 +66,13 @@ def build_gst_pipeline():
 
     # RGB into inference
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
-    rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
+    rgb_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_nvconv") # NV12 to BGR
+    rgb_inf_nv12_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_nv12_caps")
+    rgb_inf_nv12_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
     # rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
-    rgb_inf_cpu_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_cpu_caps")
-    rgb_inf_cpu_caps.set_property("caps", Gst.Caps.from_string("video/x-raw"))
-    rgb_inf_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_caps")
-    rgb_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
+    rgb_inf_videoconv = Gst.ElementFactory.make("videoconvert", "rgb_inf_videoconv")
+    rgb_inf_bgr_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_bgr_caps")
+    rgb_inf_bgr_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
     rgb_appsink = Gst.ElementFactory.make("appsink", "rgb_appsink")
     rgb_appsink.set_property("emit-signals", True)
     rgb_appsink.set_property("sync", False)
@@ -135,8 +144,8 @@ def build_gst_pipeline():
 
     elements = [
         rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
-        rgb_inf_queue, rgb_inf_conv, rgb_inf_cpu_caps, rgb_inf_caps, rgb_appsink,
-        rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
+        rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps, 
+        rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
         thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_tee,
         thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
         thermal_rtp_queue, thermal_encoder, thermal_rtp_payload, thermal_udpsink
@@ -156,13 +165,12 @@ def build_gst_pipeline():
     link_check(rgb_conv, rgb_nvmm_caps)
     link_check(rgb_nvmm_caps, rgb_tee)
 
-    link_check(rgb_tee, rgb_inf_queue)
+    link_tee(rgb_tee, rgb_inf_queue)
     link_check(rgb_inf_queue, rgb_inf_conv)
-    link_check(rgb_inf_conv, rgb_inf_cpu_caps)
-    link_check(rgb_inf_cpu_caps, rgb_inf_caps)
+    link_check(rgb_inf_conv, rgb_inf_caps)
     link_check(rgb_inf_caps, rgb_appsink)
 
-    link_check(rgb_tee, rgb_rtp_queue)
+    link_tee(rgb_tee, rgb_rtp_queue)
     link_check(rgb_rtp_queue, rgb_encoder)
     link_check(rgb_encoder, rgb_rtp_payload)
     link_check(rgb_rtp_payload, rgb_udpsink)
@@ -173,12 +181,12 @@ def build_gst_pipeline():
     link_check(thermal_conv, thermal_nvmm_caps)
     link_check(thermal_nvmm_caps, thermal_tee)
 
-    link_check(thermal_tee, thermal_inf_queue)
+    link_tee(thermal_tee, thermal_inf_queue)
     link_check(thermal_inf_queue, thermal_inf_conv)
     link_check(thermal_inf_conv, thermal_inf_caps)
     link_check(thermal_inf_caps, thermal_appsink)
 
-    link_check(thermal_tee, thermal_rtp_queue)
+    link_tee(thermal_tee, thermal_rtp_queue)
     link_check(thermal_rtp_queue, thermal_encoder)
     link_check(thermal_encoder, thermal_rtp_payload)
     link_check(thermal_rtp_payload, thermal_udpsink)
