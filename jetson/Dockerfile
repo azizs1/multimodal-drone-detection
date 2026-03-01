@@ -38,5 +38,5 @@ COPY src/ml ./ml
 
 #CMD ["uv", "run", "python3", "-m", "run_both"]
 # CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
-ENV GST_DEBUG=5
+ENV GST_DEBUG=4
 CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
