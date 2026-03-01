@@ -22,9 +22,9 @@ from sensor_ingestion import buffer
 latest_rgb = None
 latest_thermal = None
 
-BIND_IP = "192.168.137.47"
+# BIND_IP = "192.168.137.47"
 # CHANGE THIS WHEN BACKEND CONTAINER IS SETUP
-BACKEND_IP = "192.168.137.1"
+BACKEND_IP = "192.168.50.1"
 BACKEND_PORT = 3000
 
 def link_check(first, second):
