@@ -27,6 +27,10 @@ BIND_IP = "192.168.137.47"
 BACKEND_IP = "192.168.137.1"
 BACKEND_PORT = 3000
 
+def link_check(first, second):
+    if not first.link(second):
+        raise RuntimeError(f"Failed to link {first.name} to {second.name} ")
+
 def build_gst_pipeline():
     Gst.init(None)
     pipeline = Gst.Pipeline.new("rgb-thermal-pipeline")
@@ -145,36 +149,36 @@ def build_gst_pipeline():
             pipeline.add(e)
 
     # Linking RGB stuff
-    rgb_src.link(rgb_caps)
-    rgb_caps.link(rgb_conv)
-    rgb_conv.link(rgb_nvmm_caps)
-    rgb_nvmm_caps.link(rgb_tee)
-    
-    rgb_tee.link(rgb_inf_queue)
-    rgb_inf_queue.link(rgb_inf_conv)
-    rgb_inf_conv.link(rgb_inf_caps)
-    rgb_inf_caps.link(rgb_appsink)
+    link_check(rgb_src, rgb_caps)
+    link_check(rgb_caps, rgb_conv)
+    link_check(rgb_conv, rgb_nvmm_caps)
+    link_check(rgb_nvmm_caps, rgb_tee)
 
-    rgb_tee.link(rgb_rtp_queue)
-    rgb_rtp_queue.link(rgb_encoder)
-    rgb_encoder.link(rgb_rtp_payload)
-    rgb_rtp_payload.link(rgb_udpsink)
+    link_check(rgb_tee, rgb_inf_queue)
+    link_check(rgb_inf_queue, rgb_inf_conv)
+    link_check(rgb_inf_conv, rgb_inf_caps)
+    link_check(rgb_inf_caps, rgb_appsink)
+
+    link_check(rgb_tee, rgb_rtp_queue)
+    link_check(rgb_rtp_queue, rgb_encoder)
+    link_check(rgb_encoder, rgb_rtp_payload)
+    link_check(rgb_rtp_payload, rgb_udpsink)
 
     # Linking thermal stuff
-    thermal_src.link(thermal_caps)
-    thermal_caps.link(thermal_conv)
-    thermal_conv.link(thermal_nvmm_caps)
-    thermal_nvmm_caps.link(thermal_tee)
-    
-    thermal_tee.link(thermal_inf_queue)
-    thermal_inf_queue.link(thermal_inf_conv)
-    thermal_inf_conv.link(thermal_inf_caps)
-    thermal_inf_caps.link(thermal_appsink)
+    link_check(thermal_src, thermal_caps)
+    link_check(thermal_caps, thermal_conv)
+    link_check(thermal_conv, thermal_nvmm_caps)
+    link_check(thermal_nvmm_caps, thermal_tee)
 
-    thermal_tee.link(thermal_rtp_queue)
-    thermal_rtp_queue.link(thermal_encoder)
-    thermal_encoder.link(thermal_rtp_payload)
-    thermal_rtp_payload.link(thermal_udpsink)
+    link_check(thermal_tee, thermal_inf_queue)
+    link_check(thermal_inf_queue, thermal_inf_conv)
+    link_check(thermal_inf_conv, thermal_inf_caps)
+    link_check(thermal_inf_caps, thermal_appsink)
+
+    link_check(thermal_tee, thermal_rtp_queue)
+    link_check(thermal_rtp_queue, thermal_encoder)
+    link_check(thermal_encoder, thermal_rtp_payload)
+    link_check(thermal_rtp_payload, thermal_udpsink)
 
     return pipeline, rgb_appsink, thermal_appsink
 
