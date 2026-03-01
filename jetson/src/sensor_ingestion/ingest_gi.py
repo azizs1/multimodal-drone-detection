@@ -113,9 +113,12 @@ def build_gst_pipeline():
 
     # thermal into inference
     thermal_inf_queue = Gst.ElementFactory.make("queue", "thermal_inf_queue")
-    thermal_inf_conv = Gst.ElementFactory.make("nvvidconv", "thermal_inf_conv")
-    thermal_inf_caps = Gst.ElementFactory.make("capsfilter", "thermal_inf_caps")
-    thermal_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=GRAY8"))
+    thermal_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_inf_nvconv")  # Convert to BGR for inference
+    thermal_inf_nv12_caps = Gst.ElementFactory.make("capsfilter", "thermal_inf_nv12_caps")
+    thermal_inf_nv12_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
+    thermal_inf_videoconv = Gst.ElementFactory.make("videoconvert", "thermal_inf_videoconv")
+    thermal_inf_bgr_caps = Gst.ElementFactory.make("capsfilter", "thermal_inf_bgr_caps")
+    thermal_inf_bgr_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
     thermal_appsink = Gst.ElementFactory.make("appsink", "thermal_appsink")
     thermal_appsink.set_property("emit-signals", True)
     thermal_appsink.set_property("sync", False)
@@ -152,8 +155,9 @@ def build_gst_pipeline():
         rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
         rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps, 
         rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
-        thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_tee,
-        thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
+        thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_inf_videoconv, thermal_inf_bgr_caps,
+        thermal_tee,
+        thermal_inf_queue, thermal_inf_nvconv, thermal_inf_nv12_caps, thermal_appsink,
         thermal_rtp_queue, thermal_rtp_nvconv, thermal_rtp_nvconv_caps, thermal_rtp_caps, 
         thermal_encoder, thermal_rtp_payload, thermal_udpsink
     ]
@@ -190,16 +194,24 @@ def build_gst_pipeline():
     link_check(thermal_conv, thermal_nvmm_caps)
     link_check(thermal_nvmm_caps, thermal_tee)
 
+    link_tee(rgb_tee, rgb_inf_queue)
+    link_check(rgb_inf_queue, rgb_inf_nvconv)
+    link_check(rgb_inf_nvconv, rgb_inf_nv12_caps)
+    link_check(rgb_inf_nv12_caps, rgb_inf_videoconv)
+    link_check(rgb_inf_videoconv, rgb_inf_bgr_caps)
+    link_check(rgb_inf_bgr_caps, rgb_appsink)
+
     link_tee(thermal_tee, thermal_inf_queue)
-    link_check(thermal_inf_queue, thermal_inf_conv)
-    link_check(thermal_inf_conv, thermal_inf_caps)
-    link_check(thermal_inf_caps, thermal_appsink)
+    link_check(thermal_inf_queue, thermal_inf_nvconv)
+    link_check(thermal_inf_nvconv, thermal_inf_nv12_caps)
+    link_check(thermal_inf_nv12_caps, thermal_inf_videoconv)
+    link_check(thermal_inf_videoconv, thermal_inf_bgr_caps)
+    link_check(thermal_inf_bgr_caps, thermal_appsink)
 
     link_tee(thermal_tee, thermal_rtp_queue)
-    # link_check(thermal_rtp_queue, thermal_rtp_nvconv)
-    # link_check(thermal_rtp_nvconv, thermal_rtp_nvconv_caps)
-    link_check(thermal_rtp_queue, thermal_encoder)
-    # link_check(thermal_rtp_nvconv_caps, thermal_encoder)
+    link_check(thermal_rtp_queue, thermal_rtp_nvconv)
+    link_check(thermal_rtp_nvconv, thermal_rtp_nvconv_caps)
+    link_check(thermal_rtp_nvconv_caps, thermal_encoder)
     link_check(thermal_encoder, thermal_rtp_payload)
     link_check(thermal_rtp_payload, thermal_udpsink)
 
