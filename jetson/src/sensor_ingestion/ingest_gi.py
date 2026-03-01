@@ -196,9 +196,10 @@ def build_gst_pipeline():
     link_check(thermal_inf_caps, thermal_appsink)
 
     link_tee(thermal_tee, thermal_rtp_queue)
-    link_check(thermal_rtp_queue, thermal_rtp_nvconv)
-    link_check(thermal_rtp_nvconv, thermal_rtp_nvconv_caps)
-    link_check(thermal_rtp_nvconv_caps, thermal_encoder)
+    # link_check(thermal_rtp_queue, thermal_rtp_nvconv)
+    # link_check(thermal_rtp_nvconv, thermal_rtp_nvconv_caps)
+    link_check(thermal_rtp_queue, thermal_encoder)
+    # link_check(thermal_rtp_nvconv_caps, thermal_encoder)
     link_check(thermal_encoder, thermal_rtp_payload)
     link_check(thermal_rtp_payload, thermal_udpsink)
 
