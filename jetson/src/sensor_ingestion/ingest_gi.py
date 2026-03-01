@@ -144,18 +144,20 @@ def build_gst_pipeline():
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     thermal_rtp_queue.set_property("max-size-buffers", 5)
     thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
-    thermal_rtp_nvconv.set_property("output-buffers", 1)
-    thermal_rtp_nvconv_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_nvconv_caps")
-    thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
-    thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
-    thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
+    # thermal_rtp_nvconv.set_property("output-buffers", 1)
+    # thermal_rtp_nvconv_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_nvconv_caps")
+    # thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
+    # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
+    # thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder.set_property("tune", "zerolatency")
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_encoder.set_property("preset-level", 1)
+    thermal_encoder.set_property("iframeinterval", 15)
+    thermal_encoder.set_property("control-rate", 1)
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("pt", 96) # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
@@ -174,7 +176,7 @@ def build_gst_pipeline():
         thermal_nvmm_caps, thermal_inf_videoconv, thermal_inf_bgr_caps,
         thermal_tee,
         thermal_inf_queue, thermal_inf_nvconv, thermal_inf_nv12_caps, thermal_appsink,
-        thermal_rtp_queue, thermal_rtp_nvconv, thermal_rtp_nvconv_caps, thermal_rtp_caps, 
+        thermal_rtp_queue,
         thermal_encoder, thermal_rtp_payload, thermal_udpsink
     ]
 
@@ -218,9 +220,7 @@ def build_gst_pipeline():
     link_check(thermal_inf_bgr_caps, thermal_appsink)
 
     link_tee(thermal_tee, thermal_rtp_queue)
-    link_check(thermal_rtp_queue, thermal_rtp_nvconv)
-    link_check(thermal_rtp_nvconv, thermal_rtp_nvconv_caps)
-    link_check(thermal_rtp_nvconv_caps, thermal_encoder)
+    link_check(thermal_rtp_queue, thermal_encoder)
     link_check(thermal_encoder, thermal_rtp_payload)
     link_check(thermal_rtp_payload, thermal_udpsink)
 
