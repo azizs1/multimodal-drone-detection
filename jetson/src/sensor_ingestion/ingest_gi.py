@@ -158,6 +158,17 @@ def build_gst_pipeline():
     thermal_encoder.set_property("preset-level", 1)
     thermal_encoder.set_property("iframeinterval", 15)
     thermal_encoder.set_property("control-rate", 1)
+    thermal_encoder_sink = thermal_encoder.get_static_pad("sink")
+    print("THERMAL ENCODER CAPS:", thermal_encoder_sink.get_current_caps())
+    def debug_thermal_encoder_caps(pad, info):
+        caps = pad.get_current_caps()
+        if caps:
+            print("THERMAL ENCODER CAPS:", caps.to_string())
+        return Gst.PadProbeReturn.OK
+
+    thermal_encoder_sink.add_probe(Gst.PadProbeType.BUFFER, debug_thermal_encoder_caps)
+
+
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("pt", 96) # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
@@ -255,7 +266,7 @@ def on_new_rgb_sample(appsink):
         # save_frame(frame, "rgb")
         frame_num+=1
         update_buffer()
-        print("RGB frame received", flush=True)
+        # print("RGB frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
@@ -284,7 +295,7 @@ def on_new_thermal_sample(appsink):
         # save_frame(frame, "thermal")
         frame_num+=1
         update_buffer()
-        print("Thermal frame received", flush=True)
+        # print("Thermal frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
