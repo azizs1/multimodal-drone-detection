@@ -281,7 +281,7 @@ def on_new_thermal_sample(appsink):
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))
         latest_thermal = frame
-        # save_frame(frame, "thermal")
+        save_frame(frame, "thermal")
         frame_num+=1
         update_buffer()
         print("Thermal frame received", flush=True)
