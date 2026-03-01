@@ -8,12 +8,19 @@ This MEng capstone project aims to build a drone detection system with an AI-ena
 
 The system consists of four main components:
 
-1. **Simulator** - GStreamer-based video streamer that loops drone footage to RTSP
+1. **Simulator** - Video streamer that loops drone footage to RTSP
 2. **MediaMTX** - RTSP/HLS media server that handles stream distribution
 3. **Backend** - FastAPI service providing REST API and stream information
 4. **Jetson** - Edge AI processing on Jetson Nano (ML + sensor ingestion)
 
 ### Streaming Pipeline
+
+The streaming pipeline uses different encoders depending on the environment:
+
+| Environment | Encoder | Compose File | Notes |
+|---|---|---|---|
+| **Local Development** | FFmpeg | `docker-compose-dev.yml` | Software encoding; runs on any machine |
+| **Production (Jetson Nano)** | GStreamer | `docker-compose.jetson.yaml` | Hardware-accelerated encoding via NVENC on the Jetson Nano |
 
 ```
 [Simulator] --RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
@@ -106,7 +113,10 @@ uv run pytest
 ## How to Use
 
 ### Simulator
-The simulator streams drone video footage to the MediaMTX server using GStreamer.
+The simulator streams drone video footage to the MediaMTX server.
+
+- **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** for software-based RTSP streaming. This works on any development machine without special hardware.
+- **Production (`docker-compose.jetson.yaml`):** Uses **GStreamer** with hardware-accelerated encoding on the **Jetson Nano**.
 
 **Directory:** `simulator/`
 

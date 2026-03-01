@@ -27,7 +27,6 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     Create a new detection record with the following information:
 
     - **timestamp**: Time when detection occurred
-    - **drone_detected**: Whether a drone was detected
     - **confidence**: Overall confidence score (0-1)
     - **direction**: Direction of detected object (e.g., "NE", "SW")
     - **distance_ft**: Distance in feet
@@ -78,9 +77,6 @@ async def list_detections(
     stream_name: Annotated[
         str | None, Query(min_length=1, max_length=100, description="Filter by stream name")
     ] = None,
-    drone_only: Annotated[
-        bool, Query(description="If true, only return positive drone detections")
-    ] = False,
 ):
     """
     List detections with optional filters:
@@ -88,13 +84,10 @@ async def list_detections(
     - **skip**: Number of records to skip (pagination)
     - **limit**: Maximum number of records to return (1-1000)
     - **stream_name**: Filter by stream name (e.g., "drone")
-    - **drone_only**: If true, only return positive drone detections
     """
     repo = DetectionRepository(db)
 
-    if drone_only:
-        detections = repo.get_drone_detections(skip=skip, limit=limit)
-    elif stream_name:
+    if stream_name:
         detections = repo.get_by_stream(stream_name, skip=skip, limit=limit)
     else:
         detections = repo.get_all(skip=skip, limit=limit)
@@ -148,7 +141,7 @@ async def get_detection_stats(
 
     total = repo.count_by_stream(stream_name) if stream_name else repo.count()
 
-    drone_detections = len(repo.get_drone_detections(limit=10000))
+    drone_detections = len(repo.get_all(limit=10000))
 
     return DetectionStats(
         total_detections=total,

@@ -1,0 +1,57 @@
+### Variables
+@baseUrl = http://localhost:8000
+@detectionId = 639fccc7-d174-4aad-ac71-e98e7311cb24
+### ───────────────────────────────────────────
+### Create a new detection
+### ───────────────────────────────────────────
+POST {{baseUrl}}/detections
+Content-Type: application/json
+
+{
+  "timestamp": "2026-03-01T10:15:00Z",
+  "confidence": 0.94,
+  "direction": "NE",
+  "distance_ft": 125.5,
+  "visual_confidence": 0.92,
+  "thermal_confidence": 0.89,
+  "fused_score": 0.94,
+  "frame_snapshot_url": "s3://detections/drone/2026-03-01/detection_001.jpg",
+  "stream_name": "drone"
+}
+
+### ───────────────────────────────────────────
+### Get a detection by ID
+### (replace the UUID with one from a create response)
+### ───────────────────────────────────────────
+GET {{baseUrl}}/detections/{{detectionId}}
+
+### ───────────────────────────────────────────
+### List all detections (default: skip=0, limit=100)
+### ───────────────────────────────────────────
+GET {{baseUrl}}/detections
+
+### ───────────────────────────────────────────
+### List detections with pagination
+### ───────────────────────────────────────────
+GET {{baseUrl}}/detections?skip=0&limit=10
+
+### ───────────────────────────────────────────
+### List detections filtered by stream name
+### ───────────────────────────────────────────
+GET {{baseUrl}}/detections?stream_name=drone
+
+### ───────────────────────────────────────────
+### Get detection statistics
+### ───────────────────────────────────────────
+GET {{baseUrl}}/detections/stats/summary
+
+### ───────────────────────────────────────────
+### Get detection statistics filtered by stream
+### ───────────────────────────────────────────
+GET {{baseUrl}}/detections/stats/summary?stream_name=drone
+
+### ───────────────────────────────────────────
+### Delete a detection by ID
+### (replace the UUID with one from a create response)
+### ───────────────────────────────────────────
+DELETE {{baseUrl}}/detections/{{detectionId}}

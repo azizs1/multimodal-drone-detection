@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -22,7 +23,6 @@ class DetectionCreate(BaseModel):
     """Schema for creating a new detection"""
 
     timestamp: datetime = Field(..., description="Time when detection occurred")
-    drone_detected: bool = Field(..., description="Whether a drone was detected")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score")
     direction: DirectionEnum | None = Field(
         None, description="Direction of detected object (N, NE, E, SE, S, SW, W, NW)"
@@ -68,7 +68,6 @@ class DetectionCreate(BaseModel):
         json_schema_extra={
             "example": {
                 "timestamp": "2026-02-21T14:32:07Z",
-                "drone_detected": True,
                 "confidence": 0.94,
                 "direction": "NE",
                 "distance_ft": 125.5,
@@ -85,9 +84,8 @@ class DetectionCreate(BaseModel):
 class DetectionResponse(BaseModel):
     """Schema for detection response"""
 
-    id: int = Field(..., gt=0, description="Unique detection ID")
+    id: UUID = Field(..., description="Unique detection ID")
     timestamp: datetime = Field(..., description="Detection timestamp")
-    drone_detected: bool = Field(..., description="Whether a drone was detected")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score")
     direction: str | None = Field(None, description="Direction of detected object")
     distance_ft: float | None = Field(None, description="Distance in feet")

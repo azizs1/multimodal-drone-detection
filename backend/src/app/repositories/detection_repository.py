@@ -46,16 +46,6 @@ class DetectionRepository:
             .all()
         )
 
-    def get_drone_detections(self, skip: int = 0, limit: int = 100) -> list[Detection]:
-        """Get detections"""
-        return (
-            self.db.query(Detection)
-            .order_by(desc(Detection.timestamp))
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-
     def count(self) -> int:
         """Count total detections"""
         return self.db.query(Detection).count()
