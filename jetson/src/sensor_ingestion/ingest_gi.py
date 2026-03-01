@@ -60,6 +60,8 @@ def build_gst_pipeline():
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
     rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
     # rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
+    rgb_inf_cpu_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_cpu_caps")
+    rgb_inf_cpu_caps.set_property("caps", Gst.Caps.from_string("video/x-raw"))
     rgb_inf_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_caps")
     rgb_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
     rgb_appsink = Gst.ElementFactory.make("appsink", "rgb_appsink")
@@ -133,7 +135,7 @@ def build_gst_pipeline():
 
     elements = [
         rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
-        rgb_inf_queue, rgb_inf_conv, rgb_inf_caps, rgb_appsink,
+        rgb_inf_queue, rgb_inf_conv, rgb_inf_cpu_caps, rgb_inf_caps, rgb_appsink,
         rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
         thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_tee,
         thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
@@ -156,7 +158,8 @@ def build_gst_pipeline():
 
     link_check(rgb_tee, rgb_inf_queue)
     link_check(rgb_inf_queue, rgb_inf_conv)
-    link_check(rgb_inf_conv, rgb_inf_caps)
+    link_check(rgb_inf_conv, rgb_inf_cpu_caps)
+    link_check(rgb_inf_cpu_caps, rgb_inf_caps)
     link_check(rgb_inf_caps, rgb_appsink)
 
     link_check(rgb_tee, rgb_rtp_queue)
