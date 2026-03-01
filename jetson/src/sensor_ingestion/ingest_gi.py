@@ -153,21 +153,20 @@ def build_gst_pipeline():
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder.set_property("tune", "zerolatency")
-    thermal_encoder.set_property("bitrate", 500000) # 4Mbps for now? change later
+    thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_encoder.set_property("preset-level", 1)
     thermal_encoder.set_property("iframeinterval", 15)
     thermal_encoder.set_property("control-rate", 1)
     thermal_encoder_sink = thermal_encoder.get_static_pad("sink")
-    print("THERMAL ENCODER CAPS:", thermal_encoder_sink.get_current_caps())
-    def debug_thermal_encoder_caps(pad, info):
-        caps = pad.get_current_caps()
-        if caps:
-            print("THERMAL ENCODER CAPS:", caps.to_string())
-        return Gst.PadProbeReturn.OK
+    # print("THERMAL ENCODER CAPS:", thermal_encoder_sink.get_current_caps())
+    # def debug_thermal_encoder_caps(pad, info):
+    #     caps = pad.get_current_caps()
+    #     if caps:
+    #         print("THERMAL ENCODER CAPS:", caps.to_string())
+    #     return Gst.PadProbeReturn.OK
 
-    thermal_encoder_sink.add_probe(Gst.PadProbeType.BUFFER, debug_thermal_encoder_caps)
-
+    # thermal_encoder_sink.add_probe(Gst.PadProbeType.BUFFER, debug_thermal_encoder_caps)
 
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("pt", 96) # differnt payload type than rgb
@@ -178,6 +177,8 @@ def build_gst_pipeline():
     thermal_udpsink.set_property("port", BACKEND_PORT+1)
     thermal_udpsink.set_property("sync", False)
     thermal_udpsink.set_property("async", False)
+    print("THERMAL PORT:", thermal_udpsink.get_property("port"))
+
 
     elements = [
         rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
