@@ -62,9 +62,9 @@ def build_gst_pipeline():
     # thermal_src.set_property("device", "/dev/video1")
 
     # Test sources
-    # rgb_src = Gst.ElementFactory.make("videotestsrc", "rgb_src")
-    # rgb_src.set_property("pattern", 0)  # This gives SMPTE color bars
-    # rgb_src.set_property("is-live", True)
+    rgb_src = Gst.ElementFactory.make("videotestsrc", "rgb_src")
+    rgb_src.set_property("pattern", 0)  # This gives SMPTE color bars
+    rgb_src.set_property("is-live", True)
     thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
     thermal_src.set_property("pattern", 18)  # This gives moving ball pattern
     thermal_src.set_property("is-live", True)
@@ -153,7 +153,7 @@ def build_gst_pipeline():
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder.set_property("tune", "zerolatency")
-    thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
+    thermal_encoder.set_property("bitrate", 500000) # 4Mbps for now? change later
     thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_encoder.set_property("preset-level", 1)
     thermal_encoder.set_property("iframeinterval", 15)
@@ -169,7 +169,7 @@ def build_gst_pipeline():
     thermal_udpsink.set_property("async", False)
 
     elements = [
-        rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
+        rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
         rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps, 
         rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
         thermal_src, thermal_caps, thermal_conv,
@@ -188,23 +188,23 @@ def build_gst_pipeline():
             print(f"Adding {e.get_name()}", flush=True)
             pipeline.add(e)
 
-    # # Linking RGB stuff
-    # link_check(rgb_src, rgb_caps)
-    # link_check(rgb_caps, rgb_conv)
-    # link_check(rgb_conv, rgb_nvmm_caps)
-    # link_check(rgb_nvmm_caps, rgb_tee)
+    # Linking RGB stuff
+    link_check(rgb_src, rgb_caps)
+    link_check(rgb_caps, rgb_conv)
+    link_check(rgb_conv, rgb_nvmm_caps)
+    link_check(rgb_nvmm_caps, rgb_tee)
 
-    # link_tee(rgb_tee, rgb_inf_queue)
-    # link_check(rgb_inf_queue, rgb_inf_nvconv)
-    # link_check(rgb_inf_nvconv, rgb_inf_nv12_caps)
-    # link_check(rgb_inf_nv12_caps, rgb_inf_videoconv)
-    # link_check(rgb_inf_videoconv, rgb_inf_bgr_caps)
-    # link_check(rgb_inf_bgr_caps, rgb_appsink)
+    link_tee(rgb_tee, rgb_inf_queue)
+    link_check(rgb_inf_queue, rgb_inf_nvconv)
+    link_check(rgb_inf_nvconv, rgb_inf_nv12_caps)
+    link_check(rgb_inf_nv12_caps, rgb_inf_videoconv)
+    link_check(rgb_inf_videoconv, rgb_inf_bgr_caps)
+    link_check(rgb_inf_bgr_caps, rgb_appsink)
 
-    # link_tee(rgb_tee, rgb_rtp_queue)
-    # link_check(rgb_rtp_queue, rgb_encoder)
-    # link_check(rgb_encoder, rgb_rtp_payload)
-    # link_check(rgb_rtp_payload, rgb_udpsink)
+    link_tee(rgb_tee, rgb_rtp_queue)
+    link_check(rgb_rtp_queue, rgb_encoder)
+    link_check(rgb_encoder, rgb_rtp_payload)
+    link_check(rgb_rtp_payload, rgb_udpsink)
 
     # Linking thermal stuff
     link_check(thermal_src, thermal_caps)
