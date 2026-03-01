@@ -161,20 +161,20 @@ def build_gst_pipeline():
     rgb_rtp_payload.link(rgb_udpsink)
 
     # Linking thermal stuff
-    # thermal_src.link(thermal_caps)
-    # thermal_caps.link(thermal_conv)
-    # thermal_conv.link(thermal_nvmm_caps)
-    # thermal_nvmm_caps.link(thermal_tee)
+    thermal_src.link(thermal_caps)
+    thermal_caps.link(thermal_conv)
+    thermal_conv.link(thermal_nvmm_caps)
+    thermal_nvmm_caps.link(thermal_tee)
     
-    # thermal_tee.link(thermal_inf_queue)
-    # thermal_inf_queue.link(thermal_inf_conv)
-    # thermal_inf_conv.link(thermal_inf_caps)
-    # thermal_inf_caps.link(thermal_appsink)
+    thermal_tee.link(thermal_inf_queue)
+    thermal_inf_queue.link(thermal_inf_conv)
+    thermal_inf_conv.link(thermal_inf_caps)
+    thermal_inf_caps.link(thermal_appsink)
 
-    # thermal_tee.link(thermal_rtp_queue)
-    # thermal_rtp_queue.link(thermal_encoder)
-    # thermal_encoder.link(thermal_rtp_payload)
-    # thermal_rtp_payload.link(thermal_udpsink)
+    thermal_tee.link(thermal_rtp_queue)
+    thermal_rtp_queue.link(thermal_encoder)
+    thermal_encoder.link(thermal_rtp_payload)
+    thermal_rtp_payload.link(thermal_udpsink)
 
     return pipeline, rgb_appsink, thermal_appsink
 
