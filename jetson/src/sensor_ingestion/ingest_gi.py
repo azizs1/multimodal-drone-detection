@@ -29,7 +29,6 @@ BACKEND_PORT = 3000
 
 def build_gst_pipeline():
     Gst.init(None)
-
     pipeline = Gst.Pipeline.new("rgb-thermal-pipeline")
 
     # # Sources
@@ -47,14 +46,14 @@ def build_gst_pipeline():
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
     # rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
     rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,framerate=30/1"))
-    # rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
-    rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv") # this is needed for nvstreammux later
+    rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
+    # rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv") # this is needed for nvstreammux later
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
     # RGB into inference
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
-    # rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
-    rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
+    rgb_inf_conv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_conv") # NV12 to BGR
+    # rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
     rgb_inf_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_caps")
     rgb_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
     rgb_appsink = Gst.ElementFactory.make("appsink", "rgb_appsink")
@@ -65,16 +64,19 @@ def build_gst_pipeline():
 
     # RTP stream udpsink to stream RGB to backend
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
-    rgb_rtp_queue.set_property("max-size-buffers", 5)
-    rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    # rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
-    rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # H.264 encoder
+    # rgb_rtp_queue.set_property("max-size-buffers", 5)
+    # rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
+    rgb_rtp_caps = Gst.ElementFactory.make("capsfilter", "rgb_rtp_caps")
+    rgb_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
+    # rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # H.264 encoder
     rgb_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
+    rgb_encoder.set_property("insert-sps-pps", 1)
     rgb_rtp_payload = Gst.ElementFactory.make("rtph264pay", "rgb_rtp_payload")
-    rgb_rtp_payload.set_property("config-interval", 1)
     rgb_rtp_payload.set_property("pt", 96) # Payload type for H.264 rtp streams
+    rgb_rtp_payload.set_property("config-interval", 1)
     rgb_udpsink = Gst.ElementFactory.make("udpsink", "rgb_udpsink")
-    rgb_udpsink.set_property("bind-address", BIND_IP)
+    # rgb_udpsink.set_property("bind-address", BIND_IP)
     rgb_udpsink.set_property("host", BACKEND_IP)
     rgb_udpsink.set_property("port", BACKEND_PORT)
     rgb_udpsink.set_property("sync", False)
@@ -82,16 +84,19 @@ def build_gst_pipeline():
 
     # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=720,height=240,format=GRAY8,framerate=30/1"))
-    # thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
-    thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
-    thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
-    thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
+    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=720,height=240,framerate=30/1"))
+    thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
+    # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
+    # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
+    # thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
     # thermal into inference
     thermal_inf_queue = Gst.ElementFactory.make("queue", "thermal_inf_queue")
+    thermal_inf_conv = Gst.ElementFactory.make("nvvidconv", "thermal_inf_conv")
+    thermal_inf_caps = Gst.ElementFactory.make("capsfilter", "thermal_inf_caps")
+    thermal_inf_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=GRAY8"))
     thermal_appsink = Gst.ElementFactory.make("appsink", "thermal_appsink")
     thermal_appsink.set_property("emit-signals", True)
     thermal_appsink.set_property("sync", False)
@@ -100,16 +105,19 @@ def build_gst_pipeline():
 
     # RTP stream udpsink to stream thermal to backend
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
-    thermal_rtp_queue.set_property("max-size-buffers", 5)
-    thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    # thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
-    thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
+    # thermal_rtp_queue.set_property("max-size-buffers", 5)
+    # thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
+    thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
+    thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
+    # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
+    thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
-    thermal_rtp_payload.set_property("config-interval", 1)
     thermal_rtp_payload.set_property("pt", 97) # differnt payload type than rgb
+    thermal_rtp_payload.set_property("config-interval", 1)
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
-    thermal_udpsink.set_property("bind-address", BIND_IP)
+    # thermal_udpsink.set_property("bind-address", BIND_IP)
     thermal_udpsink.set_property("host", BACKEND_IP)
     thermal_udpsink.set_property("port", BACKEND_PORT+1)
     thermal_udpsink.set_property("sync", False)
@@ -118,10 +126,10 @@ def build_gst_pipeline():
     elements = [
         rgb_src, rgb_caps, rgb_conv, rgb_tee,
         rgb_inf_queue, rgb_inf_conv, rgb_inf_caps, rgb_appsink,
-        rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
-        thermal_src, thermal_caps, thermal_caps_nv12, thermal_conv, thermal_tee,
-        thermal_inf_queue, thermal_appsink,
-        thermal_rtp_queue, thermal_encoder, thermal_rtp_payload, thermal_udpsink
+        rgb_rtp_queue, rgb_rtp_caps, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
+        thermal_src, thermal_caps, thermal_conv, thermal_tee,
+        thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
+        thermal_rtp_queue, thermal_rtp_caps, thermal_encoder, thermal_rtp_payload, thermal_udpsink
     ]
 
     # Add all of the elements to the pipeline
@@ -143,21 +151,24 @@ def build_gst_pipeline():
     rgb_inf_caps.link(rgb_appsink)
 
     rgb_tee.link(rgb_rtp_queue)
-    rgb_rtp_queue.link(rgb_encoder)
+    rgb_rtp_queue.link(rgb_rtp_caps)
+    rgb_rtp_caps.link(rgb_encoder)
     rgb_encoder.link(rgb_rtp_payload)
     rgb_rtp_payload.link(rgb_udpsink)
 
     # Linking thermal stuff
     thermal_src.link(thermal_caps)
     thermal_caps.link(thermal_conv)
-    thermal_conv.link(thermal_caps_nv12)
-    thermal_caps_nv12.link(thermal_tee)
+    thermal_conv.link(thermal_tee)
     
     thermal_tee.link(thermal_inf_queue)
-    thermal_inf_queue.link(thermal_appsink)
+    thermal_inf_queue.link(thermal_inf_conv)
+    thermal_inf_conv.link(thermal_inf_caps)
+    thermal_inf_caps.link(thermal_appsink)
 
     thermal_tee.link(thermal_rtp_queue)
-    thermal_rtp_queue.link(thermal_encoder)
+    thermal_rtp_queue.link(thermal_rtp_caps)
+    thermal_rtp_caps.link(thermal_encoder)
     thermal_encoder.link(thermal_rtp_payload)
     thermal_rtp_payload.link(thermal_udpsink)
 
