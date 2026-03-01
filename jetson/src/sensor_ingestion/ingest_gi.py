@@ -187,7 +187,7 @@ def on_new_rgb_sample(appsink):
 
     try:
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
-        frame = frame.reshape((height, width, 3))  # in BGR format now in np array
+        frame = frame.reshape((height, width))  # in BGR format now in np array
         latest_rgb = frame
         update_buffer()
         print("RGB frame received", flush=True)
