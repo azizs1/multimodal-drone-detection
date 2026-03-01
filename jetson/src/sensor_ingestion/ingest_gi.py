@@ -213,8 +213,10 @@ def on_new_thermal_sample(appsink):
         return Gst.FlowReturn.ERROR
 
     try:
-        frame = np.frombuffer(map_info.data, dtype=np.uint16) # format is GRAY16_LE so 16bit
-        frame = frame.reshape((height, width))
+        size = buf.get_size()
+        frame = np.frombuffer(map_info.data, dtype=np.uint8)
+        real_width = size // height
+        frame = frame.reshape((height, real_width))
         latest_thermal = frame
         update_buffer()
         print("Thermal frame received", flush=True)
