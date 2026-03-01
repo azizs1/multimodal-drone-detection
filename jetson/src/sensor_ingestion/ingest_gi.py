@@ -188,23 +188,23 @@ def build_gst_pipeline():
             print(f"Adding {e.get_name()}", flush=True)
             pipeline.add(e)
 
-    # Linking RGB stuff
-    link_check(rgb_src, rgb_caps)
-    link_check(rgb_caps, rgb_conv)
-    link_check(rgb_conv, rgb_nvmm_caps)
-    link_check(rgb_nvmm_caps, rgb_tee)
+    # # Linking RGB stuff
+    # link_check(rgb_src, rgb_caps)
+    # link_check(rgb_caps, rgb_conv)
+    # link_check(rgb_conv, rgb_nvmm_caps)
+    # link_check(rgb_nvmm_caps, rgb_tee)
 
-    link_tee(rgb_tee, rgb_inf_queue)
-    link_check(rgb_inf_queue, rgb_inf_nvconv)
-    link_check(rgb_inf_nvconv, rgb_inf_nv12_caps)
-    link_check(rgb_inf_nv12_caps, rgb_inf_videoconv)
-    link_check(rgb_inf_videoconv, rgb_inf_bgr_caps)
-    link_check(rgb_inf_bgr_caps, rgb_appsink)
+    # link_tee(rgb_tee, rgb_inf_queue)
+    # link_check(rgb_inf_queue, rgb_inf_nvconv)
+    # link_check(rgb_inf_nvconv, rgb_inf_nv12_caps)
+    # link_check(rgb_inf_nv12_caps, rgb_inf_videoconv)
+    # link_check(rgb_inf_videoconv, rgb_inf_bgr_caps)
+    # link_check(rgb_inf_bgr_caps, rgb_appsink)
 
-    link_tee(rgb_tee, rgb_rtp_queue)
-    link_check(rgb_rtp_queue, rgb_encoder)
-    link_check(rgb_encoder, rgb_rtp_payload)
-    link_check(rgb_rtp_payload, rgb_udpsink)
+    # link_tee(rgb_tee, rgb_rtp_queue)
+    # link_check(rgb_rtp_queue, rgb_encoder)
+    # link_check(rgb_encoder, rgb_rtp_payload)
+    # link_check(rgb_rtp_payload, rgb_udpsink)
 
     # Linking thermal stuff
     link_check(thermal_src, thermal_caps)
