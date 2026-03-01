@@ -284,7 +284,7 @@ def on_new_thermal_sample(appsink):
         structure = caps.get_structure(0)
         width_from_caps = structure.get_value("width")
         print(f"Width from caps: {width_from_caps}")
-        frame = frame.reshape((height, width_from_caps))
+        frame = frame.reshape((height, width_from_caps, 3))
         latest_thermal = frame
         save_frame(frame, "thermal")
         frame_num+=1
