@@ -228,7 +228,7 @@ def on_new_rgb_sample(appsink):
         frame = frame.reshape((height, width, 3))  # in BGR format now in np array
         latest_rgb = frame
         update_buffer()
-        print("RGB frame received", flush=True)
+        # print("RGB frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
@@ -257,7 +257,7 @@ def on_new_thermal_sample(appsink):
         frame = frame.reshape((height, real_width))
         latest_thermal = frame
         update_buffer()
-        print("Thermal frame received", flush=True)
+        # print("Thermal frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
