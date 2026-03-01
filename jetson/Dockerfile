@@ -38,4 +38,4 @@ COPY src/ml ./ml
 
 #CMD ["uv", "run", "python3", "-m", "run_both"]
 # CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
-CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
+CMD ["GST_DEBUG=3", "python3", "-m", "sensor_ingestion.ingest_gi"]

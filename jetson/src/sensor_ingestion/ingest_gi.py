@@ -47,6 +47,8 @@ def build_gst_pipeline():
     # rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
     rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,framerate=30/1"))
     rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
+    rgb_nvmm_caps = Gst.ElementFactory.make("capsfilter", "rgb_nvmm_caps")
+    rgb_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     # rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv") # this is needed for nvstreammux later
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
@@ -66,8 +68,8 @@ def build_gst_pipeline():
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
     # rgb_rtp_queue.set_property("max-size-buffers", 5)
     # rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    rgb_rtp_caps = Gst.ElementFactory.make("capsfilter", "rgb_rtp_caps")
-    rgb_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # rgb_rtp_caps = Gst.ElementFactory.make("capsfilter", "rgb_rtp_caps")
+    # rgb_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
     # rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # H.264 encoder
     rgb_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
@@ -89,6 +91,8 @@ def build_gst_pipeline():
     # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
     # thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
+    thermal_nvmm_caps = Gst.ElementFactory.make("capsfilter", "thermal_nvmm_caps")
+    thermal_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
@@ -107,8 +111,8 @@ def build_gst_pipeline():
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     # thermal_rtp_queue.set_property("max-size-buffers", 5)
     # thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
-    thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
+    # thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
@@ -124,12 +128,12 @@ def build_gst_pipeline():
     thermal_udpsink.set_property("async", False)
 
     elements = [
-        rgb_src, rgb_caps, rgb_conv, rgb_tee,
+        rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
         rgb_inf_queue, rgb_inf_conv, rgb_inf_caps, rgb_appsink,
-        rgb_rtp_queue, rgb_rtp_caps, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
-        thermal_src, thermal_caps, thermal_conv, thermal_tee,
+        rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
+        thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_tee,
         thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
-        thermal_rtp_queue, thermal_rtp_caps, thermal_encoder, thermal_rtp_payload, thermal_udpsink
+        thermal_rtp_queue, thermal_encoder, thermal_rtp_payload, thermal_udpsink
     ]
 
     # Add all of the elements to the pipeline
@@ -143,7 +147,8 @@ def build_gst_pipeline():
     # Linking RGB stuff
     rgb_src.link(rgb_caps)
     rgb_caps.link(rgb_conv)
-    rgb_conv.link(rgb_tee)
+    rgb_conv.link(rgb_nvmm_caps)
+    rgb_nvmm_caps.link(rgb_tee)
     
     rgb_tee.link(rgb_inf_queue)
     rgb_inf_queue.link(rgb_inf_conv)
@@ -151,15 +156,15 @@ def build_gst_pipeline():
     rgb_inf_caps.link(rgb_appsink)
 
     rgb_tee.link(rgb_rtp_queue)
-    rgb_rtp_queue.link(rgb_rtp_caps)
-    rgb_rtp_caps.link(rgb_encoder)
+    rgb_rtp_queue.link(rgb_encoder)
     rgb_encoder.link(rgb_rtp_payload)
     rgb_rtp_payload.link(rgb_udpsink)
 
     # Linking thermal stuff
     thermal_src.link(thermal_caps)
     thermal_caps.link(thermal_conv)
-    thermal_conv.link(thermal_tee)
+    thermal_conv.link(thermal_nvmm_caps)
+    thermal_nvmm_caps.link(thermal_tee)
     
     thermal_tee.link(thermal_inf_queue)
     thermal_inf_queue.link(thermal_inf_conv)
@@ -167,8 +172,7 @@ def build_gst_pipeline():
     thermal_inf_caps.link(thermal_appsink)
 
     thermal_tee.link(thermal_rtp_queue)
-    thermal_rtp_queue.link(thermal_rtp_caps)
-    thermal_rtp_caps.link(thermal_encoder)
+    thermal_rtp_queue.link(thermal_encoder)
     thermal_encoder.link(thermal_rtp_payload)
     thermal_rtp_payload.link(thermal_udpsink)
 
