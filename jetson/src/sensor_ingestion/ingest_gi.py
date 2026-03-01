@@ -8,6 +8,8 @@
 # https://discourse.gstreamer.org/t/appsinks-new-sample-callback-function-is-never-triggered-as-the-data-flow-is-stuck/661/2
 # https://forums.developer.nvidia.com/t/appsink-element-in-python-deepstream-pipeline/311528
 
+import cv2, os
+from datetime import datetime
 import numpy as np
 import sys
 
@@ -26,6 +28,16 @@ latest_thermal = None
 # CHANGE THIS WHEN BACKEND CONTAINER IS SETUP
 BACKEND_IP = "192.168.50.1"
 BACKEND_PORT = 3000
+
+frame_dir = "saved_frames"
+os.makedirs(frame_dir, exist_ok=True)
+frame_num = 0
+
+def save_frame(frame, stream_type):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{frame_dir}/{stream_type}_frame_{frame_num}_{timestamp}.png"
+    cv2.imwrite(filename, frame)
+    print(f"Saved {stream_type} frame {frame_num} to {filename}")
 
 def link_check(first, second):
     if not first.link(second):
@@ -237,6 +249,8 @@ def on_new_rgb_sample(appsink):
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))  # in BGR format now in np array
         latest_rgb = frame
+        save_frame(frame, "rgb")
+        frame_num+=1
         update_buffer()
         # print("RGB frame received", flush=True)
     finally:
@@ -266,6 +280,8 @@ def on_new_thermal_sample(appsink):
         real_width = size // height
         frame = frame.reshape((height, real_width))
         latest_thermal = frame
+        save_frame(frame, "thermal")
+        frame_num+=1
         update_buffer()
         # print("Thermal frame received", flush=True)
     finally:
