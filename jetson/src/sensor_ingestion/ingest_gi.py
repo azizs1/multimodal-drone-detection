@@ -136,7 +136,7 @@ def build_gst_pipeline():
     thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_encoder.set_property("preset-level", 1)
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
-    thermal_rtp_payload.set_property("pt", 97) # differnt payload type than rgb
+    thermal_rtp_payload.set_property("pt", 96) # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
     # thermal_udpsink.set_property("bind-address", BIND_IP)
