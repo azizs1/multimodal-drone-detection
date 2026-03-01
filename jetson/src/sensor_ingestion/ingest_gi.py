@@ -133,7 +133,7 @@ def build_gst_pipeline():
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
     thermal_encoder.set_property("tune", "zerolatency")
-    thermal_encoder.set_property("insert-sps-pps", 1)
+    # thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("pt", 97) # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
