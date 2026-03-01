@@ -38,5 +38,5 @@ COPY src/ml ./ml
 
 #CMD ["uv", "run", "python3", "-m", "run_both"]
 # CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
-ENV GST_DEBUG="thermal_*:5"
+ENV GST_DEBUG="rtph264pay:7,udpsink:7"
 CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
