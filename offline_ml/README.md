@@ -44,8 +44,18 @@ There are two main datasets that will be used for this project. The two datasets
 Zenodo Visual Drone Detection Dataset - Non-Augemented: https://zenodo.org/records/15632958
 Zenodo Thermal Drone Detection Dataset - Non-Augemented: https://zenodo.org/records/15633051
 Zenodo Thermal Drone Detection Dataset - Augemented: https://zenodo.org/records/15633098
-Anti-UAV: https://github.com/ZhaoJ9014/Anti-UAV
+Anti-UAV: https://github.com/ZhaoJ9014/Anti-UAV (Scroll down to Anti-UAV300 Google Drive link and download from there)
 
 The two main datasets used will be denoted as the Zenodo Drone Detection Dataset and the Anti-UAV Dataset. Each link above should be
 downloaded and then stored in the datasets folder in the offline_ml directory. These datasets will be gitignored.
+
+All datasets should be stored in the datasets/ directory and should all be at the same level. Keep the original directory structure for each of the datasets for now.
+
+# Initial Data Analysis
+
+The data_extraction Jupyter Notebook has initial data analysis on each of the Zenodo datasets, and can be reviewed in VS code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, however example outputs are preserved.
+
+# Initial Model Training
+
+While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets.
 
