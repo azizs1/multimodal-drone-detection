@@ -232,7 +232,7 @@ def update_buffer():
 
 # This function is what actually makes the RGB sample available to Python for inference
 def on_new_rgb_sample(appsink):
-    global latest_rgb
+    global latest_rgb, frame_num
 
     sample = appsink.emit("pull-sample")
     buf = sample.get_buffer()
@@ -261,7 +261,7 @@ def on_new_rgb_sample(appsink):
 
 # This function is what actually makes the thermal sample available to Python for inference
 def on_new_thermal_sample(appsink):
-    global latest_thermal
+    global latest_thermal, frame_num
     
     sample = appsink.emit("pull-sample")
     buf = sample.get_buffer()
