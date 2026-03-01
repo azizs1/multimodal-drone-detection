@@ -80,9 +80,9 @@ def build_gst_pipeline():
     rgb_udpsink.set_property("sync", False)
     rgb_udpsink.set_property("async", False)
 
-    # Thermal caps and conv (raw video at 320x240 in GRAY16_LE at 30FPS)
+    # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=320,height=240,format=GRAY8,framerate=30/1"))
+    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=480,height=240,format=GRAY8,framerate=30/1"))
     # thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
     thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
