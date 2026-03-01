@@ -129,9 +129,10 @@ def build_gst_pipeline():
     # thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
     # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
     # thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
-    thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
+    thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
+    thermal_encoder.set_property("tune", "zerolatency")
     thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("pt", 97) # differnt payload type than rgb
