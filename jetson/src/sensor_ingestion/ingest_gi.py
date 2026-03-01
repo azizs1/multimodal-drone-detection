@@ -29,10 +29,7 @@ BACKEND_PORT = 3000
 
 def link_check(first, second):
     if not first.link(second):
-        print(f"Failed to link {first.get_name()} to {second.get_name()}")
-        print(f"First element caps: {first.get_pad('src').get_current_caps()}")
-        print(f"Second element caps: {second.get_pad('sink').get_current_caps()}")
-        raise RuntimeError(f"Failed to link {first.get_name()} to {second.get_name()}")
+        raise RuntimeError(f"Failed to link {first.name} to {second.name}")
 
 def build_gst_pipeline():
     Gst.init(None)
