@@ -126,9 +126,7 @@ def build_gst_pipeline():
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     thermal_rtp_queue.set_property("max-size-buffers", 5)
     thermal_rtp_queue.set_property("leaky", 2)  # 2 means downstream
-    thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
-    thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
-    thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
     # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
     # thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
@@ -151,7 +149,7 @@ def build_gst_pipeline():
         rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
         thermal_src, thermal_caps, thermal_conv, thermal_nvmm_caps, thermal_tee,
         thermal_inf_queue, thermal_inf_conv, thermal_inf_caps, thermal_appsink,
-        thermal_rtp_queue, thermal_rtp_nvconv, thermal_rtp_caps, thermal_encoder,
+        thermal_rtp_queue, thermal_encoder,
         thermal_rtp_payload, thermal_udpsink
     ]
 
@@ -193,9 +191,7 @@ def build_gst_pipeline():
     link_check(thermal_inf_caps, thermal_appsink)
 
     link_tee(thermal_tee, thermal_rtp_queue)
-    link_check(thermal_rtp_queue, thermal_rtp_nvconv)
-    link_check(thermal_rtp_nvconv, thermal_rtp_caps)
-    link_check(thermal_rtp_caps, thermal_encoder)
+    link_check(thermal_rtp_queue, thermal_encoder)
     link_check(thermal_encoder, thermal_rtp_payload)
     link_check(thermal_rtp_payload, thermal_udpsink)
 
