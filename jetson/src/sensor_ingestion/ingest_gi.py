@@ -110,7 +110,7 @@ def build_gst_pipeline():
     rgb_udpsink = Gst.ElementFactory.make("udpsink", "rgb_udpsink")
     # rgb_udpsink.set_property("bind-address", BIND_IP)
     rgb_udpsink.set_property("host", BACKEND_IP)
-    rgb_udpsink.set_property("port", BACKEND_PORT+1)
+    rgb_udpsink.set_property("port", BACKEND_PORT)
     rgb_udpsink.set_property("sync", False)
     rgb_udpsink.set_property("async", False)
 
@@ -174,7 +174,7 @@ def build_gst_pipeline():
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
     # thermal_udpsink.set_property("bind-address", BIND_IP)
     thermal_udpsink.set_property("host", BACKEND_IP)
-    thermal_udpsink.set_property("port", BACKEND_PORT)
+    thermal_udpsink.set_property("port", BACKEND_PORT+2)
     thermal_udpsink.set_property("sync", False)
     thermal_udpsink.set_property("async", False)
     print("THERMAL PORT:", thermal_udpsink.get_property("port"))
