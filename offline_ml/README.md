@@ -51,11 +51,20 @@ downloaded and then stored in the datasets folder in the offline_ml directory. T
 
 All datasets should be stored in the datasets/ directory and should all be at the same level. Keep the original directory structure for each of the datasets for now.
 
+The names of the datasets have been renamed as follows:
+* zenodo_visual_no_augmentation
+* zenodo_thermal_no_augmentation
+* zenodo_thermal_augmented
+* anti_uav
+
+These will have to be the names renamed in the datasets directory to use any associated notebooks or code.
+
 # Initial Data Analysis
 
-The data_extraction Jupyter Notebook has initial data analysis on each of the Zenodo datasets, and can be reviewed in VS code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, however example outputs are preserved.
+The data_extraction Jupyter Notebook has initial data analysis on each of the Zenodo datasets, and can be reviewed in VS code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, in addition to having the datasets downloaded, however example outputs are preserved.
 
 # Initial Model Training
 
-While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets.
+While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
+
 
