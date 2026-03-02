@@ -24,7 +24,6 @@ from sensor_ingestion import buffer
 latest_rgb = None
 latest_thermal = None
 
-# BIND_IP = "192.168.137.47"
 # CHANGE THIS WHEN BACKEND CONTAINER IS SETUP
 BACKEND_IP = "192.168.50.1"
 BACKEND_PORT = 3000
@@ -108,7 +107,6 @@ def build_gst_pipeline():
     rgb_rtp_payload.set_property("pt", 96) # Payload type for H.264 rtp streams
     rgb_rtp_payload.set_property("config-interval", 1)
     rgb_udpsink = Gst.ElementFactory.make("udpsink", "rgb_udpsink")
-    # rgb_udpsink.set_property("bind-address", BIND_IP)
     rgb_udpsink.set_property("host", BACKEND_IP)
     rgb_udpsink.set_property("port", BACKEND_PORT)
     rgb_udpsink.set_property("sync", False)
@@ -172,7 +170,6 @@ def build_gst_pipeline():
     thermal_rtp_payload.set_property("pt", 96) # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
-    # thermal_udpsink.set_property("bind-address", BIND_IP)
     thermal_udpsink.set_property("host", BACKEND_IP)
     thermal_udpsink.set_property("port", BACKEND_PORT+2)
     thermal_udpsink.set_property("sync", False)
@@ -264,10 +261,10 @@ def on_new_rgb_sample(appsink):
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))  # in BGR format now in np array
         latest_rgb = frame
-        save_frame(frame, "rgb")
+        # save_frame(frame, "rgb")
         frame_num+=1
         update_buffer()
-        # print("RGB frame received", flush=True)
+        print("RGB frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
@@ -293,7 +290,7 @@ def on_new_thermal_sample(appsink):
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))
         latest_thermal = frame
-        save_frame(frame, "thermal")
+        # save_frame(frame, "thermal")
         frame_num+=1
         update_buffer()
         print("Thermal frame received", flush=True)
