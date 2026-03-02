@@ -1,0 +1,10 @@
+rtspAddress: :8554
+hlsAddress: :8888
+hlsDirectory: /hls
+hlsAlwaysRemux: yes
+
+paths:
+  visual:
+    source: publisher
+  thermal:
+    source: publisher
