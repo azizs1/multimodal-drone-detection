@@ -12,19 +12,18 @@ from .schemas import ConfidenceBand, FusedDecision, ModalityPrediction
 
 
 class FusionEngine:
+    TARGET_CLASS = "drone"
+
     def __init__(self, config: FusionConfig = DEFAULT_CONFIG):
         self.config = config
-        self.buffer = deque(maxlen=config.buffer_size)
+        self.fused_history = deque(maxlen=config.buffer_size)
 
     def fuse(self, preds: Iterable[ModalityPrediction]) -> FusedDecision | None:
         filtered = [p for p in preds if p]
         if not filtered:
             return None
 
-        # Keep for debugging and debounce.
         now = time.time()
-        for p in filtered:
-            self.buffer.append(p)
 
         score, reason, per_modality_scores = self._weighted_score(filtered)
         decision = self._gate(score, filtered)
@@ -46,6 +45,7 @@ class FusionEngine:
             gating_reason=reason,
             latency_ms=latency_ms,
         )
+        self.fused_history.append(fused)
 
         if self._debounce(fused):
             return fused
@@ -59,6 +59,8 @@ class FusionEngine:
         per_modality_scores = {"rgb": 0.0, "thermal": 0.0}
         used = []
         for p in preds:
+            if p.class_id != self.TARGET_CLASS:
+                continue
             w = weights.get(p.modality, 0.0)
             per_modality_scores[p.modality] = p.confidence
             gate = self.config.per_modality_gates.get(p.modality, 0.0)
@@ -73,7 +75,9 @@ class FusionEngine:
         if score >= self.config.alert_threshold:
             # optional EO/IR confirmation
             if self.config.eo_ir_required:
-                has_thermal = any(p.modality == "thermal" for p in preds)
+                has_thermal = any(
+                    p.modality == "thermal" and p.class_id == self.TARGET_CLASS for p in preds
+                )
                 if not has_thermal:
                     return "none"
             return "drone"
@@ -93,10 +97,19 @@ class FusionEngine:
     def _debounce(self, fused: FusedDecision) -> bool:
         if fused.decision != "drone":
             return True  # pass through non-alerts
+
         cfg = self.config.debounce
         window_start = fused.timestamp - cfg.window_ms / 1000
-        positives = [p for p in self.buffer if p.timestamp >= window_start]
-        return len(positives) >= cfg.consecutive_required
+
+        for consecutive, decision in enumerate(reversed(self.fused_history), start=1):
+            if decision.timestamp < window_start:
+                break
+            if decision.decision != "drone":
+                break
+            if consecutive >= cfg.consecutive_required:
+                return True
+
+        return False
 
     def _band(self, score: float) -> ConfidenceBand:
         if score >= 0.8:
