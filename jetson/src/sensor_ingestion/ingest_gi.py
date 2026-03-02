@@ -158,7 +158,7 @@ def build_gst_pipeline():
     thermal_encoder.set_property("preset-level", 1)
     thermal_encoder.set_property("iframeinterval", 15)
     thermal_encoder.set_property("control-rate", 1)
-    thermal_encoder_sink = thermal_encoder.get_static_pad("sink")
+    # thermal_encoder_sink = thermal_encoder.get_static_pad("sink")
     # print("THERMAL ENCODER CAPS:", thermal_encoder_sink.get_current_caps())
     # def debug_thermal_encoder_caps(pad, info):
     #     caps = pad.get_current_caps()
@@ -264,7 +264,7 @@ def on_new_rgb_sample(appsink):
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))  # in BGR format now in np array
         latest_rgb = frame
-        # save_frame(frame, "rgb")
+        save_frame(frame, "rgb")
         frame_num+=1
         update_buffer()
         # print("RGB frame received", flush=True)
@@ -293,10 +293,10 @@ def on_new_thermal_sample(appsink):
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))
         latest_thermal = frame
-        # save_frame(frame, "thermal")
+        save_frame(frame, "thermal")
         frame_num+=1
         update_buffer()
-        # print("Thermal frame received", flush=True)
+        print("Thermal frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)

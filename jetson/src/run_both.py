@@ -1,10 +1,30 @@
 import subprocess
+import time
 
-# rename these as we actually build them out
-for proc in [
-    subprocess.Popen(["uv", "run", "python3", "-m", "sensor_ingestion.ingest"]),
-    subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"]),
-]:
-    proc.wait()
+procs = {
+    "ingestion": subprocess.Popen(["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]),
+    "inference": subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"])
+}
 
-# update this using proc.poll() here so that we can monitor each process
+while True:
+    for name, proc in procs.items():
+        ret = proc.poll()
+        
+        # This is if the process is still running fine
+        if ret is None:
+            continue
+
+        print(f"{proc} exited. code: {ret}")
+
+        # We want to stop everything if ingestion dies, but if inference dies,
+        # keep going so we can at least continue streaming sensors
+        if name == "inference":
+            del procs["inference"]
+            continue
+        elif name == "ingestion":
+            del procs["ingestion"]
+            break
+    
+    if not procs:
+        break
+    time.sleep(1)
