@@ -86,6 +86,16 @@ services:
       postgres:
         condition: service_healthy
     restart: always
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - drone-network
+    depends_on:
+      - backend
+    restart: always
 
 networks:
   drone-network:

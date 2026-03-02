@@ -36,5 +36,6 @@ def setup_database():
     Base.metadata.create_all(bind=test_engine)
     yield
     Base.metadata.drop_all(bind=test_engine)
+    test_engine.dispose()
     if os.path.exists("./test.db"):
         os.remove("./test.db")
