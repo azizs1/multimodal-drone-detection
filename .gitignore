@@ -2,6 +2,8 @@ __pycache__/
 .env/
 .venv/
 .ipynb_checkpoints/
-
-*.pyc
 *.DS_Store
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+*.pyc

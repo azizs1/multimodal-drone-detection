@@ -2,15 +2,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy project metadata and lock file from repository root
-COPY backend/pyproject.toml ./pyproject.toml
-COPY uv.lock ./uv.lock
+# Copy project metadata and lock file
+COPY pyproject.toml ./pyproject.toml
 
 # Install dependencies using uv
 RUN pip install uv && uv sync --no-dev
 
 # Copy application source code
-COPY backend/src ./
+COPY src ./
 
 # Expose port
 EXPOSE 8000

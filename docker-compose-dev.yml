@@ -1,0 +1,96 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    build:
+      context: ./sql
+      dockerfile: Dockerfile
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=drone_detection
+      - POSTGRES_USER=droneuser
+      - POSTGRES_PASSWORD=dronepass
+    networks:
+      - drone-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U droneuser -d drone_detection"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # Media Server (RTSP Hub)
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx
+    ports:
+      - "8554:8554" # RTSP
+      - "8888:8888" # HLS
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+      - hls-data:/hls
+    networks:
+      - drone-network
+    command: /mediamtx.yml
+    restart: always
+
+  # GStreamer RTSP Simulator (loops video)
+  drone-visual-streaming:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: gst-visual-simulator
+    environment:
+      - STREAM_NAME=visual
+      - VIDEO_FILE=drone_visual.mp4
+    networks:
+      - drone-network
+    depends_on:
+      - mediamtx
+    restart: always
+  drone-thermal-streaming:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: gst-thermal-simulator
+    environment:
+      - STREAM_NAME=thermal
+      - VIDEO_FILE=drone_thermal.mp4
+    networks:
+      - drone-network
+    depends_on:
+      - mediamtx
+    restart: always
+
+  # Backend
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - hls-data:/hls:ro
+    environment:
+      - DATABASE_URL=postgresql://droneuser:dronepass@postgres:5432/drone_detection
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=drone_detection
+      - POSTGRES_USER=droneuser
+      - POSTGRES_PASSWORD=dronepass
+    networks:
+      - drone-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+networks:
+  drone-network:
+    driver: bridge
+
+volumes:
+  hls-data:
+  postgres-data:
