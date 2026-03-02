@@ -4,3 +4,9 @@ __pycache__/
 .ipynb_checkpoints/
 
 *.pyc
+
+#IDE
+.vscode/*
+
+#Datasets
+offline_ml/datasets/*
