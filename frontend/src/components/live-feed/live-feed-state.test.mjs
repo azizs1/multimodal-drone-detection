@@ -31,6 +31,13 @@ test("buildStreamPlaylistUrl builds API proxy url", () => {
   );
 });
 
+test("buildStreamPlaylistUrl trims trailing slash and encodes stream name", () => {
+  assert.equal(
+    buildStreamPlaylistUrl("visual feed", "http://localhost:8000/"),
+    "http://localhost:8000/streams/visual%20feed/hls/index.m3u8",
+  );
+});
+
 test("buildServiceItems falls back to disconnected when streams are unavailable", () => {
   const services = buildServiceItems(undefined, undefined, [{ name: "Backend", status: "Connected" }]);
 

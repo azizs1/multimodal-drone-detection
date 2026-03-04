@@ -35,8 +35,10 @@ export function buildVideoSubLabel(stream, fallback) {
  * @returns {string}
  */
 export function buildStreamPlaylistUrl(streamName, apiBaseUrl = undefined) {
-  const baseUrl = apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-  return `${baseUrl}/streams/${streamName}/hls/index.m3u8`;
+  const baseUrl = (apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000")
+    .replace(/\/+$/, "");
+  const encodedStreamName = encodeURIComponent(streamName);
+  return `${baseUrl}/streams/${encodedStreamName}/hls/index.m3u8`;
 }
 
 /**

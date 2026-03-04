@@ -9,19 +9,6 @@ type HlsVideoPlayerProps = {
 
 export function HlsVideoPlayer({ src, title }: HlsVideoPlayerProps) {
   const [reloadKey, setReloadKey] = useState(0);
-  const [playerState, setPlayerState] = useState<"idle" | "loading" | "playing" | "error">("loading");
-
-  useEffect(() => {
-    if (playerState !== "loading") {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setPlayerState("error");
-    }, 6000);
-
-    return () => window.clearTimeout(timeout);
-  }, [playerState, reloadKey, src]);
 
   const unsupported = useMemo(() => {
     if (typeof document === "undefined") {
@@ -49,9 +36,33 @@ export function HlsVideoPlayer({ src, title }: HlsVideoPlayerProps) {
   }
 
   return (
+    <RuntimeVideo
+      key={`${src}-${reloadKey}`}
+      src={src}
+      title={title}
+      onRetry={() => setReloadKey((prev) => prev + 1)}
+    />
+  );
+}
+
+function RuntimeVideo({ src, title, onRetry }: { src: string; title: string; onRetry: () => void }) {
+  const [playerState, setPlayerState] = useState<"loading" | "playing" | "error">("loading");
+
+  useEffect(() => {
+    if (playerState !== "loading") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPlayerState("error");
+    }, 6000);
+
+    return () => window.clearTimeout(timeout);
+  }, [playerState]);
+
+  return (
     <div className="relative h-full w-full bg-black">
       <video
-        key={`${src}-${reloadKey}`}
         className="h-full w-full bg-black object-cover"
         autoPlay
         muted
@@ -81,10 +92,7 @@ export function HlsVideoPlayer({ src, title }: HlsVideoPlayerProps) {
           <p>Stream interrupted.</p>
           <button
             type="button"
-            onClick={() => {
-              setPlayerState("loading");
-              setReloadKey((prev) => prev + 1);
-            }}
+            onClick={onRetry}
             className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-200"
           >
             Retry

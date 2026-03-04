@@ -17,8 +17,16 @@ function getApiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 }
 
+function buildApiUrl(path: string): string {
+  const normalizedBase = getApiBaseUrl().endsWith("/")
+    ? getApiBaseUrl()
+    : `${getApiBaseUrl()}/`;
+  const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+  return new URL(normalizedPath, normalizedBase).toString();
+}
+
 async function fetchApi<T>(path: string): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     method: "GET",
     headers: { Accept: "application/json" },
     cache: "no-store",
@@ -36,5 +44,5 @@ export async function getStreams(): Promise<StreamListResponse> {
 }
 
 export async function getStreamByName(streamName: string): Promise<StreamInfo> {
-  return fetchApi<StreamInfo>(`/streams/${streamName}`);
+  return fetchApi<StreamInfo>(`/streams/${encodeURIComponent(streamName)}`);
 }
