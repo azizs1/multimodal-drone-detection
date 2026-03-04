@@ -16,12 +16,12 @@ import gi
 import numpy as np
 from dotenv import load_dotenv
 
+from sensor_ingestion import buffer
+
 gi.require_version('GLib', '2.0')
 gi.require_version('GObject', '2.0')
 gi.require_version('Gst', '1.0')
-from gi.repository import GLib, Gst
-
-from sensor_ingestion import buffer
+from gi.repository import GLib, Gst  # noqa: E402
 
 load_dotenv()
 
@@ -73,19 +73,23 @@ def build_gst_pipeline():
 
     # RGB caps and conv (raw video in NVMM at 1280x720 at 30FPS)
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
-    # rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
-    rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,framerate=30/1"))
-    rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv") # this is needed for nvstreammux later
+    # rgb_caps.set_property("caps",
+    # Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
+    rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720," \
+                          "framerate=30/1"))
+    rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv")
     rgb_nvmm_caps = Gst.ElementFactory.make("capsfilter", "rgb_nvmm_caps")
-    rgb_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
-    # rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv") # this is needed for nvstreammux later
+    rgb_nvmm_caps.set_property("caps",
+                               Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv")
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
     # RGB into inference
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
     rgb_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_nvconv") # NV12 to BGR
     rgb_inf_nv12_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_nv12_caps")
-    rgb_inf_nv12_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
+    rgb_inf_nv12_caps.set_property("caps",
+                                   Gst.Caps.from_string("video/x-raw,format=NV12"))
     # rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
     rgb_inf_videoconv = Gst.ElementFactory.make("videoconvert", "rgb_inf_videoconv")
     rgb_inf_bgr_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_bgr_caps")
@@ -101,7 +105,8 @@ def build_gst_pipeline():
     rgb_rtp_queue.set_property("max-size-buffers", 5)
     rgb_rtp_queue.set_property("leaky", 2)  # 2 means downstream
     # rgb_rtp_caps = Gst.ElementFactory.make("capsfilter", "rgb_rtp_caps")
-    # rgb_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # rgb_rtp_caps.set_property("caps",
+    # Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
     # rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # H.264 encoder
     rgb_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
@@ -117,19 +122,23 @@ def build_gst_pipeline():
 
     # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1"))
+    thermal_caps.set_property("caps",
+                              Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1"))
     thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
     # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
     # thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
     thermal_nvmm_caps = Gst.ElementFactory.make("capsfilter", "thermal_nvmm_caps")
-    thermal_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
+    thermal_nvmm_caps.set_property("caps",
+                                   Gst.Caps.from_string("video/x-raw(memory:NVMM)," \
+                                   "format=NV12,width=160,height=120,framerate=30/1"))
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
     # thermal into inference
     thermal_inf_queue = Gst.ElementFactory.make("queue", "thermal_inf_queue")
-    thermal_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_inf_nvconv")  # Convert to BGR for inference
+    # Convert to BGR for inference
+    thermal_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_inf_nvconv")
     thermal_inf_nv12_caps = Gst.ElementFactory.make("capsfilter", "thermal_inf_nv12_caps")
     thermal_inf_nv12_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
     thermal_inf_videoconv = Gst.ElementFactory.make("videoconvert", "thermal_inf_videoconv")
@@ -148,9 +157,11 @@ def build_gst_pipeline():
     # thermal_rtp_nvconv = Gst.ElementFactory.make("nvvidconv", "thermal_rtp_nvconv")
     # thermal_rtp_nvconv.set_property("output-buffers", 1)
     # thermal_rtp_nvconv_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_nvconv_caps")
-    # thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
+    # thermal_rtp_nvconv_caps.set_property("caps", Gst.Caps.from_string(
+    # "video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"))
     # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
-    # thermal_rtp_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    # thermal_rtp_caps.set_property("caps",
+    # Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder.set_property("tune", "zerolatency")
@@ -269,7 +280,8 @@ def on_new_rgb_sample(appsink):
         update_buffer()
         print("RGB frame received", flush=True)
     finally:
-        # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
+        # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY
+        # MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
 
     return Gst.FlowReturn.OK
@@ -298,7 +310,8 @@ def on_new_thermal_sample(appsink):
         update_buffer()
         print("Thermal frame received", flush=True)
     finally:
-        # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
+        # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY
+        # MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
         buf.unmap(map_info)
 
     return Gst.FlowReturn.OK

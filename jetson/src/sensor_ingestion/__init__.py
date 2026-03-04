@@ -1,1 +1,1 @@
-from .shared_buffer import buffer
+from .shared_buffer import buffer as buffer
