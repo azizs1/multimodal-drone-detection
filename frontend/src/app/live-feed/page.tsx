@@ -1,7 +1,10 @@
+"use client";
+
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
+import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
-import { getStreams, type StreamInfo } from "@/lib/api/streams";
+import type { StreamInfo } from "@/lib/api/streams";
 
 type IncidentRow = {
   id: string;
@@ -94,6 +97,29 @@ function ConfidencePanel() {
   );
 }
 
+function StreamsMetaErrorBanner({
+  errorMessage,
+  onRetry,
+}: {
+  errorMessage: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-sm border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200">
+      <div className="flex items-center justify-between gap-3">
+        <p className="truncate">Failed to refresh stream metadata: {errorMessage}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 rounded border border-rose-400 px-2 py-1 text-xs font-semibold transition-colors hover:bg-rose-100 dark:border-rose-600 dark:hover:bg-rose-900/40"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RecentIncidentsTable() {
   return (
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -175,17 +201,8 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
   );
 }
 
-export default async function LiveFeedPage() {
-  let visualStream: StreamInfo | undefined;
-  let thermalStream: StreamInfo | undefined;
-
-  try {
-    const streamResponse = await getStreams();
-    visualStream = streamResponse.streams.find((stream) => stream.name === "visual");
-    thermalStream = streamResponse.streams.find((stream) => stream.name === "thermal");
-  } catch {
-    // Keep page renderable if stream metadata is temporarily unavailable.
-  }
+export default function LiveFeedPage() {
+  const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
 
   const services: ServiceItem[] = [
     { name: "RGB Cam", status: visualStream ? toServiceStatus(visualStream.status) : "Disconnected" },
@@ -197,11 +214,19 @@ export default async function LiveFeedPage() {
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
+          {errorMessage ? (
+            <StreamsMetaErrorBanner errorMessage={errorMessage} onRetry={() => void refresh()} />
+          ) : null}
+
           <div className="grid gap-4 xl:grid-cols-2">
             <VideoPanel
               title="Visual - RGB"
               fps="30"
-              resolution={buildVideoSubLabel(visualStream, "1920x1080 • RGB")}
+              resolution={
+                isLoading && !visualStream
+                  ? "1920x1080 • RGB • LOADING"
+                  : buildVideoSubLabel(visualStream, "1920x1080 • RGB")
+              }
             >
               <HlsVideoPlayer
                 title="Visual RGB stream"
@@ -211,7 +236,11 @@ export default async function LiveFeedPage() {
             <VideoPanel
               title="Thermal - IR"
               fps="30"
-              resolution={buildVideoSubLabel(thermalStream, "640x480 • IR")}
+              resolution={
+                isLoading && !thermalStream
+                  ? "640x480 • IR • LOADING"
+                  : buildVideoSubLabel(thermalStream, "640x480 • IR")
+              }
             >
               <HlsVideoPlayer
                 title="Thermal IR stream"
