@@ -2,9 +2,13 @@
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
+import {
+  buildServiceItems,
+  buildStreamPlaylistUrl,
+  buildVideoSubLabel,
+} from "@/components/live-feed/live-feed-state.mjs";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
-import type { StreamInfo } from "@/lib/api/streams";
 
 type IncidentRow = {
   id: string;
@@ -34,29 +38,6 @@ const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "Backend", status: "Connected" },
   { name: "WebSocket", status: "Disconnected" },
 ];
-
-function toServiceStatus(status: StreamInfo["status"]): ServiceStatus {
-  if (status === "active") {
-    return "Connected";
-  }
-  if (status === "inactive") {
-    return "Disconnected";
-  }
-  return "Unstable";
-}
-
-function buildVideoSubLabel(stream: StreamInfo | undefined, fallback: string): string {
-  if (!stream) {
-    return `${fallback} • Not available`;
-  }
-
-  return `${fallback} • ${stream.status.toUpperCase()}`;
-}
-
-function buildStreamPlaylistUrl(streamName: string): string {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-  return `${apiBaseUrl}/streams/${streamName}/hls/index.m3u8`;
-}
 
 function ConfidencePanel() {
   return (
@@ -204,11 +185,7 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
 
-  const services: ServiceItem[] = [
-    { name: "RGB Cam", status: visualStream ? toServiceStatus(visualStream.status) : "Disconnected" },
-    { name: "Thermal Cam", status: thermalStream ? toServiceStatus(thermalStream.status) : "Disconnected" },
-    ...BASE_SYSTEM_STATUS,
-  ];
+  const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
 
   return (
     <DashboardShell>
