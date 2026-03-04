@@ -11,6 +11,7 @@
 import cv2, os
 from datetime import datetime
 import numpy as np
+from dotenv import load_dotenv
 import sys
 
 import gi
@@ -21,12 +22,13 @@ from gi.repository import Gst, GLib, GObject
 
 from sensor_ingestion import buffer
 
+load_dotenv()
+
 latest_rgb = None
 latest_thermal = None
 
-# CHANGE THIS WHEN BACKEND CONTAINER IS SETUP
-BACKEND_IP = "192.168.50.1"
-BACKEND_PORT = 3000
+BACKEND_IP = os.getenv("BACKEND_IP", "192.168.50.1")
+BACKEND_PORT = int(os.getenv("BACKEND_PORT", 3000))
 
 frame_dir = "saved_frames"
 os.makedirs(frame_dir, exist_ok=True)

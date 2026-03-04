@@ -33,6 +33,7 @@ COPY src/ml ./ml
 # figure this out later
 # RUN pip3 install --no-cache-dir \
 #     https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
+RUN pip3 install --no-cache-dir python-dotenv
 
 # RUN uv sync --frozen --no-install torch
 
