@@ -31,10 +31,10 @@ export function buildVideoSubLabel(stream, fallback) {
 
 /**
  * @param {string} streamName
- * @param {string | undefined} apiBaseUrl
+ * @param {string | undefined} [apiBaseUrl]
  * @returns {string}
  */
-export function buildStreamPlaylistUrl(streamName, apiBaseUrl) {
+export function buildStreamPlaylistUrl(streamName, apiBaseUrl = undefined) {
   const baseUrl = apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
   return `${baseUrl}/streams/${streamName}/hls/index.m3u8`;
 }
