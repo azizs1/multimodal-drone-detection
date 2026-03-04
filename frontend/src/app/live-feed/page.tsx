@@ -1,5 +1,6 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { VideoPanel } from "@/components/live-feed/video-panel";
+import { getStreams, type StreamInfo } from "@/lib/api/streams";
 
 type IncidentRow = {
   id: string;
@@ -24,13 +25,29 @@ type ServiceItem = {
   status: ServiceStatus;
 };
 
-const SYSTEM_STATUS: ServiceItem[] = [
-  { name: "RGB Cam", status: "Connected" },
-  { name: "Thermal Cam", status: "Connected" },
+const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "Jetson Nano", status: "Unstable" },
   { name: "Backend", status: "Connected" },
   { name: "WebSocket", status: "Disconnected" },
 ];
+
+function toServiceStatus(status: StreamInfo["status"]): ServiceStatus {
+  if (status === "active") {
+    return "Connected";
+  }
+  if (status === "inactive") {
+    return "Disconnected";
+  }
+  return "Unstable";
+}
+
+function buildVideoSubLabel(stream: StreamInfo | undefined, fallback: string): string {
+  if (!stream) {
+    return `${fallback} • Not available`;
+  }
+
+  return `${fallback} • ${stream.status.toUpperCase()}`;
+}
 
 function ConfidencePanel() {
   return (
@@ -119,7 +136,7 @@ function RecentIncidentsTable() {
   );
 }
 
-function SystemStatusPanel() {
+function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
   const statusClasses: Record<ServiceStatus, string> = {
     Connected: "bg-emerald-500",
     Unstable: "bg-amber-400",
@@ -136,7 +153,7 @@ function SystemStatusPanel() {
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">System Status</h2>
       <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
-        {SYSTEM_STATUS.map((service) => (
+        {services.map((service) => (
           <li key={service.name} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
@@ -152,7 +169,24 @@ function SystemStatusPanel() {
   );
 }
 
-export default function LiveFeedPage() {
+export default async function LiveFeedPage() {
+  let visualStream: StreamInfo | undefined;
+  let thermalStream: StreamInfo | undefined;
+
+  try {
+    const streamResponse = await getStreams();
+    visualStream = streamResponse.streams.find((stream) => stream.name === "visual");
+    thermalStream = streamResponse.streams.find((stream) => stream.name === "thermal");
+  } catch {
+    // Keep page renderable if stream metadata is temporarily unavailable.
+  }
+
+  const services: ServiceItem[] = [
+    { name: "RGB Cam", status: visualStream ? toServiceStatus(visualStream.status) : "Disconnected" },
+    { name: "Thermal Cam", status: thermalStream ? toServiceStatus(thermalStream.status) : "Disconnected" },
+    ...BASE_SYSTEM_STATUS,
+  ];
+
   return (
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
@@ -161,14 +195,14 @@ export default function LiveFeedPage() {
             <VideoPanel
               title="Visual - RGB"
               fps="30"
-              resolution="1920x1080 • RGB"
+              resolution={buildVideoSubLabel(visualStream, "1920x1080 • RGB")}
               boxColor="border-emerald-500 text-emerald-500"
               boxLabel="DRONE 94%"
             />
             <VideoPanel
               title="Thermal - IR"
               fps="30"
-              resolution="640x480 • IR"
+              resolution={buildVideoSubLabel(thermalStream, "640x480 • IR")}
               boxColor="border-violet-400 text-violet-400"
               boxLabel="HEAT SIG 91%"
             />
@@ -179,7 +213,7 @@ export default function LiveFeedPage() {
 
         <div className="space-y-4">
           <ConfidencePanel />
-          <SystemStatusPanel />
+          <SystemStatusPanel services={services} />
         </div>
       </div>
     </DashboardShell>
