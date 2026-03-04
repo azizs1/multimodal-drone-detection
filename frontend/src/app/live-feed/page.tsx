@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
 import { VideoPanel } from "@/components/live-feed/video-panel";
 import { getStreams, type StreamInfo } from "@/lib/api/streams";
 
@@ -47,6 +48,11 @@ function buildVideoSubLabel(stream: StreamInfo | undefined, fallback: string): s
   }
 
   return `${fallback} • ${stream.status.toUpperCase()}`;
+}
+
+function buildStreamPlaylistUrl(streamName: string): string {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  return `${apiBaseUrl}/streams/${streamName}/hls/index.m3u8`;
 }
 
 function ConfidencePanel() {
@@ -196,16 +202,22 @@ export default async function LiveFeedPage() {
               title="Visual - RGB"
               fps="30"
               resolution={buildVideoSubLabel(visualStream, "1920x1080 • RGB")}
-              boxColor="border-emerald-500 text-emerald-500"
-              boxLabel="DRONE 94%"
-            />
+            >
+              <HlsVideoPlayer
+                title="Visual RGB stream"
+                src={visualStream ? buildStreamPlaylistUrl(visualStream.name) : undefined}
+              />
+            </VideoPanel>
             <VideoPanel
               title="Thermal - IR"
               fps="30"
               resolution={buildVideoSubLabel(thermalStream, "640x480 • IR")}
-              boxColor="border-violet-400 text-violet-400"
-              boxLabel="HEAT SIG 91%"
-            />
+            >
+              <HlsVideoPlayer
+                title="Thermal IR stream"
+                src={thermalStream ? buildStreamPlaylistUrl(thermalStream.name) : undefined}
+              />
+            </VideoPanel>
           </div>
 
           <RecentIncidentsTable />
