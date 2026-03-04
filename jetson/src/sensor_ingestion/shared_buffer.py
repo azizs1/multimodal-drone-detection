@@ -1,5 +1,6 @@
 import threading
 
+
 class SharedBuffer:
     def __init__(self):
         self.lock = threading.Lock()

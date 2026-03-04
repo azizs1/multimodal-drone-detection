@@ -9,7 +9,7 @@ procs = {
 while True:
     for name, proc in procs.items():
         ret = proc.poll()
-        
+
         # This is if the process is still running fine
         if ret is None:
             continue
@@ -24,7 +24,7 @@ while True:
         elif name == "ingestion":
             del procs["ingestion"]
             break
-    
+
     if not procs:
         break
     time.sleep(1)

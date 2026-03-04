@@ -8,17 +8,18 @@
 # https://discourse.gstreamer.org/t/appsinks-new-sample-callback-function-is-never-triggered-as-the-data-flow-is-stuck/661/2
 # https://forums.developer.nvidia.com/t/appsink-element-in-python-deepstream-pipeline/311528
 
-import cv2, os
+import os
 from datetime import datetime
+
+import cv2
+import gi
 import numpy as np
 from dotenv import load_dotenv
-import sys
 
-import gi
 gi.require_version('GLib', '2.0')
 gi.require_version('GObject', '2.0')
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GLib, GObject
+from gi.repository import GLib, Gst
 
 from sensor_ingestion import buffer
 
@@ -44,13 +45,13 @@ def link_check(first, second):
     if not first.link(second):
         raise RuntimeError(f"Failed to link {first.name} to {second.name}")
     print(f"Linked {first.name} to {second.name}")
-    
+
 def link_tee(tee, element):
     tee_pad = tee.get_request_pad("src_%u")
     sink_pad = element.get_static_pad("sink")
-    if tee_pad is None or sink_pad is None: 
-        raise RuntimeError("Failed to get pads for tee link") 
-    if tee_pad.link(sink_pad) != Gst.PadLinkReturn.OK: 
+    if tee_pad is None or sink_pad is None:
+        raise RuntimeError("Failed to get pads for tee link")
+    if tee_pad.link(sink_pad) != Gst.PadLinkReturn.OK:
         raise RuntimeError(f"Failed to link tee {tee.name} to {element.name}")
 
 def build_gst_pipeline():
@@ -181,7 +182,7 @@ def build_gst_pipeline():
 
     elements = [
         rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
-        rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps, 
+        rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps,
         rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
         thermal_src, thermal_caps, thermal_conv,
         thermal_nvmm_caps, thermal_inf_videoconv, thermal_inf_bgr_caps,
@@ -276,7 +277,7 @@ def on_new_rgb_sample(appsink):
 # This function is what actually makes the thermal sample available to Python for inference
 def on_new_thermal_sample(appsink):
     global latest_thermal, frame_num
-    
+
     sample = appsink.emit("pull-sample")
     buf = sample.get_buffer()
     caps = sample.get_caps()
