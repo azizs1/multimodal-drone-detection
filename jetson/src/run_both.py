@@ -3,7 +3,7 @@ import time
 
 procs = {
     "ingestion": subprocess.Popen(["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]),
-    "inference": subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"])
+    "inference": subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"]),
 }
 
 while True:

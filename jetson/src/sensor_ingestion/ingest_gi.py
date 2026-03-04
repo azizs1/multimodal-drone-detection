@@ -18,9 +18,9 @@ from dotenv import load_dotenv
 
 from sensor_ingestion import buffer
 
-gi.require_version('GLib', '2.0')
-gi.require_version('GObject', '2.0')
-gi.require_version('Gst', '1.0')
+gi.require_version("GLib", "2.0")
+gi.require_version("GObject", "2.0")
+gi.require_version("Gst", "1.0")
 from gi.repository import GLib, Gst  # noqa: E402
 
 load_dotenv()
@@ -35,16 +35,19 @@ frame_dir = "saved_frames"
 os.makedirs(frame_dir, exist_ok=True)
 frame_num = 0
 
+
 def save_frame(frame, stream_type):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{frame_dir}/{stream_type}_frame_{frame_num}_{timestamp}.png"
     cv2.imwrite(filename, frame)
     print(f"Saved {stream_type} frame {frame_num} to {filename}")
 
+
 def link_check(first, second):
     if not first.link(second):
         raise RuntimeError(f"Failed to link {first.name} to {second.name}")
     print(f"Linked {first.name} to {second.name}")
+
 
 def link_tee(tee, element):
     tee_pad = tee.get_request_pad("src_%u")
@@ -53,6 +56,7 @@ def link_tee(tee, element):
         raise RuntimeError("Failed to get pads for tee link")
     if tee_pad.link(sink_pad) != Gst.PadLinkReturn.OK:
         raise RuntimeError(f"Failed to link tee {tee.name} to {element.name}")
+
 
 def build_gst_pipeline():
     Gst.init(None)
@@ -75,21 +79,20 @@ def build_gst_pipeline():
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
     # rgb_caps.set_property("caps",
     # Gst.Caps.from_string("video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1"))
-    rgb_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720," \
-                          "framerate=30/1"))
+    rgb_caps.set_property(
+        "caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,framerate=30/1")
+    )
     rgb_conv = Gst.ElementFactory.make("nvvidconv", "rgb_conv")
     rgb_nvmm_caps = Gst.ElementFactory.make("capsfilter", "rgb_nvmm_caps")
-    rgb_nvmm_caps.set_property("caps",
-                               Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
+    rgb_nvmm_caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
     # rgb_conv = Gst.ElementFactory.make("videoconvert", "rgb_conv")
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
     # RGB into inference
     rgb_inf_queue = Gst.ElementFactory.make("queue", "rgb_inf_queue")
-    rgb_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_nvconv") # NV12 to BGR
+    rgb_inf_nvconv = Gst.ElementFactory.make("nvvidconv", "rgb_inf_nvconv")  # NV12 to BGR
     rgb_inf_nv12_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_nv12_caps")
-    rgb_inf_nv12_caps.set_property("caps",
-                                   Gst.Caps.from_string("video/x-raw,format=NV12"))
+    rgb_inf_nv12_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
     # rgb_inf_conv = Gst.ElementFactory.make("videoconvert", "rgb_inf_conv") # NV12 to BGR
     rgb_inf_videoconv = Gst.ElementFactory.make("videoconvert", "rgb_inf_videoconv")
     rgb_inf_bgr_caps = Gst.ElementFactory.make("capsfilter", "rgb_inf_bgr_caps")
@@ -107,12 +110,12 @@ def build_gst_pipeline():
     # rgb_rtp_caps = Gst.ElementFactory.make("capsfilter", "rgb_rtp_caps")
     # rgb_rtp_caps.set_property("caps",
     # Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
-    rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder") # H.264 encoder
+    rgb_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "rgb_encoder")  # H.264 encoder
     # rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # H.264 encoder
-    rgb_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
+    rgb_encoder.set_property("bitrate", 4000000)  # 4Mbps for now? change later
     rgb_encoder.set_property("insert-sps-pps", 1)
     rgb_rtp_payload = Gst.ElementFactory.make("rtph264pay", "rgb_rtp_payload")
-    rgb_rtp_payload.set_property("pt", 96) # Payload type for H.264 rtp streams
+    rgb_rtp_payload.set_property("pt", 96)  # Payload type for H.264 rtp streams
     rgb_rtp_payload.set_property("config-interval", 1)
     rgb_udpsink = Gst.ElementFactory.make("udpsink", "rgb_udpsink")
     rgb_udpsink.set_property("host", BACKEND_IP)
@@ -122,16 +125,20 @@ def build_gst_pipeline():
 
     # Thermal caps and conv (raw video at 480x240 in GRAY16_LE at 30FPS)
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps",
-                              Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1"))
-    thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv") # convert to NV12+NVMM
+    thermal_caps.set_property(
+        "caps", Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1")
+    )
+    thermal_conv = Gst.ElementFactory.make("nvvidconv", "thermal_conv")  # convert to NV12+NVMM
     # thermal_conv = Gst.ElementFactory.make("videoconvert", "thermal_conv") # convert to NV12+NVMM
     # thermal_caps_nv12 = Gst.ElementFactory.make("capsfilter", "thermal_caps_nv12")
     # thermal_caps_nv12.set_property("caps", Gst.Caps.from_string("video/x-raw,format=NV12"))
     thermal_nvmm_caps = Gst.ElementFactory.make("capsfilter", "thermal_nvmm_caps")
-    thermal_nvmm_caps.set_property("caps",
-                                   Gst.Caps.from_string("video/x-raw(memory:NVMM)," \
-                                   "format=NV12,width=160,height=120,framerate=30/1"))
+    thermal_nvmm_caps.set_property(
+        "caps",
+        Gst.Caps.from_string(
+            "video/x-raw(memory:NVMM),format=NV12,width=160,height=120,framerate=30/1"
+        ),
+    )
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
@@ -162,10 +169,10 @@ def build_gst_pipeline():
     # thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
     # thermal_rtp_caps.set_property("caps",
     # Gst.Caps.from_string("video/x-raw(memory:NVMM),format=NV12"))
-    thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder") # H.264 encoder
+    thermal_encoder = Gst.ElementFactory.make("nvv4l2h264enc", "thermal_encoder")  # H.264 encoder
     # thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder") # H.264 encoder
     # thermal_encoder.set_property("tune", "zerolatency")
-    thermal_encoder.set_property("bitrate", 4000000) # 4Mbps for now? change later
+    thermal_encoder.set_property("bitrate", 4000000)  # 4Mbps for now? change later
     thermal_encoder.set_property("insert-sps-pps", 1)
     thermal_encoder.set_property("preset-level", 1)
     thermal_encoder.set_property("iframeinterval", 15)
@@ -181,26 +188,46 @@ def build_gst_pipeline():
     # thermal_encoder_sink.add_probe(Gst.PadProbeType.BUFFER, debug_thermal_encoder_caps)
 
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
-    thermal_rtp_payload.set_property("pt", 96) # differnt payload type than rgb
+    thermal_rtp_payload.set_property("pt", 96)  # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
     thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
     thermal_udpsink.set_property("host", BACKEND_IP)
-    thermal_udpsink.set_property("port", BACKEND_PORT+2)
+    thermal_udpsink.set_property("port", BACKEND_PORT + 2)
     thermal_udpsink.set_property("sync", False)
     thermal_udpsink.set_property("async", False)
     print("THERMAL PORT:", thermal_udpsink.get_property("port"))
 
-
     elements = [
-        rgb_src, rgb_caps, rgb_conv, rgb_nvmm_caps, rgb_tee,
-        rgb_inf_queue, rgb_inf_nvconv, rgb_inf_nv12_caps, rgb_inf_videoconv, rgb_inf_bgr_caps,
-        rgb_appsink, rgb_rtp_queue, rgb_encoder, rgb_rtp_payload, rgb_udpsink,
-        thermal_src, thermal_caps, thermal_conv,
-        thermal_nvmm_caps, thermal_inf_videoconv, thermal_inf_bgr_caps,
+        rgb_src,
+        rgb_caps,
+        rgb_conv,
+        rgb_nvmm_caps,
+        rgb_tee,
+        rgb_inf_queue,
+        rgb_inf_nvconv,
+        rgb_inf_nv12_caps,
+        rgb_inf_videoconv,
+        rgb_inf_bgr_caps,
+        rgb_appsink,
+        rgb_rtp_queue,
+        rgb_encoder,
+        rgb_rtp_payload,
+        rgb_udpsink,
+        thermal_src,
+        thermal_caps,
+        thermal_conv,
+        thermal_nvmm_caps,
+        thermal_inf_videoconv,
+        thermal_inf_bgr_caps,
         thermal_tee,
-        thermal_inf_queue, thermal_inf_nvconv, thermal_inf_nv12_caps, thermal_appsink,
+        thermal_inf_queue,
+        thermal_inf_nvconv,
+        thermal_inf_nv12_caps,
+        thermal_appsink,
         thermal_rtp_queue,
-        thermal_encoder, thermal_rtp_payload, thermal_udpsink
+        thermal_encoder,
+        thermal_rtp_payload,
+        thermal_udpsink,
     ]
 
     # Add all of the elements to the pipeline
@@ -249,12 +276,14 @@ def build_gst_pipeline():
 
     return pipeline, rgb_appsink, thermal_appsink
 
+
 def update_buffer():
     global latest_rgb, latest_thermal
 
     if latest_rgb is not None and latest_thermal is not None:
         timestamp = GLib.get_monotonic_time()
         buffer.update(timestamp, latest_rgb, latest_thermal)
+
 
 # This function is what actually makes the RGB sample available to Python for inference
 def on_new_rgb_sample(appsink):
@@ -276,7 +305,7 @@ def on_new_rgb_sample(appsink):
         frame = frame.reshape((height, width, 3))  # in BGR format now in np array
         latest_rgb = frame
         # save_frame(frame, "rgb")
-        frame_num+=1
+        frame_num += 1
         update_buffer()
         print("RGB frame received", flush=True)
     finally:
@@ -285,6 +314,7 @@ def on_new_rgb_sample(appsink):
         buf.unmap(map_info)
 
     return Gst.FlowReturn.OK
+
 
 # This function is what actually makes the thermal sample available to Python for inference
 def on_new_thermal_sample(appsink):
@@ -306,7 +336,7 @@ def on_new_thermal_sample(appsink):
         frame = frame.reshape((height, width, 3))
         latest_thermal = frame
         # save_frame(frame, "thermal")
-        frame_num+=1
+        frame_num += 1
         update_buffer()
         print("Thermal frame received", flush=True)
     finally:
@@ -315,6 +345,7 @@ def on_new_thermal_sample(appsink):
         buf.unmap(map_info)
 
     return Gst.FlowReturn.OK
+
 
 # Can't completely get rid of the bus, since this callback needs to match what GStreamer wants
 def on_message(_bus, message, loop):
@@ -327,6 +358,7 @@ def on_message(_bus, message, loop):
         print("END OF STREAM")
         loop.quit()
 
+
 def main():
     Gst.init(None)
     pipeline, rgb_appsink, thermal_appsink = build_gst_pipeline()
@@ -334,7 +366,7 @@ def main():
     rgb_appsink.connect("new-sample", on_new_rgb_sample)
     thermal_appsink.connect("new-sample", on_new_thermal_sample)
 
-    loop = GLib.MainLoop() # Switch to GObject.MainLoop() if unavailable
+    loop = GLib.MainLoop()  # Switch to GObject.MainLoop() if unavailable
     bus = pipeline.get_bus()
     bus.add_signal_watch()
     bus.connect("message", on_message, loop)
@@ -349,6 +381,7 @@ def main():
         # Stopped state
         pipeline.set_state(Gst.State.NULL)
         print("Ingestion stopped")
+
 
 if __name__ == "__main__":
     main()
