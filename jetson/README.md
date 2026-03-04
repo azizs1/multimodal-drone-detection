@@ -23,7 +23,7 @@ sudo ip link set eth0 up
 From repository root, run the following commands to build and run the Docker container:
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
-sudo docker run --rm -it --network host --runtime nvidia --privileged jetson-si-ml
+sudo docker run --rm -it --network host --runtime nvidia --env-file .env --privileged jetson-si-ml
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
 ### Running Without Container
