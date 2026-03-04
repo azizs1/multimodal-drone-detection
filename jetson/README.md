@@ -19,6 +19,13 @@ On the Jetson Nano side, set an IP address for the eth0 interface:
 sudo ip addr add 192.168.50.2/24 dev eth0
 sudo ip link set eth0 up
 ```
+Or you can add the following to the network interfaces file `/etc/network/interfaces` to avoid having to do this everytime:
+```
+auto eth0
+iface eth0 inet static
+    address 192.168.50.2
+    netmask 255.255.255.0
+```
 ### Docker Deployment
 From repository root, run the following commands to build and run the Docker container:
 ```bash

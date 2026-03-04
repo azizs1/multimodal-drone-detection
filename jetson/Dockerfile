@@ -35,6 +35,7 @@ COPY src/ml ./ml
 #     https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
 RUN pip3 install --no-cache-dir python-dotenv
 
+# This is commented out for now for running on Jetson Nano
 # RUN uv sync --frozen --no-install torch
 
 #CMD ["uv", "run", "python3", "-m", "run_both"]
