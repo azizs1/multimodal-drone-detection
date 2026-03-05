@@ -195,9 +195,13 @@ Theme support:
 #### Deployment
 Build and run the frontend container from repository root:
 ```bash
-docker build -t drone-detection-frontend -f frontend/Dockerfile frontend
+docker build \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=http://host.docker.internal:8000 \
+  -t drone-detection-frontend \
+  -f frontend/Dockerfile frontend
 docker run --rm -p 3000:3000 drone-detection-frontend
 ```
+For non-local environments, replace `http://host.docker.internal:8000` with your backend URL.
 
 ### Backend
 Backend provides REST API for stream information and system management.
