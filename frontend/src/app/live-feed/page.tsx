@@ -1,4 +1,14 @@
+"use client";
+
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
+import {
+  buildServiceItems,
+  buildStreamPlaylistUrl,
+  buildVideoSubLabel,
+} from "@/components/live-feed/live-feed-state.mjs";
+import { useLiveStreams } from "@/components/live-feed/use-live-streams";
+import { VideoPanel } from "@/components/live-feed/video-panel";
 
 type IncidentRow = {
   id: string;
@@ -23,52 +33,11 @@ type ServiceItem = {
   status: ServiceStatus;
 };
 
-const SYSTEM_STATUS: ServiceItem[] = [
-  { name: "RGB Cam", status: "Connected" },
-  { name: "Thermal Cam", status: "Connected" },
+const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "Jetson Nano", status: "Unstable" },
   { name: "Backend", status: "Connected" },
   { name: "WebSocket", status: "Disconnected" },
 ];
-
-function VideoPanel({
-  title,
-  fps,
-  resolution,
-  boxColor,
-  boxLabel,
-}: {
-  title: string;
-  fps: string;
-  resolution: string;
-  boxColor: string;
-  boxLabel: string;
-}) {
-  return (
-    <section className="overflow-hidden rounded-sm border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
-        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-          <span className="size-3 rounded-full bg-emerald-500" />
-          <span className="text-base font-semibold">{title}</span>
-        </div>
-        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Live {fps} fps</span>
-      </div>
-
-      <div className="relative h-[280px] bg-slate-100 sm:h-[320px] lg:h-[360px] dark:bg-slate-800">
-        <div className="absolute inset-0 flex items-center justify-center text-5xl text-slate-400 dark:text-slate-500">+</div>
-        <div
-          className={`absolute left-1/2 top-1/2 h-20 w-28 -translate-x-1/2 -translate-y-1/2 border-4 ${boxColor}`}
-        >
-          <span className={`absolute -left-1 -top-8 px-1 text-sm font-semibold ${boxColor}`}>
-            {boxLabel}
-          </span>
-        </div>
-      </div>
-
-      <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{resolution}</div>
-    </section>
-  );
-}
 
 function ConfidencePanel() {
   return (
@@ -106,6 +75,29 @@ function ConfidencePanel() {
         </div>
       </div>
     </section>
+  );
+}
+
+function StreamsMetaErrorBanner({
+  errorMessage,
+  onRetry,
+}: {
+  errorMessage: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-sm border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200">
+      <div className="flex items-center justify-between gap-3">
+        <p className="truncate">Failed to refresh stream metadata: {errorMessage}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 rounded border border-rose-400 px-2 py-1 text-xs font-semibold transition-colors hover:bg-rose-100 dark:border-rose-600 dark:hover:bg-rose-900/40"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -157,7 +149,7 @@ function RecentIncidentsTable() {
   );
 }
 
-function SystemStatusPanel() {
+function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
   const statusClasses: Record<ServiceStatus, string> = {
     Connected: "bg-emerald-500",
     Unstable: "bg-amber-400",
@@ -174,7 +166,7 @@ function SystemStatusPanel() {
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">System Status</h2>
       <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
-        {SYSTEM_STATUS.map((service) => (
+        {services.map((service) => (
           <li key={service.name} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
@@ -191,25 +183,47 @@ function SystemStatusPanel() {
 }
 
 export default function LiveFeedPage() {
+  const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
+
+  const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
+
   return (
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
+          {errorMessage ? (
+            <StreamsMetaErrorBanner errorMessage={errorMessage} onRetry={() => void refresh()} />
+          ) : null}
+
           <div className="grid gap-4 xl:grid-cols-2">
             <VideoPanel
               title="Visual - RGB"
               fps="30"
-              resolution="1920x1080 • RGB"
-              boxColor="border-emerald-500 text-emerald-500"
-              boxLabel="DRONE 94%"
-            />
+              resolution={
+                isLoading && !visualStream
+                  ? "1920x1080 • RGB • LOADING"
+                  : buildVideoSubLabel(visualStream, "1920x1080 • RGB")
+              }
+            >
+              <HlsVideoPlayer
+                title="Visual RGB stream"
+                src={visualStream ? buildStreamPlaylistUrl(visualStream.name) : undefined}
+              />
+            </VideoPanel>
             <VideoPanel
               title="Thermal - IR"
               fps="30"
-              resolution="640x480 • IR"
-              boxColor="border-violet-400 text-violet-400"
-              boxLabel="HEAT SIG 91%"
-            />
+              resolution={
+                isLoading && !thermalStream
+                  ? "640x480 • IR • LOADING"
+                  : buildVideoSubLabel(thermalStream, "640x480 • IR")
+              }
+            >
+              <HlsVideoPlayer
+                title="Thermal IR stream"
+                src={thermalStream ? buildStreamPlaylistUrl(thermalStream.name) : undefined}
+              />
+            </VideoPanel>
           </div>
 
           <RecentIncidentsTable />
@@ -217,7 +231,7 @@ export default function LiveFeedPage() {
 
         <div className="space-y-4">
           <ConfidencePanel />
-          <SystemStatusPanel />
+          <SystemStatusPanel services={services} />
         </div>
       </div>
     </DashboardShell>
