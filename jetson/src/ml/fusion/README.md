@@ -93,6 +93,63 @@ Design only (interfaces + config). No model training here. Implementation will p
 - `transport_stub.py` — FastAPI router + ZeroMQ publisher for fused outputs.
 - `__init__.py` — exports for easy imports.
 
+## Run & Test
+From repo root:
+
+```bash
+# Install workspace deps used by ML/fusion tests
+uv sync --dev --all-packages
+
+# Run ML tests (fusion + inference adapters)
+PYTHONPATH=jetson/src uv run pytest -q jetson/src/ml
+```
+
+Run only fusion contract tests:
+
+```bash
+PYTHONPATH=jetson/src uv run pytest -q jetson/src/ml/fusion/test_ingest_contract.py
+```
+
+Start fusion API service:
+
+```bash
+PYTHONPATH=jetson/src uv run python -m ml.fusion_service
+```
+
+Quick health check:
+
+```bash
+curl http://127.0.0.1:8050/health
+```
+
+POST ingest test (send two consecutive requests):
+
+```bash
+for i in 1 2; do
+  echo -n "$i "
+  curl -s -o - -w "\n" -X POST http://127.0.0.1:8050/fusion/ingest \
+    -H "Content-Type: application/json" \
+    -d '[
+      {"modality":"rgb","timestamp":1773646069.271293,"bbox":[0.1,0.2,0.3,0.4],"class_id":"drone","confidence":0.8,"meta":{"sensor_id":"cam0"}},
+      {"modality":"thermal","timestamp":1773646069.271293,"bbox":[0.1,0.2,0.3,0.4],"class_id":"drone","confidence":0.7,"meta":{"sensor_id":"ir0"}}
+    ]'
+done
+```
+
+- First call is expected to return `null`.
+- Second call should return a `FusedDecision` JSON.
+- Why: default debounce is `K=2`, so one positive fused event is buffered and the alert is emitted after the second consecutive positive event inside the debounce window.
+
+Sensor-ingestion specific dependencies are optional and installed only when needed:
+
+```bash
+uv sync --dev --extra sensor
+```
+
+Why this is separated:
+- `sensor` extras include Jetson/Linux-specific packages (for example `PyGObject`/GStreamer bindings).
+- Keeping them out of default install lets ML/fusion tests run on non-Jetson hosts (macOS/Windows/Linux CI) without native system dependency failures.
+
 ## Next Steps (Sprint 2+)
 - Integrate real detector outputs (YOLOv8/YOLOv11 weights) and embeddings.
 - Implement calibration notebook to tune weights/thresholds from validation set.
