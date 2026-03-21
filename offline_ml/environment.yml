@@ -277,6 +277,8 @@ dependencies:
       - opencv-python-headless==4.13.0.92
       - pathspec==1.0.4
       - pluggy==1.6.0
+      - polars==1.38.1
+      - polars-runtime-32==1.38.1
       - protobuf==6.33.5
       - pycodestyle==2.14.0
       - pydantic==2.12.5
@@ -284,6 +286,7 @@ dependencies:
       - pyflakes==3.4.0
       - pytest==9.0.2
       - pytokens==0.4.1
+      - ruff==0.15.7
       - simsimd==6.5.13
       - stringzilla==4.6.0
       - tensorboard==2.20.0
@@ -291,5 +294,8 @@ dependencies:
       - tqdm==4.67.3
       - typing-extensions==4.15.0
       - typing-inspection==0.4.2
+      - ultralytics==8.4.19
+      - ultralytics-thop==2.0.18
+      - uv==0.10.12
       - werkzeug==3.1.6
 prefix: /opt/anaconda3/envs/ml_env
