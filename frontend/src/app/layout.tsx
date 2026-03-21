@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Manrope } from "next/font/google";
+import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const manrope = Manrope({
+const manrope = localFont({
+  src: "./fonts/Manrope-VariableFont_wght.ttf",
   variable: "--font-manrope",
-  subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "./fonts/GeistMono-VariableFont_wght.ttf",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -25,9 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${manrope.variable} ${geistMono.variable} font-sans antialiased`}
-      >
+      <body className={`${manrope.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
