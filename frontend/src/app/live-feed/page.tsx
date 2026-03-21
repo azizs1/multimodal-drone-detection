@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
 import {
@@ -9,6 +10,8 @@ import {
 } from "@/components/live-feed/live-feed-state.mjs";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { mapFusionAlertToBannerData } from "@/lib/alerts";
 
 type IncidentRow = {
   id: string;
@@ -38,6 +41,16 @@ const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "Backend", status: "Connected" },
   { name: "WebSocket", status: "Disconnected" },
 ];
+
+const MOCK_FUSION_ALERT = mapFusionAlertToBannerData({
+  incidentId: "mock-fusion-alert-001",
+  decision: "drone",
+  fusedConfidence: 0.82,
+  confidenceBand: "high",
+  gatingReason: "rgb+thermal",
+  timestamp: Date.now() / 1000,
+  streamName: "visual",
+});
 
 function ConfidencePanel() {
   return (
@@ -184,13 +197,19 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
+  const [isAlertVisible, setIsAlertVisible] = useState(true);
 
   const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
+  const visibleAlert = isAlertVisible ? MOCK_FUSION_ALERT : null;
 
   return (
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
+          {visibleAlert ? (
+            <AlertBanner alert={visibleAlert} onDismiss={() => setIsAlertVisible(false)} />
+          ) : null}
+
           {errorMessage ? (
             <StreamsMetaErrorBanner errorMessage={errorMessage} onRetry={() => void refresh()} />
           ) : null}
