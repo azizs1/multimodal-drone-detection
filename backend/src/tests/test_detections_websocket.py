@@ -8,15 +8,15 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)
-def clear_alter_connections():
-    from app.api.routers.alter import alter_connection_manager
+def clear_alert_connections():
+    from app.api.routers.alert import alert_connection_manager
 
-    alter_connection_manager._connections.clear()
+    alert_connection_manager._connections.clear()
     yield
-    alter_connection_manager._connections.clear()
+    alert_connection_manager._connections.clear()
 
 
-def test_create_detection_broadcasts_id_to_all_alter_clients(monkeypatch: pytest.MonkeyPatch):
+def test_create_detection_broadcasts_id_to_all_alert_clients(monkeypatch: pytest.MonkeyPatch):
     client = TestClient(app)
     detection_id = uuid4()
     now = datetime.now(UTC)
@@ -52,8 +52,8 @@ def test_create_detection_broadcasts_id_to_all_alter_clients(monkeypatch: pytest
     }
 
     with (
-        client.websocket_connect("/detections/alter") as ws_one,
-        client.websocket_connect("/detections/alter") as ws_two,
+        client.websocket_connect("/detections/alert") as ws_one,
+        client.websocket_connect("/detections/alert") as ws_two,
     ):
         response = client.post("/detections", json=payload)
         assert response.status_code == 201

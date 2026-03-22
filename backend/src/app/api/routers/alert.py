@@ -5,8 +5,8 @@ router = APIRouter(
 )
 
 
-class AlterConnectionManager:
-    """Tracks active websocket clients connected to the alter endpoint."""
+class AlertConnectionManager:
+    """Tracks active websocket clients connected to the alert endpoint."""
 
     def __init__(self):
         self._connections: set[WebSocket] = set()
@@ -30,15 +30,15 @@ class AlterConnectionManager:
             self.disconnect(connection)
 
 
-alter_connection_manager = AlterConnectionManager()
+alert_connection_manager = AlertConnectionManager()
 
 
-@router.websocket("/detections/alter")
-async def alter_socket(websocket: WebSocket):
+@router.websocket("/detections/alert")
+async def alert_socket(websocket: WebSocket):
     """Websocket endpoint to receive real-time detection IDs."""
-    await alter_connection_manager.connect(websocket)
+    await alert_connection_manager.connect(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        alter_connection_manager.disconnect(websocket)
+        alert_connection_manager.disconnect(websocket)

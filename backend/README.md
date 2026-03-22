@@ -112,8 +112,8 @@ Get aggregated statistics about detections.
 
 ### WebSocket Endpoint (Real-time Updates)
 
-#### Alter Endpoint
-**WebSocket** `/detections/alter`
+#### Alert Endpoint
+**WebSocket** `/detections/alert`
 
 Connects to a WebSocket and receives detection IDs in real-time whenever a new detection is created.
 
@@ -124,7 +124,7 @@ import websockets
 import json
 
 async def listen_for_detections():
-    async with websockets.connect("ws://localhost:8000/detections/alter") as ws:
+  async with websockets.connect("ws://localhost:8000/detections/alert") as ws:
         while True:
             detection_id = await ws.recv()
             print(f"New detection: {detection_id}")
@@ -134,7 +134,7 @@ asyncio.run(listen_for_detections())
 
 **Usage Example (JavaScript):**
 ```javascript
-const ws = new WebSocket("ws://localhost:8000/detections/alter");
+const ws = new WebSocket("ws://localhost:8000/detections/alert");
 
 ws.onmessage = (event) => {
   const detectionId = event.data;
@@ -217,7 +217,7 @@ backend/
 │   │   ├── api/
 │   │   │   └── routers/
 │   │   │       ├── detections.py   # Detection endpoints
-│   │   │       ├── alter.py        # WebSocket endpoint
+│   │   │       ├── alert.py        # WebSocket endpoint
 │   │   │       ├── streams.py      # Stream info endpoints
 │   │   │       └── health.py       # Health check endpoints
 │   │   ├── database/
@@ -249,7 +249,7 @@ backend/
 - Modify `CORSMiddleware` in `main.py` for production
 
 ### WebSocket Broadcasting
-The `/detections/alter` endpoint maintains a connection manager that:
+The `/detections/alert` endpoint maintains a connection manager that:
 - Tracks all active WebSocket connections
 - Broadcasts detection IDs to all connected clients when a new detection is created
 - Automatically removes stale connections if sending fails
