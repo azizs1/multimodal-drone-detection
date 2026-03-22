@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -19,7 +19,7 @@ def clear_alter_connections():
 def test_create_detection_broadcasts_id_to_all_alter_clients(monkeypatch: pytest.MonkeyPatch):
     client = TestClient(app)
     detection_id = uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     def mock_create(self, detection):
         return SimpleNamespace(
@@ -51,10 +51,12 @@ def test_create_detection_broadcasts_id_to_all_alter_clients(monkeypatch: pytest
         "stream_name": "drone",
     }
 
-    with client.websocket_connect("/detections/alter") as ws_one:
-        with client.websocket_connect("/detections/alter") as ws_two:
-            response = client.post("/detections", json=payload)
-            assert response.status_code == 201
+    with (
+        client.websocket_connect("/detections/alter") as ws_one,
+        client.websocket_connect("/detections/alter") as ws_two,
+    ):
+        response = client.post("/detections", json=payload)
+        assert response.status_code == 201
 
-            assert ws_one.receive_text() == str(detection_id)
-            assert ws_two.receive_text() == str(detection_id)
+        assert ws_one.receive_text() == str(detection_id)
+        assert ws_two.receive_text() == str(detection_id)
