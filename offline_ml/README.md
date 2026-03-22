@@ -67,4 +67,16 @@ The data_extraction Jupyter Notebook has initial data analysis on each of the Ze
 
 While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
 
+# Linting
 
+For any linting needs, ruff and uv are present in the conda environment to help format files correctly and determine/fix linting errors. The following commands can be run to help with linting.
+
+For changing the linting format of the full file (DO THIS FIRST).
+```bash
+uv run ruff format <file_path>
+```
+
+For basic checking and fixing of linting errors.
+```bash
+ruff check --fix
+```
