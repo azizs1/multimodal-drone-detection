@@ -17,3 +17,4 @@ __pycache__/
 
 #Datasets
 offline_ml/datasets/*
+offline_ml/runs/*
