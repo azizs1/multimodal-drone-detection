@@ -12,11 +12,16 @@ export function HlsVideoPlayer({ src, title }: HlsVideoPlayerProps) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const unsupported = useMemo(() => {
-    if (typeof window === "undefined") {
+    if (typeof document === "undefined") {
       return false;
     }
 
-    return !Hls.isSupported();
+    const hasMseSupport = Hls.isSupported();
+    const probe = document.createElement("video");
+    const canPlay = probe.canPlayType("application/vnd.apple.mpegurl");
+    const hasNativeHlsSupport = canPlay === "probably" || canPlay === "maybe";
+
+    return !hasMseSupport && !hasNativeHlsSupport;
   }, []);
 
   if (!src) {
@@ -71,7 +76,23 @@ function RuntimeVideo({ src, title, onRetry }: { src: string; title: string; onR
       return;
     }
 
-    if (!Hls.isSupported()) {
+    const hasMseSupport = Hls.isSupported();
+    const canPlay = video.canPlayType("application/vnd.apple.mpegurl");
+    const hasNativeHlsSupport = canPlay === "probably" || canPlay === "maybe";
+
+    if (!hasMseSupport && hasNativeHlsSupport) {
+      video.src = src;
+      void video.play().catch(() => {
+        // Playback can be blocked until enough data is buffered.
+      });
+
+      return () => {
+        video.removeAttribute("src");
+        video.load();
+      };
+    }
+
+    if (!hasMseSupport) {
       return;
     }
 
