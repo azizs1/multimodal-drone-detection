@@ -46,15 +46,21 @@ def adapt_yolo_results(
         return []
 
     xyxy = getattr(boxes, "xyxy", [])
-    conf = getattr(boxes, "conf", [])
-    cls = getattr(boxes, "cls", [])
+    conf = getattr(boxes, "conf", None)
+    cls = getattr(boxes, "cls", None)
+    # If confidence/class arrays are missing, we cannot construct predictions.
+    if conf is None or cls is None:
+        return []
 
     predictions: list[ModalityPrediction] = []
-    for idx, raw_box in enumerate(xyxy):
+    for raw_box, raw_conf, raw_cls in zip(xyxy, conf, cls, strict=False):
         bbox = tuple(float(x) for x in raw_box)
-        class_idx = int(float(cls[idx]))
+        # ModalityPrediction requires a 4-value bbox.
+        if len(bbox) != 4:
+            continue
+        class_idx = int(float(raw_cls))
         class_id = _resolve_class_name(class_idx, names, class_aliases=class_aliases)
-        confidence = float(conf[idx])
+        confidence = float(raw_conf)
 
         predictions.append(
             ModalityPrediction(

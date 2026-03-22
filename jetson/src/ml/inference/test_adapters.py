@@ -64,3 +64,25 @@ def test_adapt_yolo_results_alias_mapping():
 
     assert len(preds) == 1
     assert preds[0].class_id == "drone"
+
+
+def test_adapt_yolo_results_skips_invalid_or_misaligned_entries():
+    now = time.time()
+    result = DummyResult(
+        names={0: "drone"},
+        boxes=DummyBoxes(
+            xyxy=[[1, 2, 3], [10, 20, 30, 40]],  # first bbox invalid (len != 4)
+            conf=[0.95],  # shorter than xyxy
+            cls=[0],  # shorter than xyxy
+        ),
+    )
+
+    preds = adapt_yolo_results(
+        modality="rgb",
+        timestamp=now,
+        result=result,
+        sensor_id="cam0",
+    )
+
+    # zip(...) truncates to the shortest sequence and invalid bbox is ignored.
+    assert preds == []

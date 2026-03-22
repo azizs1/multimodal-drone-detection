@@ -16,6 +16,7 @@ while True:
             continue
 
         print(f"{proc} exited. code: {ret}")
+        proc.wait()
 
         # We want to stop everything if ingestion dies, but if inference dies,
         # keep going so we can at least continue streaming sensors.
