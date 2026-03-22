@@ -3,11 +3,12 @@ import time
 
 procs = {
     "ingestion": subprocess.Popen(["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]),
+    "fusion": subprocess.Popen(["uv", "run", "python3", "-m", "ml.fusion_service"]),
     "inference": subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"]),
 }
 
 while True:
-    for name, proc in procs.items():
+    for name, proc in list(procs.items()):
         ret = proc.poll()
 
         # This is if the process is still running fine
@@ -15,11 +16,13 @@ while True:
             continue
 
         print(f"{proc} exited. code: {ret}")
+        proc.wait()
 
         # We want to stop everything if ingestion dies, but if inference dies,
-        # keep going so we can at least continue streaming sensors
-        if name == "inference":
-            del procs["inference"]
+        # keep going so we can at least continue streaming sensors.
+        # Fusion and inference can restart independently in future iterations.
+        if name in {"inference", "fusion"}:
+            del procs[name]
             continue
         elif name == "ingestion":
             del procs["ingestion"]
