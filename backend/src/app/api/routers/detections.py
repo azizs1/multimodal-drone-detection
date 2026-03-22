@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.routers.alter import alter_connection_manager
 from app.database.database import get_db
 from app.database.schemas import DetectionCreate, DetectionResponse, DetectionStats
 from app.repositories import DetectionRepository
@@ -38,6 +39,7 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     """
     repo = DetectionRepository(db)
     db_detection = repo.create(detection)
+    await alter_connection_manager.broadcast_detection_id(str(db_detection.id))
     return db_detection
 
 
