@@ -10,6 +10,7 @@ procs = {
     "ingestion": subprocess.Popen(["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]),
     "fusion": subprocess.Popen(["uv", "run", "python3", "-m", "ml.fusion_service"]),
     "inference": subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"]),
+    "mediamtx": subprocess.Popen(["./mediamtx"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 }
 
 def cleanup():
@@ -34,7 +35,7 @@ try:
             # We want to stop everything if ingestion dies, but if inference dies,
             # keep going so we can at least continue streaming sensors.
             # Fusion and inference can restart independently in future iterations.
-            if name == "ingestion":
+            if name in ["ingestion", "mediamtx"]:
                 procs.clear()
                 cleanup()
                 break

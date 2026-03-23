@@ -1,3 +1,4 @@
+FROM bluenviron/mediamtx:1.6.0-rtp7 AS mediamtx AS mediamtx_source
 # https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
 # this is for JetPack 4.6.1, but NO DEEPSTREAM (switch later if needed)
 FROM nvcr.io/nvidia/l4t-base:r32.7.1
@@ -5,6 +6,10 @@ FROM nvcr.io/nvidia/l4t-base:r32.7.1
 # FROM nvcr.io/nvidia/l4t-pytorch:r35.4.1-pth2.0-py3
 
 WORKDIR /app
+
+COPY src/ ./src/
+COPY --from=mediamtx_source /mediamtx ./mediamtx
+COPY mediamtx.yml ./mediamtx.yml
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONPATH=/app/src
@@ -29,8 +34,7 @@ RUN apt-get update && apt-get install -y \
 
 #COPY pyproject.toml uv.lock ./
 COPY pyproject.toml ./
-COPY src/sensor_ingestion ./sensor_ingestion
-COPY src/ml ./ml
+COPY src/ ./src/
 
 # JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
 # figure this out later
@@ -46,6 +50,12 @@ RUN pip3 install --no-cache-dir \
     numpy \
     pyzmq
 
+# MediaMTX ports: 
+# 8554: RTSP
+# 8888: HLS (backend proxy)
+# 8889: MediaMTX API
+EXPOSE 8554 8888 8889
+
 # This is commented out for now for running on Jetson Nano
 # RUN uv sync --frozen --no-install torch
 
@@ -53,4 +63,4 @@ RUN pip3 install --no-cache-dir \
 # CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
 ENV GST_DEBUG=3
 # CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
-CMD ["python3", "-u", "/app/src/run_jetson_components.py"]
+CMD ["python3", "-u", "src/run_jetson_components.py"]

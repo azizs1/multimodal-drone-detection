@@ -123,9 +123,11 @@ def build_gst_pipeline():
     rgb_rtp_payload = Gst.ElementFactory.make("rtph264pay", "rgb_rtp_payload")
     rgb_rtp_payload.set_property("pt", 96)  # Payload type for H.264 rtp streams
     rgb_rtp_payload.set_property("config-interval", 1)
-    rgb_udpsink = Gst.ElementFactory.make("udpsink", "rgb_udpsink")
-    rgb_udpsink.set_property("host", BACKEND_IP)
-    rgb_udpsink.set_property("port", BACKEND_PORT)
+    rgb_rtp_payload.set_property("aggregate-mode", 1) # Add this for RTSP stability
+    rgb_udpsink = Gst.ElementFactory.make("rtspclientsink", "rgb_udpsink")
+    rgb_udpsink.set_property("location", "rtsp://localhost:8554/visual")
+    # rgb_udpsink.set_property("host", BACKEND_IP)
+    # rgb_udpsink.set_property("port", BACKEND_PORT)
     rgb_udpsink.set_property("sync", False)
     rgb_udpsink.set_property("async", False)
 
@@ -196,12 +198,13 @@ def build_gst_pipeline():
     thermal_rtp_payload = Gst.ElementFactory.make("rtph264pay", "thermal_rtp_payload")
     thermal_rtp_payload.set_property("pt", 96)  # differnt payload type than rgb
     thermal_rtp_payload.set_property("config-interval", 1)
-    thermal_udpsink = Gst.ElementFactory.make("udpsink", "thermal_udpsink")
-    thermal_udpsink.set_property("host", BACKEND_IP)
-    thermal_udpsink.set_property("port", BACKEND_PORT + 2)
+    thermal_rtp_payload.set_property("aggregate-mode", 1) # add this for RTSP stability
+    thermal_udpsink = Gst.ElementFactory.make("rtspclientsink", "thermal_udpsink")
+    thermal_udpsink.set_property("location", "rtsp://localhost:8554/thermal")
+    # thermal_udpsink.set_property("host", BACKEND_IP)
+    # thermal_udpsink.set_property("port", BACKEND_PORT + 2)
     thermal_udpsink.set_property("sync", False)
     thermal_udpsink.set_property("async", False)
-    print("THERMAL PORT:", thermal_udpsink.get_property("port"))
 
     elements = [
         rgb_src,
@@ -283,14 +286,6 @@ def build_gst_pipeline():
     return pipeline, rgb_appsink, thermal_appsink
 
 
-def update_buffer():
-    global latest_rgb, latest_thermal
-
-    if latest_rgb is not None and latest_thermal is not None:
-        timestamp = GLib.get_monotonic_time()
-        buffer.update(timestamp, latest_rgb, latest_thermal)
-
-
 # This function is what actually makes the RGB sample available to Python for inference
 def on_new_rgb_sample(appsink):
     global latest_rgb, frame_num
@@ -312,7 +307,6 @@ def on_new_rgb_sample(appsink):
         latest_rgb = frame
         # save_frame(frame, "rgb")
         frame_num += 1
-        update_buffer()
 
         payload = {
             "modality": "rgb",
@@ -352,7 +346,6 @@ def on_new_thermal_sample(appsink):
         latest_thermal = frame
         # save_frame(frame, "thermal")
         frame_num += 1
-        update_buffer()
 
         payload = {
             "modality": "thermal",

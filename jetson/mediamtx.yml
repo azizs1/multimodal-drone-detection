@@ -1,0 +1,15 @@
+paths:
+  all:
+    source: publisher
+
+# we wamt low-latency for HLS stuff
+hls:
+  enabled: yes
+  hlsVariant: lowLatency
+  hlsSegmentCount: 3 # only 3 segments in the buffer
+  hlsSegmentDuration: 1s # each segment only 1 second long
+  hlsPartDuration: 200ms # 200 ms parts per segment
+  
+rtsp:
+  enabled: yes
+  protocols: [tcp]
