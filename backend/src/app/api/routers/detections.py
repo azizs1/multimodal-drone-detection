@@ -39,7 +39,11 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     """
     repo = DetectionRepository(db)
     db_detection = repo.create(detection)
-    await alert_connection_manager.broadcast_detection_id(str(db_detection.id))
+    try:
+        await alert_connection_manager.broadcast_detection_id(str(db_detection.id))
+    except Exception as e:
+        print(f"Error occurred while broadcasting detection ID: {e}")
+
     return db_detection
 
 

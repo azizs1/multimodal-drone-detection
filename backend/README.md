@@ -121,7 +121,6 @@ Connects to a WebSocket and receives detection IDs in real-time whenever a new d
 ```python
 import asyncio
 import websockets
-import json
 
 async def listen_for_detections():
   async with websockets.connect("ws://localhost:8000/detections/alert") as ws:

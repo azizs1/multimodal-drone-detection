@@ -20,7 +20,7 @@ class AlertConnectionManager:
 
     async def broadcast_detection_id(self, detection_id: str) -> None:
         stale_connections: list[WebSocket] = []
-        for connection in self._connections:
+        for connection in list(self._connections):
             try:
                 await connection.send_text(detection_id)
             except Exception:
@@ -41,4 +41,6 @@ async def alert_socket(websocket: WebSocket):
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        print("Client disconnected")
+    finally:
         alert_connection_manager.disconnect(websocket)

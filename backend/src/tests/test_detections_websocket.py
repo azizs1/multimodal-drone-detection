@@ -9,11 +9,11 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(autouse=True)
 def clear_alert_connections():
-    from app.api.routers.alert import alert_connection_manager
-
-    alert_connection_manager._connections.clear()
+    # This fixture is kept for potential future setup/teardown needs,
+    # but it deliberately avoids reaching into private attributes like
+    # `alter_connection_manager._connections` to prevent tight coupling
+    # to internal implementation details.
     yield
-    alert_connection_manager._connections.clear()
 
 
 def test_create_detection_broadcasts_id_to_all_alert_clients(monkeypatch: pytest.MonkeyPatch):
