@@ -1,10 +1,13 @@
 # https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
 # this is for JetPack 4.6.1, but NO DEEPSTREAM (switch later if needed)
 FROM nvcr.io/nvidia/l4t-base:r32.7.1
+# TODO: Switch to the following once we have Orin nano:
+# FROM nvcr.io/nvidia/l4t-pytorch:r35.4.1-pth2.0-py3
 
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONPATH=/app/src
 
 RUN apt-get update && apt-get install -y \
     tzdata \
@@ -33,7 +36,15 @@ COPY src/ml ./ml
 # figure this out later
 # RUN pip3 install --no-cache-dir \
 #     https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
-RUN pip3 install --no-cache-dir python-dotenv
+RUN pip3 install --no-cache-dir \
+    uv \
+    ultralytics \
+    fastapi \
+    uvicorn \
+    python-dotenv \
+    pydantic \
+    numpy \
+    pyzmq
 
 # This is commented out for now for running on Jetson Nano
 # RUN uv sync --frozen --no-install torch
@@ -41,4 +52,5 @@ RUN pip3 install --no-cache-dir python-dotenv
 #CMD ["uv", "run", "python3", "-m", "run_both"]
 # CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
 ENV GST_DEBUG=3
-CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
+# CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
+CMD ["python3", "-u", "/app/src/run_jetson_components.py"]

@@ -13,10 +13,10 @@ from datetime import datetime
 
 import cv2
 import gi
+import zmq
+import time
 import numpy as np
 from dotenv import load_dotenv
-
-from sensor_ingestion import buffer
 
 gi.require_version("GLib", "2.0")
 gi.require_version("GObject", "2.0")
@@ -24,6 +24,12 @@ gi.require_version("Gst", "1.0")
 from gi.repository import GLib, Gst  # noqa: E402
 
 load_dotenv()
+
+# init zeromq
+context = zmq.Context()
+socket = context.socket(zmq.PUB)
+socket.set(zmq.SNDHWM, 1) # keep only 1 frame in queue to avoid lag
+socket.bind("ipc:///tmp/frames_bus")
 
 latest_rgb = None
 latest_thermal = None
@@ -307,6 +313,15 @@ def on_new_rgb_sample(appsink):
         # save_frame(frame, "rgb")
         frame_num += 1
         update_buffer()
+
+        payload = {
+            "modality": "rgb",
+            "timestamp": time.time(),
+            "frame": frame
+        }
+        # handles the numpy array and dict automatically
+        socket.send_pyobj(payload)
+
         print("RGB frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY
@@ -338,6 +353,15 @@ def on_new_thermal_sample(appsink):
         # save_frame(frame, "thermal")
         frame_num += 1
         update_buffer()
+
+        payload = {
+            "modality": "thermal",
+            "timestamp": time.time(),
+            "frame": frame
+        }
+        # handles the numpy array and dict automatically
+        socket.send_pyobj(payload)
+
         print("Thermal frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY

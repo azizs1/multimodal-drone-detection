@@ -5,12 +5,15 @@ from __future__ import annotations
 import json
 import os
 import time
+import zmq
 from pathlib import Path
 from urllib import error, request
 
 from .adapters import adapt_yolo_results
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+
+# NOTE: for TensorRT, let's use .engine files in order to have the GPU perform this processing
 DEFAULT_RGB_MODEL_PATH = (
     REPO_ROOT / "offline_ml/runs/visual_no_augmentation_baseline/weights/best.pt"
 )
@@ -88,6 +91,12 @@ def _infer_and_send(
 
 
 def main() -> int:
+    context = zmq.Context()
+    socket = context.socket(zmq.SUB)
+    socket.connect("ipc:///tmp/frames_bus")
+    socket.setsockopt_string(zmq.SUBSCRIBE, "")
+    current_frames = {"rgb": None, "thermal": None}
+
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
@@ -100,10 +109,20 @@ def main() -> int:
 
     try:
         while True:
-            # TODO(Sprint 2): Replace with real frame pull from sensor ingestion.
-            # Once frames are wired in, call:
-            # _infer_and_send(rgb_model, thermal_model, rgb_frame, thermal_frame, fusion_endpoint)
-            time.sleep(5)
+            # blocking until we get frame data
+            frames = socket.recv_pyobj()
+
+            modality = frames["modality"]
+            current_frames[modality] = frames["frame"]
+            ts = frames["timestamp"]
+            
+            rgb_frame = frames["rgb"]
+            th_frame = frames["thermal"]
+
+            if rgb_frame is not None and th_frame is not None:
+                _infer_and_send(rgb_model, thermal_model, rgb_frame, th_frame, fusion_endpoint)
+                current_frames = {"rgb": None, "thermal": None}
+
     except KeyboardInterrupt:
         print("ml.inference stopped")
         return 0
