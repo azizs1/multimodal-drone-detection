@@ -119,6 +119,69 @@ This should provide all of the same code that it provides on your local machine,
 
 ## 3. Setting up Environment
 
+To set up an environment on the ARC cluster, you have to set it up on the compute node that you want to run the training code on. The following commands allow for quick environment setup.
+
+First, get yur account id you need to run jobs on the ARC cluster, this id will be useful when running jobs later.
+```bash
+
+```
+
+Then, start an interactive job on the compute node that training will take place on:
+```bash
+--partition=a100_normal_q --nodes=1 --ntasks-per-node=4 --gres=gpu:1 --account=<account_id>
+```
+
+If you see text like similar to the text below, then it mean you are successfully on a compute node and can continue:
+
+ *--- Warning:*
+     *Your session consumes resources (CPUs, memory, and GPUs) while it remains open.*
+     *Close your session whenever you finish your work.*
+     *Other users cannot use the resources allocated to your job until you close your session.*
+     *Consider the use of batch jobs to optimize resources allocation.*
+*srun: job 4843586 queued and waiting for resources*
+*srun: job 4843586 has been allocated resources*
+*[eymauger26@tc-dgx008 multimodal-drone-detection]$*
+
+Load Miniforge onto the compute node:
+```bash
+module load Miniforge3
+```
+
+Make sure you are in the multimodal-drone-detection directory (root directory of the repo) and then run the command below:
+```bash
+conda env create -p ~/envs/ml_env -f offline_ml/environment.yml
+```
+
+It will take quite a while to load the environment onto the node. Once it is good to go, activate it.
+```bash
+source activate /home/<PID>/envs/ml_env
+python offline_ml/src/train.py --data offline_ml/datasets --epochs 1
+```
+
+The compute node may be slow, so as long as that second command runs the environment should be good to go. Exit out of the interactive node.
+```bash
+exit
+```
+
 ## 4. Migrate Data to ARC Cluster
+
+NOTE: If you are already a member of the team, skip this step, the datasets are already in our shared projects/muataz folder.
+
+For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets were stored into a project folder provided by our instructor:
+
+```bash
+cd /projects/<project_name>
+mkdir datasets
+cd datasets
+wget "https://zenodo.org/records/15632958/files/Visual%20drone%20detection.v2i.yolov11_no_augmentation.zip?download=1" -O zenodo_visual_no_augmentation.zip
+wget "https://zenodo.org/records/15633051/files/Thermal_drone_detection.v1i.yolov11_no_augmentation.zip?download=1" -O zenodo_thermal_no_augmentation.zip
+wget "https://zenodo.org/records/15633098/files/Thermal_drone_detection.v4i.yolov11.zip?download=1" -O zenodo_thermal_augmented.zip
+unzip zenodo_visual_no_augmentation.zip -d zenodo_visual_no_augmentation
+unzip zenodo_thermal_no_augmentation.zip -d zenodo_thermal_no_augmentation
+unzip zenodo_thermal_augmented.zip -d zenodo_thermal_augmented
+rm zenodo_visual_no_augmentation.zip
+rm zenodo_thermal_no_augmentation.zip
+rm zenodo_thermal_augmented.zip
+```
 
 ## 5. Creating a SLURM Job
