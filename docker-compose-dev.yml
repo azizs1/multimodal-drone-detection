@@ -45,7 +45,7 @@ services:
       - "9000:9000" # S3 API
       - "9001:9001" # Console
     volumes:
-      - ../storage:/data
+      - ./storage:/data
     networks:
       - drone-network
     command: /data
@@ -108,5 +108,3 @@ networks:
 volumes:
   hls-data:
   postgres-data:
-  rustfs-data:
-  rustfs-logs:
