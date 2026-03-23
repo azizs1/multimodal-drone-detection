@@ -7,3 +7,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 *.pyc
+
+#IDE
+.vscode/*
+
+#Datasets
+offline_ml/datasets/*
