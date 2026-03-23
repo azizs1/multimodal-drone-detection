@@ -23,7 +23,11 @@ Follow the commands below to create a Conda environment. Make sure you are curre
 conda env create -f environment.yml
 conda activate ml_env
 ```
-You should see "(ml_env)" to the left of your username. If this appears, you're Conda environment will be setup and you will now be able to run code within this folder.
+You should see "(ml_env)" to the left of your username. If this appears, you're Conda environment will be setup and you will now be able to run code within this folder. In addition, check the bottom right of your VS code to see the python version you are running. It should be "ml_env (3.12.3)". If it is something else, make sure your environment is activated and make sure the Python venv called multimodal-drone-detection is not active. This is a venv that is used for backend and other parts of the code base. The command below will remove the venv from your terminal, but you still need to ensure that the correct environment is being used in the bottom left.
+
+```bash
+deactivate
+```
 
 ## 3. Additional Information
 
