@@ -32,8 +32,6 @@ unzip zenodo_visual_no_augmentation.zip
 unzip zenodo_thermal_no_augmentation.zip
 unzip zenodo_thermal_augmented.zip
 
-find $TMPDIR -name "data.yaml"
-
 # Run the train.py script with the local data (UPDATE PID HERE).
 cd ~/multimodal-drone-detection
 python offline_ml/src/train.py \

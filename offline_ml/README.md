@@ -248,5 +248,5 @@ find /scratch/<PID>/runs -name "best.pt"
 
 To copy weights to your local machine, run this from your local terminal:
 ```bash
-scp <PID>@tinkercliffs2.arc.vt.edu:/scratch/<PID>/runs/*/weights/best.pt ./offline_ml/runs/
+scp <PID>@tinkercliffs2.arc.vt.edu:/scratch/<PID>/runs/*/weights/best.pt ./offline_ml/weights/
 ```
