@@ -19,3 +19,5 @@ dependencies:
   - pip:
     - ultralytics
     - "numpy<2"
+    - ruff
+    - uv
