@@ -9,6 +9,7 @@ def parse_args():
     parser.add_argument("--project", type=str, default="../runs", help="Path to save training outputs")
     parser.add_argument("--model", type=str, default="yolov8n.pt", help="YOLO model size")
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
+    parser.add_argument("--model", type=str, default="../weights/yolov8n.pt", help="YOLO model size")
     return parser.parse_args()
 
 #Condensed training loop that works for each dataset, assuming the directory structures are all the same.

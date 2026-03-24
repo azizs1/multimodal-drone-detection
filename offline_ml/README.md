@@ -85,6 +85,15 @@ The data_extraction Jupyter Notebook has initial data analysis on each of the Ze
 
 While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
 
+To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
+```bash
+cd ~/multimodal-drone-detection
+python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
+mv yolov8n.pt offline_ml/weights/
+```
+
+Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt.
+
 In order to keep all code in the repository and limit the use of external tools, the train.ipynb notebook was converted into train.py, and training is now conducted on the VT ARC Cluster. Instructions below serve as a walkthrough to getting this resource set up. To run train.py locally to test it works, you can run this bash command below, however, CPU training would be too time intensive to train each of these models locally. Make sure this command is ran in the offline_ml/src directory.
 
 ```bash
@@ -95,7 +104,11 @@ python train.py --data ../datasets --epochs 1
 
 To be able to run python scripts connected to the rest of the repository but still ran on GPUs, we utilized the GPU power of the Virginia Tech ARC Cluster. The following instructions note how to get started, however, it should be noted that to get started with the ARC Cluster an instructor must create an account to give you access. The following setup is based on our instructor giving us Instructional Allocation to the ARC Cluster.
 
-## 1. Setting up SSH Connection
+## 1. Setting up VPN
+
+To be able to access the ARC cluster when you are at home or not on eduroam wifi, you must use a VPN. To access the VPN, please follow the instructions for your specific configuration using this link: https://www.nis.vt.edu/ServicePortfolio/Network/RemoteAccess-VPN.html
+
+## 2. Setting up SSH Connection
 
 Once the instructor has given you access, the first step is to ssh into one of the computing resources ARC provides. The easiest way to do this is through VS Code. First, ensure you have the Remote - SSH extension installed and locate the icon on the extension bar on the left titled "Remote Explorer". Click on this and then hover over the SSH dropdown and click the "+" icon on the right. The ssh command entered should look something like this below:
 
@@ -107,7 +120,7 @@ There are multiple different resources (such as tinkercliffs1 or falcon1, but ti
 
 This tutorial provides more in-depth instructions: https://video.vt.edu/media/Connect+to+ARC+Systems+with+VSCode/1_5q3mxyi0
 
-## 2. Git Clone Repository
+## 3. Git Clone Repository
 
 Next, use git to clone this repository onto your ARC account:
 
@@ -117,18 +130,18 @@ git clone https://github.com/azizs1/multimodal-drone-detection.git
 
 This should provide all of the same code that it provides on your local machine, however, now you have the option to run the code on better computing resources.
 
-## 3. Setting up Environment
+## 4. Setting up Environment
 
-To set up an environment on the ARC cluster, you have to set it up on the compute node that you want to run the training code on. The following commands allow for quick environment setup.
+To set up an environment on the ARC cluster, you have to set it up on the compute node that you want to run the training code on. The following commands allow for quick environment setup. This environment only needs to be created once in the partition that you will use, and then will be able to be activated during other training jobs on the same partition.
 
-First, get yur account id you need to run jobs on the ARC cluster, this id will be useful when running jobs later.
+First, get your account id you need to run jobs on the ARC cluster, this id will be useful when running jobs later. There will potentially be multiple account ids that show up, including "personal". Use the one that doesn't say "personal", mine is "lnn"
 ```bash
-
+sacctmgr show associations user=$USER format=account
 ```
 
 Then, start an interactive job on the compute node that training will take place on:
 ```bash
---partition=a100_normal_q --nodes=1 --ntasks-per-node=4 --gres=gpu:1 --account=<account_id>
+interact --partition=a100_normal_q --nodes=1 --ntasks-per-node=4 --gres=gpu:1 --account=<account_id>
 ```
 
 If you see text like similar to the text below, then it mean you are successfully on a compute node and can continue:
@@ -163,11 +176,11 @@ The compute node may be slow, so as long as that second command runs the environ
 exit
 ```
 
-## 4. Migrate Data to ARC Cluster
+## 5. Migrate Data to ARC Cluster
 
 NOTE: If you are already a member of the team, skip this step, the datasets are already in our shared projects/muataz folder.
 
-For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets were stored into a project folder provided by our instructor:
+For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets are stored as zip files and during training they are unzipped locally for better performance. These datasets were stored into a project folder provided by our instructor:
 
 ```bash
 cd /projects/<project_name>
@@ -176,12 +189,64 @@ cd datasets
 wget "https://zenodo.org/records/15632958/files/Visual%20drone%20detection.v2i.yolov11_no_augmentation.zip?download=1" -O zenodo_visual_no_augmentation.zip
 wget "https://zenodo.org/records/15633051/files/Thermal_drone_detection.v1i.yolov11_no_augmentation.zip?download=1" -O zenodo_thermal_no_augmentation.zip
 wget "https://zenodo.org/records/15633098/files/Thermal_drone_detection.v4i.yolov11.zip?download=1" -O zenodo_thermal_augmented.zip
-unzip zenodo_visual_no_augmentation.zip -d zenodo_visual_no_augmentation
-unzip zenodo_thermal_no_augmentation.zip -d zenodo_thermal_no_augmentation
-unzip zenodo_thermal_augmented.zip -d zenodo_thermal_augmented
-rm zenodo_visual_no_augmentation.zip
-rm zenodo_thermal_no_augmentation.zip
-rm zenodo_thermal_augmented.zip
 ```
 
-## 5. Creating a SLURM Job
+## 6. Creating and Submitting a SLURM Job
+
+Now, to run code on the ARC cluster, you have to create jobs using a bash script. The following section outlines how to set this up.
+
+First, create a scratch directory to store your training outputs:
+```bash
+mkdir -p /scratch/<PID>
+```
+
+Next, you have to update the script to add in your own credentials so that it works. The SLURM job script is located at `offline_ml/src/train.sh`. Before submitting, make sure to update the following in the script:
+- `--account=<account_id>` — your account ID from step 4
+- `--output` and `--error` paths — replace `eymauger26` with your PID
+- `source activate` path — replace `eymauger26` with your PID
+- `/projects/muataz/datasets` — update if the project folder name changes
+
+Once you are ready, make sure you are located in the root directory of the repo and run this bash command to submit the job:
+```bash
+sbatch offline_ml/src/train.sh
+```
+
+To monitor that the job is running, run this command below:
+```bash
+squeue -u $USER
+```
+
+The status column will show the status of the job. These are the common values and what they mean.
+- `PD` — job is pending/waiting for resources
+- `R` — job is running
+- `CG` — job is completing
+
+To cancel a job that you didn't mean to queue, you can run this command below.
+```bash
+scancel <jobid>
+```
+
+Training logs are saved to `/scratch/<PID>/logs` as `.out` and `.err` files. The `.out` file contains the training progress output and the `.err` file contains any errors. To check the output logs, run this command below:
+```bash
+cat /scratch/<PID>/logs/mdd_offline_ml_training.<jobid>.out
+```
+
+To check the error logs, run this command below:
+```bash
+cat /scratch/<PID>/logs/mdd_offline_ml_training.<jobid>.err
+```
+
+If you want to watch the output in real time while the job is running:
+```bash
+tail -f /scratch/<PID>/logs/mdd_offline_ml_training.<jobid>.out
+```
+
+Once the job finishes, results will be saved to `/scratch/<PID>/runs/`. To find your trained model weights:
+```bash
+find /scratch/<PID>/runs -name "best.pt"
+```
+
+To copy weights to your local machine, run this from your local terminal:
+```bash
+scp <PID>@tinkercliffs2.arc.vt.edu:/scratch/<PID>/runs/*/weights/best.pt ./offline_ml/runs/
+```
