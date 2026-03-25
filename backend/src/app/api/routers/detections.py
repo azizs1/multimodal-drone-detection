@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.routers.alert import alert_connection_manager
 from app.database.database import get_db
 from app.database.schemas import DetectionCreate, DetectionResponse, DetectionStats
 from app.repositories import DetectionRepository
@@ -38,6 +39,11 @@ async def create_detection(detection: DetectionCreate, db: Annotated[Session, De
     """
     repo = DetectionRepository(db)
     db_detection = repo.create(detection)
+    try:
+        await alert_connection_manager.broadcast_detection_id(str(db_detection.id))
+    except Exception as e:
+        print(f"Error occurred while broadcasting detection ID: {e}")
+
     return db_detection
 
 
