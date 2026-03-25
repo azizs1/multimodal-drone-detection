@@ -3,19 +3,23 @@ name = "multimodal-drone-detection-si-ml"
 version = "0.1.0"
 description = "Sensor ingestion and ML pipeline for multimodal drone detection"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10,<3.13" # Orin / modern fusion stack
 
-# Add more as needed
 dependencies = [
-    "matplotlib>=3.10.7",
-    "numpy>=2.3.5",
-    "opencv-python>=4.11.0.86",
-    "pandas>=2.3.3",
-    "scikit-learn>=1.7.2",
-    "seaborn>=0.13.2",
-    "torch>=2.5.1",
-    "torchvision>=0.20.1",
-    "torchsummary>=1.5.1",
     "aioprocessing>=2.0.0",
-    "PyGObject>=3.46.0"
+    "fastapi>=0.110.0",
+    "httpx>=0.27.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.7.0",
+    "torch>=2.1.0",
+    "torchsummary>=1.5.1",
+    "ultralytics>=8.0.0",
+    "uvicorn[standard]>=0.30.0",
+]
+
+[project.optional-dependencies]
+sensor = [
+    "opencv-python>=4.11.0.86",
+    "python-dotenv>=1.1.1",
+    "PyGObject>=3.46.0; sys_platform == 'linux'",
 ]

@@ -37,6 +37,20 @@ services:
     command: /mediamtx.yml
     restart: always
 
+  # RustFS Object Storage
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rustfs-server
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Console
+    volumes:
+      - ./storage:/data
+    networks:
+      - drone-network
+    command: /data
+    restart: always
+
   # GStreamer RTSP Simulator (loops video)
   drone-visual-streaming:
     build:
