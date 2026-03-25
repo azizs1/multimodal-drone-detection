@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Hls from "hls.js";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type HlsVideoPlayerProps = {
   src?: string;
@@ -15,8 +16,12 @@ export function HlsVideoPlayer({ src, title }: HlsVideoPlayerProps) {
       return false;
     }
 
+    const hasMseSupport = Hls.isSupported();
     const probe = document.createElement("video");
-    return probe.canPlayType("application/vnd.apple.mpegurl") === "";
+    const canPlay = probe.canPlayType("application/vnd.apple.mpegurl");
+    const hasNativeHlsSupport = canPlay === "probably" || canPlay === "maybe";
+
+    return !hasMseSupport && !hasNativeHlsSupport;
   }, []);
 
   if (!src) {
@@ -47,6 +52,10 @@ export function HlsVideoPlayer({ src, title }: HlsVideoPlayerProps) {
 
 function RuntimeVideo({ src, title, onRetry }: { src: string; title: string; onRetry: () => void }) {
   const [playerState, setPlayerState] = useState<"loading" | "playing" | "error">("loading");
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const hasPlayedRef = useRef(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const showLoadingOverlay = !hasPlayed && playerState === "loading";
 
   useEffect(() => {
     if (playerState !== "loading") {
@@ -55,33 +64,102 @@ function RuntimeVideo({ src, title, onRetry }: { src: string; title: string; onR
 
     const timeout = window.setTimeout(() => {
       setPlayerState("error");
-    }, 6000);
+    }, hasPlayedRef.current ? 15000 : 12000);
 
     return () => window.clearTimeout(timeout);
   }, [playerState]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    const hasMseSupport = Hls.isSupported();
+    const canPlay = video.canPlayType("application/vnd.apple.mpegurl");
+    const hasNativeHlsSupport = canPlay === "probably" || canPlay === "maybe";
+
+    if (!hasMseSupport && hasNativeHlsSupport) {
+      video.src = src;
+      void video.play().catch(() => {
+        // Playback can be blocked until enough data is buffered.
+      });
+
+      return () => {
+        video.removeAttribute("src");
+        video.load();
+      };
+    }
+
+    if (!hasMseSupport) {
+      return;
+    }
+
+    const hls = new Hls({
+      lowLatencyMode: true,
+      backBufferLength: 90,
+    });
+
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+      hls.loadSource(src);
+    });
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      void video.play().catch(() => {
+        // Playback can be blocked until enough data is buffered.
+      });
+    });
+    hls.on(Hls.Events.ERROR, (_, data) => {
+      if (!data.fatal) {
+        return;
+      }
+
+      switch (data.type) {
+        case Hls.ErrorTypes.NETWORK_ERROR:
+          hls.startLoad();
+          break;
+        case Hls.ErrorTypes.MEDIA_ERROR:
+          hls.recoverMediaError();
+          break;
+        default:
+          setPlayerState("error");
+          hls.destroy();
+      }
+    });
+
+    return () => {
+      hls.destroy();
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [src]);
+
   return (
     <div className="relative h-full w-full bg-black">
       <video
+        ref={videoRef}
         className="h-full w-full bg-black object-cover"
         autoPlay
         muted
-        loop
         playsInline
         controls
         preload="metadata"
-        src={src}
         aria-label={title}
         onLoadStart={() => setPlayerState("loading")}
         onLoadedData={() => setPlayerState("playing")}
         onCanPlay={() => setPlayerState("playing")}
-        onPlaying={() => setPlayerState("playing")}
+        onPlaying={() => {
+          hasPlayedRef.current = true;
+          setHasPlayed(true);
+          setPlayerState("playing");
+        }}
         onWaiting={() => setPlayerState("loading")}
-        onStalled={() => setPlayerState("error")}
+        onStalled={() => setPlayerState("loading")}
         onError={() => setPlayerState("error")}
       />
 
-      {playerState === "loading" ? (
+      {showLoadingOverlay ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/35 text-sm font-medium text-white">
           Loading stream...
         </div>

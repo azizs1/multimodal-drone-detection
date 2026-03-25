@@ -87,7 +87,7 @@ npm run start
 From repository root:
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_API_BASE_URL=http://host.docker.internal:8000 \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 \
   -t drone-detection-frontend \
   -f frontend/Dockerfile frontend
 docker run --rm -p 3000:3000 drone-detection-frontend
@@ -95,4 +95,4 @@ docker run --rm -p 3000:3000 drone-detection-frontend
 
 Notes:
 - `NEXT_PUBLIC_API_BASE_URL` is injected at build time for the frontend bundle.
-- For non-local environments, replace `http://host.docker.internal:8000` with your backend URL.
+- For non-local environments, replace `http://localhost:8000` with your backend URL.
