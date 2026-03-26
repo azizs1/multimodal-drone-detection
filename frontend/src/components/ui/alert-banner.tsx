@@ -20,22 +20,16 @@ const SEVERITY_STYLES: Record<AlertBannerData["severity"], string> = {
     "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-700/70 dark:bg-rose-950/40 dark:text-rose-100",
 };
 
-const CHIP_STYLES: Record<AlertBannerData["severity"], string> = {
-  info: "bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-100",
-  warning: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100",
-  critical: "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-100",
-};
-
 function SeverityIcon({ severity }: Pick<AlertBannerData, "severity">) {
   if (severity === "critical") {
-    return <AlertTriangle className="size-5" aria-hidden="true" />;
+    return <AlertTriangle className="size-[1.7rem]" aria-hidden="true" />;
   }
 
   if (severity === "warning") {
-    return <Bell className="size-5" aria-hidden="true" />;
+    return <Bell className="size-[1.7rem]" aria-hidden="true" />;
   }
 
-  return <Info className="size-5" aria-hidden="true" />;
+  return <Info className="size-[1.7rem]" aria-hidden="true" />;
 }
 
 function formatAlertTimestamp(value: string) {
@@ -60,44 +54,49 @@ export function AlertBanner({ alert, onDismiss, action, className }: AlertBanner
       role="alert"
       aria-live="polite"
       className={cn(
-        "rounded-sm border px-4 py-3 shadow-sm",
-        "transition-colors",
+        "relative overflow-hidden rounded-sm border shadow-sm transition-colors",
         SEVERITY_STYLES[alert.severity],
         className,
       )}
     >
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <div className="mt-0.5 shrink-0">
+      <div
+        className={cn(
+          "absolute inset-y-0 left-0 w-1.5",
+          alert.severity === "critical"
+            ? "bg-rose-500"
+            : alert.severity === "warning"
+              ? "bg-amber-500"
+              : "bg-sky-500",
+        )}
+      />
+
+      <div className="flex flex-col gap-4 px-4 py-3 pl-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 gap-4">
+          <div className="mt-2 shrink-0 text-current/85">
             <SeverityIcon severity={alert.severity} />
           </div>
 
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold tracking-wide">{alert.title}</p>
-              <span
-                className={cn(
-                  "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
-                  CHIP_STYLES[alert.severity],
-                )}
-              >
-                {alert.source}
+            <p className="text-base font-semibold leading-tight md:text-[1.05rem]">
+              {alert.title}
+            </p>
+
+            <p className="mt-1 line-clamp-2 text-sm leading-6 opacity-90">{alert.message}</p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium opacity-80">
+              <span className="inline-flex items-center rounded-full border border-black/8 bg-white/35 px-2.5 py-1 dark:border-white/10 dark:bg-white/8">
+                {formatAlertTimestamp(alert.occurredAt)}
               </span>
-              {alert.confidenceBand ? (
-                <span className="inline-flex rounded-full bg-black/8 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide dark:bg-white/10">
-                  {alert.confidenceBand}
+              {typeof alert.confidence === "number" ? (
+                <span className="inline-flex items-center rounded-full border border-black/8 bg-white/35 px-2.5 py-1 dark:border-white/10 dark:bg-white/8">
+                  Confidence {Math.round(alert.confidence * 100)}%
                 </span>
               ) : null}
-            </div>
-
-            <p className="mt-1 text-sm opacity-90">{alert.message}</p>
-
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium opacity-80">
-              <span>{formatAlertTimestamp(alert.occurredAt)}</span>
-              {typeof alert.confidence === "number" ? (
-                <span>Confidence {Math.round(alert.confidence * 100)}%</span>
+              {alert.streamName ? (
+                <span className="inline-flex items-center rounded-full border border-black/8 bg-white/35 px-2.5 py-1 dark:border-white/10 dark:bg-white/8">
+                  Stream {alert.streamName}
+                </span>
               ) : null}
-              {alert.streamName ? <span>Stream {alert.streamName}</span> : null}
             </div>
           </div>
         </div>
@@ -109,7 +108,7 @@ export function AlertBanner({ alert, onDismiss, action, className }: AlertBanner
               type="button"
               aria-label="Dismiss alert"
               onClick={onDismiss}
-              className="inline-flex size-8 items-center justify-center rounded-md border border-black/10 bg-white/40 transition-colors hover:bg-white/70 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              className="inline-flex size-9 items-center justify-center rounded-md border border-black/10 bg-white/40 transition-colors hover:bg-white/70 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
             >
               <X className="size-4" aria-hidden="true" />
             </button>
