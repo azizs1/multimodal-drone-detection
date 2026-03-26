@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { type RealtimeAlertEvent } from "@/lib/alerts";
 
+export type RealtimeAlertConnectionState =
+  | "mock"
+  | "connecting"
+  | "connected"
+  | "disconnected"
+  | "error";
+
 const MOCK_ALERT_EVENTS: RealtimeAlertEvent[] = [
   {
     incidentId: "mock-fusion-alert-001",
@@ -36,6 +43,7 @@ function buildMockAlertEvent(index: number): RealtimeAlertEvent {
 
 export type UseRealtimeAlertsResult = {
   activeAlertEvent: RealtimeAlertEvent | null;
+  connectionState: RealtimeAlertConnectionState;
   dismissAlert: () => void;
   triggerMockAlert: () => void;
 };
@@ -46,8 +54,18 @@ export function useRealtimeAlerts(): UseRealtimeAlertsResult {
   );
   const [mockAlertIndex, setMockAlertIndex] = useState(1);
 
+  // TODO: Replace mock state with websocket-driven alerts once the backend
+  // finalizes the realtime event contract for fused alert payloads.
+  //
+  // Expected follow-up shape:
+  // 1. Open websocket connection in an effect on mount.
+  // 2. Parse incoming JSON payloads into RealtimeAlertEvent.
+  // 3. Set activeAlertEvent when a valid alert arrives.
+  // 4. Update connectionState from mock to connected/disconnected/error.
+
   return {
     activeAlertEvent,
+    connectionState: "mock",
     dismissAlert: () => setActiveAlertEvent(null),
     triggerMockAlert: () => {
       setActiveAlertEvent(buildMockAlertEvent(mockAlertIndex));
