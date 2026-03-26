@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
 import {
@@ -8,13 +7,11 @@ import {
   buildStreamPlaylistUrl,
   buildVideoSubLabel,
 } from "@/components/live-feed/live-feed-state.mjs";
+import { useRealtimeAlerts } from "@/components/live-feed/use-realtime-alerts";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
 import { AlertBanner } from "@/components/ui/alert-banner";
-import {
-  type RealtimeAlertEvent,
-  mapRealtimeAlertToBannerData,
-} from "@/lib/alerts";
+import { mapRealtimeAlertToBannerData } from "@/lib/alerts";
 
 type IncidentRow = {
   id: string;
@@ -44,39 +41,6 @@ const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "Backend", status: "Connected" },
   { name: "WebSocket", status: "Disconnected" },
 ];
-
-const MOCK_ALERT_EVENTS: RealtimeAlertEvent[] = [
-  {
-    incidentId: "mock-fusion-alert-001",
-    decision: "drone",
-    fusedConfidence: 0.82,
-    confidenceBand: "high",
-    gatingReason: "rgb+thermal",
-    timestamp: Date.now() / 1000,
-    streamName: "visual",
-  },
-  {
-    incidentId: "mock-fusion-alert-002",
-    decision: "drone",
-    fusedConfidence: 0.91,
-    confidenceBand: "high",
-    gatingReason: "thermal confirmation",
-    timestamp: Date.now() / 1000 + 12,
-    streamName: "thermal",
-  },
-];
-
-function buildMockAlertEvent(index: number): RealtimeAlertEvent {
-  const seed = MOCK_ALERT_EVENTS[index % MOCK_ALERT_EVENTS.length];
-
-  return {
-    ...seed,
-    incidentId: `${seed.incidentId}-${index + 1}`,
-    timestamp: Date.now() / 1000,
-  };
-}
-
-const INITIAL_ALERT_EVENT = buildMockAlertEvent(0);
 
 function AlertPreviewControls({
   onTriggerAlert,
@@ -239,10 +203,7 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
-  const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(
-    INITIAL_ALERT_EVENT,
-  );
-  const [mockAlertIndex, setMockAlertIndex] = useState(1);
+  const { activeAlertEvent, dismissAlert, triggerMockAlert } = useRealtimeAlerts();
 
   const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
   const visibleAlert = activeAlertEvent
@@ -254,7 +215,7 @@ export default function LiveFeedPage() {
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
           {visibleAlert ? (
-            <AlertBanner alert={visibleAlert} onDismiss={() => setActiveAlertEvent(null)} />
+            <AlertBanner alert={visibleAlert} onDismiss={dismissAlert} />
           ) : null}
 
           {errorMessage ? (
@@ -262,12 +223,7 @@ export default function LiveFeedPage() {
           ) : null}
 
           <div className="flex justify-end">
-            <AlertPreviewControls
-              onTriggerAlert={() => {
-                setActiveAlertEvent(buildMockAlertEvent(mockAlertIndex));
-                setMockAlertIndex((current) => current + 1);
-              }}
-            />
+            <AlertPreviewControls onTriggerAlert={triggerMockAlert} />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
