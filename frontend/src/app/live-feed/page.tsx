@@ -11,7 +11,10 @@ import {
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
 import { AlertBanner } from "@/components/ui/alert-banner";
-import { mapFusionAlertToBannerData } from "@/lib/alerts";
+import {
+  type RealtimeAlertEvent,
+  mapRealtimeAlertToBannerData,
+} from "@/lib/alerts";
 
 type IncidentRow = {
   id: string;
@@ -42,15 +45,54 @@ const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "WebSocket", status: "Disconnected" },
 ];
 
-const MOCK_FUSION_ALERT = mapFusionAlertToBannerData({
-  incidentId: "mock-fusion-alert-001",
-  decision: "drone",
-  fusedConfidence: 0.82,
-  confidenceBand: "high",
-  gatingReason: "rgb+thermal",
-  timestamp: Date.now() / 1000,
-  streamName: "visual",
-});
+const MOCK_ALERT_EVENTS: RealtimeAlertEvent[] = [
+  {
+    incidentId: "mock-fusion-alert-001",
+    decision: "drone",
+    fusedConfidence: 0.82,
+    confidenceBand: "high",
+    gatingReason: "rgb+thermal",
+    timestamp: Date.now() / 1000,
+    streamName: "visual",
+  },
+  {
+    incidentId: "mock-fusion-alert-002",
+    decision: "drone",
+    fusedConfidence: 0.91,
+    confidenceBand: "high",
+    gatingReason: "thermal confirmation",
+    timestamp: Date.now() / 1000 + 12,
+    streamName: "thermal",
+  },
+];
+
+function buildMockAlertEvent(index: number): RealtimeAlertEvent {
+  const seed = MOCK_ALERT_EVENTS[index % MOCK_ALERT_EVENTS.length];
+
+  return {
+    ...seed,
+    incidentId: `${seed.incidentId}-${index + 1}`,
+    timestamp: Date.now() / 1000,
+  };
+}
+
+const INITIAL_ALERT_EVENT = buildMockAlertEvent(0);
+
+function AlertPreviewControls({
+  onTriggerAlert,
+}: {
+  onTriggerAlert: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onTriggerAlert}
+      className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+    >
+      Trigger Mock Alert
+    </button>
+  );
+}
 
 function ConfidencePanel() {
   return (
@@ -197,22 +239,36 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
-  const [isAlertVisible, setIsAlertVisible] = useState(true);
+  const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(
+    INITIAL_ALERT_EVENT,
+  );
+  const [mockAlertIndex, setMockAlertIndex] = useState(1);
 
   const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
-  const visibleAlert = isAlertVisible ? MOCK_FUSION_ALERT : null;
+  const visibleAlert = activeAlertEvent
+    ? mapRealtimeAlertToBannerData(activeAlertEvent)
+    : null;
 
   return (
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
           {visibleAlert ? (
-            <AlertBanner alert={visibleAlert} onDismiss={() => setIsAlertVisible(false)} />
+            <AlertBanner alert={visibleAlert} onDismiss={() => setActiveAlertEvent(null)} />
           ) : null}
 
           {errorMessage ? (
             <StreamsMetaErrorBanner errorMessage={errorMessage} onRetry={() => void refresh()} />
           ) : null}
+
+          <div className="flex justify-end">
+            <AlertPreviewControls
+              onTriggerAlert={() => {
+                setActiveAlertEvent(buildMockAlertEvent(mockAlertIndex));
+                setMockAlertIndex((current) => current + 1);
+              }}
+            />
+          </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
             <VideoPanel
