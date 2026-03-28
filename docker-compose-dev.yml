@@ -30,7 +30,7 @@ services:
       - "8554:8554" # RTSP
       - "8888:8888" # HLS
     volumes:
-      - ./mediamtx.yml:/mediamtx.yml
+      - ./simulator/mediamtx.yml:/mediamtx.yml
       - hls-data:/hls
     networks:
       - drone-network
@@ -51,28 +51,29 @@ services:
     command: /data
     restart: always
 
-  # GStreamer RTSP Simulator (loops video)
-  drone-visual-streaming:
+  # Simulator inference publisher (annotates RGB + thermal and publishes to MediaMTX)
+  stream-simulator:
     build:
-      context: ./simulator
-      dockerfile: Dockerfile
-    container_name: gst-visual-simulator
+      context: .
+      dockerfile: simulator/Dockerfile
+    container_name: stream-simulator
     environment:
-      - STREAM_NAME=visual
-      - VIDEO_FILE=drone_visual.mp4
-    networks:
-      - drone-network
-    depends_on:
-      - mediamtx
-    restart: always
-  drone-thermal-streaming:
-    build:
-      context: ./simulator
-      dockerfile: Dockerfile
-    container_name: gst-thermal-simulator
-    environment:
-      - STREAM_NAME=thermal
-      - VIDEO_FILE=drone_thermal.mp4
+      - SIM_STREAM_MODE=rtsp
+      - SIM_STREAM_HOST=mediamtx
+      - SIM_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
+      - SIM_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
+      - PLAYBACK_FPS=20
+      - SIM_STREAM_FPS=12
+      - SIM_VISUAL_OUT_WIDTH=640
+      - SIM_VISUAL_OUT_HEIGHT=360
+      - SIM_THERMAL_OUT_WIDTH=160
+      - SIM_THERMAL_OUT_HEIGHT=120
+      - SIM_X264_CRF=30
+      - SIM_X264_MAXRATE=900
+      - SIM_X264_BUFSIZE=900
+      - SIM_X264_KEYINT=12
+      - LOOP_VIDEO=true
+      - OPENCV_VIDEOIO_PRIORITY_FFMPEG=1000
     networks:
       - drone-network
     depends_on:
@@ -99,9 +100,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mediamtx:
+        condition: service_started
+      stream-simulator:
+        condition: service_started
     restart: always
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
     container_name: frontend
     ports:
       - "3000:3000"

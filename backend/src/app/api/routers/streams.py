@@ -97,15 +97,22 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
                     status_code=status.HTTP_404_NOT_FOUND, detail="Stream file not found"
                 )
 
-            content_type = (
-                "application/vnd.apple.mpegurl" if file_path.endswith(".m3u8") else "video/mp2t"
-            )
+            normalized = file_path.lower()
+            if normalized.endswith(".m3u8"):
+                content_type = "application/vnd.apple.mpegurl"
+            elif normalized.endswith(".ts"):
+                content_type = "video/mp2t"
+            elif normalized.endswith(".mp4") or normalized.endswith(".m4s"):
+                content_type = "video/mp4"
+            else:
+                content_type = "application/octet-stream"
 
             return StreamingResponse(
                 response.iter_bytes(),
                 media_type=content_type,
                 headers={
                     "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
                     "Access-Control-Allow-Origin": "*",
                 },
             )
