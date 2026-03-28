@@ -1,0 +1,13 @@
+rtspAddress: :8554
+hlsAddress: :8888
+hlsDirectory: /hls
+hlsAlwaysRemux: yes
+hlsVariant: mpegts
+hlsSegmentDuration: 2s
+hlsSegmentCount: 8
+
+paths:
+  visual:
+    source: publisher
+  thermal:
+    source: publisher
