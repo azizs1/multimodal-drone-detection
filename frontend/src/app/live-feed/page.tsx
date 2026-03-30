@@ -9,34 +9,24 @@ import {
 } from "@/components/live-feed/live-feed-state.mjs";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
+import type {
+  DashboardIncidentRow,
+  DashboardSystemStatus,
+  DashboardSystemStatusItem,
+} from "@/lib/dashboard-detection";
 
-type IncidentRow = {
-  id: string;
-  time: string;
-  fusedConfidence: number;
-  distanceFt: number;
-  status: "Confirmed";
-};
-
-const INCIDENT_ROWS: IncidentRow[] = [
-  { id: "#001", time: "14:32:07", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
-  { id: "#002", time: "14:33:16", fusedConfidence: 92, distanceFt: 15, status: "Confirmed" },
-  { id: "#003", time: "14:35:44", fusedConfidence: 93, distanceFt: 14, status: "Confirmed" },
-  { id: "#004", time: "14:37:09", fusedConfidence: 95, distanceFt: 13, status: "Confirmed" },
-  { id: "#005", time: "14:40:51", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
+const INCIDENT_ROWS: DashboardIncidentRow[] = [
+  { id: "#001", occurredAt: "14:32:07", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
+  { id: "#002", occurredAt: "14:33:16", fusedConfidence: 92, distanceFt: 15, status: "Confirmed" },
+  { id: "#003", occurredAt: "14:35:44", fusedConfidence: 93, distanceFt: 14, status: "Confirmed" },
+  { id: "#004", occurredAt: "14:37:09", fusedConfidence: 95, distanceFt: 13, status: "Confirmed" },
+  { id: "#005", occurredAt: "14:40:51", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
 ];
 
-type ServiceStatus = "Connected" | "Unstable" | "Disconnected";
-
-type ServiceItem = {
-  name: string;
-  status: ServiceStatus;
-};
-
-const BASE_SYSTEM_STATUS: ServiceItem[] = [
-  { name: "Jetson Nano", status: "Unstable" },
-  { name: "Backend", status: "Connected" },
-  { name: "WebSocket", status: "Disconnected" },
+const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
+  { name: "Jetson Nano", status: "Unstable", source: "mock" },
+  { name: "Backend", status: "Connected", source: "mock" },
+  { name: "WebSocket", status: "Disconnected", source: "mock" },
 ];
 
 function ConfidencePanel() {
@@ -122,9 +112,9 @@ function RecentIncidentsTable() {
           </thead>
           <tbody>
             {INCIDENT_ROWS.map((row) => (
-              <tr key={row.id + row.time} className="border-b border-slate-200/80 dark:border-slate-800">
+              <tr key={row.id + row.occurredAt} className="border-b border-slate-200/80 dark:border-slate-800">
                 <td className="px-3 py-3">{row.id}</td>
-                <td className="px-3 py-3">{row.time}</td>
+                <td className="px-3 py-3">{row.occurredAt}</td>
                 <td className="px-3 py-3">{row.fusedConfidence}%</td>
                 <td className="px-3 py-3">~{row.distanceFt}ft</td>
                 <td className="px-3 py-3">
@@ -149,14 +139,14 @@ function RecentIncidentsTable() {
   );
 }
 
-function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
-  const statusClasses: Record<ServiceStatus, string> = {
+function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[] }) {
+  const statusClasses: Record<DashboardSystemStatus, string> = {
     Connected: "bg-emerald-500",
     Unstable: "bg-amber-400",
     Disconnected: "bg-rose-500",
   };
 
-  const statusTextClasses: Record<ServiceStatus, string> = {
+  const statusTextClasses: Record<DashboardSystemStatus, string> = {
     Connected: "text-emerald-700",
     Unstable: "text-amber-700",
     Disconnected: "text-rose-700",
@@ -185,7 +175,14 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
 
-  const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
+  const services: DashboardSystemStatusItem[] = buildServiceItems(
+    visualStream,
+    thermalStream,
+    BASE_SYSTEM_STATUS,
+  ).map((service) => ({
+    ...service,
+    source: "live",
+  }));
 
   return (
     <DashboardShell>
