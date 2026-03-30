@@ -2,9 +2,9 @@
 
 import { format } from "date-fns";
 import {
+  INCIDENT_STATUS_BADGE_CLASSES,
   type IncidentDetailPanelData,
-  type IncidentPanelStatus,
-} from "@/lib/incidents";
+} from "@/lib/incidents.mjs";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -18,15 +18,6 @@ type IncidentDetailPanelProps = {
   incident: IncidentDetailPanelData | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-};
-
-const STATUS_BADGE_CLASSES: Record<IncidentPanelStatus, string> = {
-  Confirmed:
-    "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  Pending:
-    "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  "False Positive":
-    "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
 function formatIncidentTimestamp(value: string): string {
@@ -72,7 +63,7 @@ export function IncidentDetailPanel({
                   Incident {incident?.id ?? "--"}
                 </DialogTitle>
                 {incident ? (
-                  <Badge className={`px-3 py-1 text-sm font-semibold ${STATUS_BADGE_CLASSES[incident.status]}`}>
+                  <Badge className={`px-3 py-1 text-sm font-semibold ${INCIDENT_STATUS_BADGE_CLASSES[incident.status]}`}>
                     {incident.status}
                   </Badge>
                 ) : null}

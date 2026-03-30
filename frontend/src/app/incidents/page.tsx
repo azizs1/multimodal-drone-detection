@@ -5,10 +5,11 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
+  INCIDENT_STATUS_BADGE_CLASSES,
   type IncidentDetailPanelData,
   type IncidentLogRow,
   mapIncidentRowToDetail,
-} from "@/lib/incidents";
+} from "@/lib/incidents.mjs";
 import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,13 +59,6 @@ function generateMockIncidents(count: number): IncidentLogRow[] {
 
 const INCIDENT_LOG_ROWS: IncidentLogRow[] = generateMockIncidents(48);
 
-const STATUS_BADGE_CLASSES: Record<IncidentLogRow["status"], string> = {
-  Confirmed:
-    "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  Pending: "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  "False Positive": "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-};
-
 export default function IncidentsPage() {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -101,6 +95,10 @@ export default function IncidentsPage() {
     { length: Math.min(3, totalPages) },
     (_, index) => pageWindowStart + index,
   );
+  const openIncidentDetail = (row: IncidentLogRow) => {
+    setSelectedIncident(mapIncidentRowToDetail(row));
+    setIsDetailOpen(true);
+  };
 
   return (
     <DashboardShell>
@@ -246,9 +244,14 @@ export default function IncidentsPage() {
                       ? "bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-800"
                       : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60"
                   }`}
-                  onClick={() => {
-                    setSelectedIncident(mapIncidentRowToDetail(row));
-                    setIsDetailOpen(true);
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => openIncidentDetail(row)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openIncidentDetail(row);
+                    }
                   }}
                 >
                   <TableCell className="px-2 py-3">{row.id}</TableCell>
@@ -259,7 +262,7 @@ export default function IncidentsPage() {
                   <TableCell className="px-2 py-3">{row.distanceFt}ft</TableCell>
                   <TableCell className="px-2 py-3">{row.model}</TableCell>
                   <TableCell className="px-2 py-3">
-                    <Badge className={`px-3 py-1 text-sm font-semibold ${STATUS_BADGE_CLASSES[row.status]}`}>
+                    <Badge className={`px-3 py-1 text-sm font-semibold ${INCIDENT_STATUS_BADGE_CLASSES[row.status]}`}>
                       {row.status}
                     </Badge>
                   </TableCell>

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mapIncidentRowToDetail } from "./incidents.ts";
+import { mapIncidentRowToDetail } from "./incidents.mjs";
 
 test("mapIncidentRowToDetail maps confirmed incidents to a drone decision", () => {
   const detail = mapIncidentRowToDetail({
