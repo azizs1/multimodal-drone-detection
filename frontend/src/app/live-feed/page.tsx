@@ -15,14 +15,7 @@ import type {
   DashboardSystemStatus,
   DashboardSystemStatusItem,
 } from "@/lib/dashboard-detection";
-
-const INCIDENT_ROWS: DashboardIncidentRow[] = [
-  { id: "#001", occurredAt: "14:32:07", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
-  { id: "#002", occurredAt: "14:33:16", fusedConfidence: 92, distanceFt: 15, status: "Confirmed" },
-  { id: "#003", occurredAt: "14:35:44", fusedConfidence: 93, distanceFt: 14, status: "Confirmed" },
-  { id: "#004", occurredAt: "14:37:09", fusedConfidence: 95, distanceFt: 13, status: "Confirmed" },
-  { id: "#005", occurredAt: "14:40:51", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
-];
+import { MOCK_DASHBOARD_INCIDENT_ROWS } from "@/lib/dashboard-detection";
 
 const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
   { name: "Jetson Nano", status: "Unstable", source: "mock" },
@@ -111,7 +104,11 @@ function StreamsMetaErrorBanner({
   );
 }
 
-function RecentIncidentsTable() {
+function RecentIncidentsTable({
+  incidents,
+}: {
+  incidents: DashboardIncidentRow[];
+}) {
   return (
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -131,7 +128,7 @@ function RecentIncidentsTable() {
             </tr>
           </thead>
           <tbody>
-            {INCIDENT_ROWS.map((row) => (
+            {incidents.map((row) => (
               <tr key={row.id + row.occurredAt} className="border-b border-slate-200/80 dark:border-slate-800">
                 <td className="px-3 py-3">{row.id}</td>
                 <td className="px-3 py-3">{row.occurredAt}</td>
@@ -243,7 +240,7 @@ export default function LiveFeedPage() {
             </VideoPanel>
           </div>
 
-          <RecentIncidentsTable />
+          <RecentIncidentsTable incidents={MOCK_DASHBOARD_INCIDENT_ROWS} />
         </div>
 
         <div className="space-y-4">
