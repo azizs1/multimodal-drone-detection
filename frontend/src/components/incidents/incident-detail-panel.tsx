@@ -78,7 +78,7 @@ export function IncidentDetailPanel({
 }: IncidentDetailPanelProps) {
   return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="right-0 left-auto h-screen max-w-[720px] translate-x-0 translate-y-0 rounded-none border-y-0 border-r-0 border-l border-slate-200 bg-slate-50 p-0 sm:max-w-[720px] dark:border-slate-800 dark:bg-slate-950">
+      <DialogContent className="top-0 right-0 left-auto h-screen max-w-[720px] translate-x-0 translate-y-0 rounded-none border-y-0 border-r-0 border-l border-slate-200 bg-slate-50 p-0 duration-300 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[720px] dark:border-slate-800 dark:bg-slate-950">
         <div className="flex h-full flex-col overflow-hidden">
           <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
             <DialogHeader className="space-y-3 text-left">
@@ -140,7 +140,7 @@ export function IncidentDetailPanel({
                   Per-Modality Scores
                 </p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border border-cyan-100 bg-cyan-50/60 p-4 dark:border-cyan-900/40 dark:bg-slate-950">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       RGB
                     </p>
@@ -148,7 +148,7 @@ export function IncidentDetailPanel({
                       {incident ? `${incident.visualScore}%` : "--"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-slate-950">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Thermal
                     </p>
