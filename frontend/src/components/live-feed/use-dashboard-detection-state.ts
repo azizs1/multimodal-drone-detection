@@ -35,6 +35,14 @@ export function useDashboardDetectionState({
   visualStream?: { status: "active" | "inactive" | "error" };
   thermalStream?: { status: "active" | "inactive" | "error" };
 }): UseDashboardDetectionStateResult {
+  // TODO: Replace the mock dashboard summary and incident list with fused/detection
+  // events from the finalized backend websocket contract.
+  //
+  // Intended follow-up:
+  // 1. Normalize incoming realtime payloads into dashboard view models.
+  // 2. Derive summary metrics from the most recent fused event.
+  // 3. Append/reconcile recent incidents from realtime incident events.
+  // 4. Promote WebSocket and backend service statuses from placeholder to live.
   const services = useMemo(() => {
     const liveServices: DashboardSystemStatusItem[] = buildServiceItems(
       visualStream,
