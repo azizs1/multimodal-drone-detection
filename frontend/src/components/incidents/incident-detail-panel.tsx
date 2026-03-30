@@ -15,13 +15,18 @@ export type IncidentPanelStatus = "Confirmed" | "Pending" | "False Positive";
 export type IncidentDetailPanelData = {
   id: string;
   timestamp: string;
-  confidence: number;
-  distanceFt: number;
-  model: string;
+  fusedConfidence: number;
+  confidenceBand: "Low" | "Medium" | "High";
+  decision: "Drone" | "No Drone" | "Review";
   status: IncidentPanelStatus;
-  source: "Fusion" | "Visual" | "Thermal";
-  summary: string;
-  imageLabel?: string;
+  gatingReason: string;
+  latencyMs: number;
+  visualScore: number;
+  thermalScore: number;
+  rgbMediaLabel?: string;
+  thermalMediaLabel?: string;
+  thresholdLabel: string;
+  objectsLabel: string;
 };
 
 type IncidentDetailPanelProps = {
@@ -72,10 +77,10 @@ export function IncidentDetailPanel({
   onOpenChange,
 }: IncidentDetailPanelProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl border-slate-200 bg-slate-50 p-0 dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-0 md:grid-cols-[1.15fr_0.85fr]">
-          <div className="border-b border-slate-200 p-6 dark:border-slate-800 md:border-r md:border-b-0">
+      <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="right-0 left-auto h-screen max-w-[720px] translate-x-0 translate-y-0 rounded-none border-y-0 border-r-0 border-l border-slate-200 bg-slate-50 p-0 sm:max-w-[720px] dark:border-slate-800 dark:bg-slate-950">
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
             <DialogHeader className="space-y-3 text-left">
               <div className="flex flex-wrap items-center gap-3">
                 <DialogTitle className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
@@ -88,52 +93,128 @@ export function IncidentDetailPanel({
                 ) : null}
               </div>
               <DialogDescription className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {incident?.summary ??
-                  "Select an incident from the table to review its detection summary and supporting details."}
+                Review the fused detection summary, modality evidence, and media references for
+                the selected incident.
               </DialogDescription>
             </DialogHeader>
-
-            <div className="mt-6 rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-6 dark:border-slate-700 dark:bg-slate-800/60">
-              <div className="flex min-h-56 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-center dark:border-slate-700 dark:bg-slate-900">
-                <div className="space-y-2 px-6">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Media Preview
-                  </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    {incident?.imageLabel ?? "Snapshot or evidence preview will appear here."}
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
 
-          <div className="space-y-6 p-6">
-            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
-              <DetailBlock
-                label="Timestamp"
-                value={incident ? formatIncidentTimestamp(incident.timestamp) : "--"}
-              />
-              <DetailBlock
-                label="Confidence"
-                value={incident ? `${incident.confidence}%` : "--"}
-              />
-              <DetailBlock
-                label="Distance"
-                value={incident ? `${incident.distanceFt}ft` : "--"}
-              />
-              <DetailBlock label="Source" value={incident?.source ?? "--"} />
-              <DetailBlock label="Model" value={incident?.model ?? "--"} />
-              <DetailBlock label="Status" value={incident?.status ?? "--"} />
-            </div>
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="space-y-6">
+              <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Decision Summary
+                    </p>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                      {incident ? `${incident.fusedConfidence}%` : "--"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                      Fused confidence
+                    </p>
+                  </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-800 dark:bg-slate-800/70">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Analyst Notes
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Additional evidence, operator annotations, and resolution notes can be surfaced in
-                this section when the incident data contract is ready.
-              </p>
+                  <div className="min-w-44 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+                    <DetailBlock label="Decision" value={incident?.decision ?? "--"} />
+                    <DetailBlock label="Band" value={incident?.confidenceBand ?? "--"} />
+                    <DetailBlock
+                      label="Latency"
+                      value={incident ? `${incident.latencyMs} ms` : "--"}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Gating Reason
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                    {incident?.gatingReason ?? "Fusion gating and threshold reasoning will appear here."}
+                  </p>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Per-Modality Scores
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-lg border border-cyan-100 bg-cyan-50/60 p-4 dark:border-cyan-900/40 dark:bg-slate-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      RGB
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">
+                      {incident ? `${incident.visualScore}%` : "--"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-4 dark:border-orange-900/40 dark:bg-slate-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Thermal
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">
+                      {incident ? `${incident.thermalScore}%` : "--"}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Media References
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-4 dark:border-slate-700 dark:bg-slate-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      RGB Media
+                    </p>
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                      {incident?.rgbMediaLabel ?? "RGB media reference will appear here."}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-4 dark:border-slate-700 dark:bg-slate-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Thermal Media
+                    </p>
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                      {incident?.thermalMediaLabel ?? "Thermal media reference will appear here."}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Thresholds
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    {incident?.thresholdLabel ?? "Configured threshold values will be summarized here."}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Objects / Overlay
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    {incident?.objectsLabel ?? "Detected objects and overlay-ready summaries will appear here."}
+                  </p>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Event Metadata
+                </p>
+                <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                  <DetailBlock
+                    label="Timestamp"
+                    value={incident ? formatIncidentTimestamp(incident.timestamp) : "--"}
+                  />
+                  <DetailBlock label="Status" value={incident?.status ?? "--"} />
+                </div>
+              </section>
             </div>
           </div>
         </div>
