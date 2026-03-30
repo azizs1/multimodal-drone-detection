@@ -10,6 +10,7 @@ import {
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
 import type {
+  DashboardDetectionSummary,
   DashboardIncidentRow,
   DashboardSystemStatus,
   DashboardSystemStatusItem,
@@ -29,7 +30,18 @@ const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
   { name: "WebSocket", status: "Disconnected", source: "mock" },
 ];
 
-function ConfidencePanel() {
+const MOCK_DASHBOARD_SUMMARY: DashboardDetectionSummary = {
+  fusedConfidence: 94,
+  distanceFt: 14,
+  visualConfidence: 92,
+  thermalConfidence: 89,
+};
+
+function ConfidencePanel({
+  summary,
+}: {
+  summary: DashboardDetectionSummary;
+}) {
   return (
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
       <div>
@@ -37,12 +49,16 @@ function ConfidencePanel() {
         <div className="mt-2 grid gap-3">
           <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center dark:border-cyan-700/50 dark:bg-slate-800">
             <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Fused Confidence</p>
-            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">94%</p>
+            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">
+              {summary.fusedConfidence}%
+            </p>
           </div>
 
           <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center dark:border-cyan-700/50 dark:bg-slate-800">
             <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Distance</p>
-            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">~14ft</p>
+            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">
+              ~{summary.distanceFt}ft
+            </p>
           </div>
         </div>
       </div>
@@ -55,11 +71,15 @@ function ConfidencePanel() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Visual Confidence</p>
-              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">92%</p>
+              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">
+                {summary.visualConfidence}%
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Thermal Confidence</p>
-              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">89%</p>
+              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">
+                {summary.thermalConfidence}%
+              </p>
             </div>
           </div>
         </div>
@@ -227,7 +247,7 @@ export default function LiveFeedPage() {
         </div>
 
         <div className="space-y-4">
-          <ConfidencePanel />
+          <ConfidencePanel summary={MOCK_DASHBOARD_SUMMARY} />
           <SystemStatusPanel services={services} />
         </div>
       </div>
