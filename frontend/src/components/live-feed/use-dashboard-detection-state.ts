@@ -7,7 +7,7 @@ import {
   type DashboardDetectionSummary,
   type DashboardIncidentRow,
   type DashboardSystemStatusItem,
-} from "@/lib/dashboard-detection";
+} from "@/lib/dashboard-detection.mjs";
 
 const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
   { name: "Jetson Nano", status: "Unstable", source: "mock" },

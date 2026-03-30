@@ -14,7 +14,7 @@ import {
   type DashboardIncidentRow,
   type DashboardSystemStatus,
   type DashboardSystemStatusItem,
-} from "@/lib/dashboard-detection";
+} from "@/lib/dashboard-detection.mjs";
 
 function ConfidencePanel({
   summary,
