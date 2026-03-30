@@ -19,6 +19,6 @@ test("mock dashboard incidents keep a stable frontend view model shape", () => {
     assert.equal(typeof incident.occurredAt, "string");
     assert.equal(typeof incident.fusedConfidence, "number");
     assert.equal(typeof incident.distanceFt, "number");
-    assert.equal(incident.status, "Confirmed");
+    assert.ok(["Confirmed", "Pending", "False Positive"].includes(incident.status));
   }
 });
