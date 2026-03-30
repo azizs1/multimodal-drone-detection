@@ -1,6 +1,23 @@
-import { type IncidentDetailPanelData } from "@/components/incidents/incident-detail-panel";
-
 export type IncidentLogStatus = "Confirmed" | "Pending" | "False Positive";
+
+export type IncidentPanelStatus = IncidentLogStatus;
+
+export type IncidentDetailPanelData = {
+  id: string;
+  timestamp: string;
+  fusedConfidence: number;
+  confidenceBand: "Low" | "Medium" | "High";
+  decision: "Drone" | "No Drone" | "Review";
+  status: IncidentPanelStatus;
+  gatingReason: string;
+  latencyMs: number;
+  visualScore: number;
+  thermalScore: number;
+  rgbMediaLabel?: string;
+  thermalMediaLabel?: string;
+  thresholdLabel: string;
+  objectsLabel: string;
+};
 
 export type IncidentLogRow = {
   id: string;
@@ -12,6 +29,9 @@ export type IncidentLogRow = {
 };
 
 export function mapIncidentRowToDetail(row: IncidentLogRow): IncidentDetailPanelData {
+  // TODO: Replace this temporary adapter with the backend incident/fused payload
+  // once the incident detail contract is finalized. The panel shape is already
+  // aligned toward fused decision data, so this mapper is the intended seam.
   return {
     id: row.id,
     timestamp: row.timestamp,

@@ -5,13 +5,11 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
-  IncidentDetailPanel,
   type IncidentDetailPanelData,
-} from "@/components/incidents/incident-detail-panel";
-import {
   type IncidentLogRow,
   mapIncidentRowToDetail,
 } from "@/lib/incidents";
+import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -243,7 +241,11 @@ export default function IncidentsPage() {
               {pagedRows.map((row) => (
                 <TableRow
                   key={`${row.id}-${row.timestamp}`}
-                  className="cursor-pointer border-b border-slate-200 transition-colors hover:bg-slate-100/80 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                  className={`cursor-pointer border-b border-slate-200 transition-colors dark:border-slate-800 ${
+                    selectedIncident?.id === row.id
+                      ? "bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                      : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60"
+                  }`}
                   onClick={() => {
                     setSelectedIncident(mapIncidentRowToDetail(row));
                     setIsDetailOpen(true);

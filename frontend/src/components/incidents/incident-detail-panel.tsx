@@ -1,6 +1,10 @@
 "use client";
 
 import { format } from "date-fns";
+import {
+  type IncidentDetailPanelData,
+  type IncidentPanelStatus,
+} from "@/lib/incidents";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -9,25 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-export type IncidentPanelStatus = "Confirmed" | "Pending" | "False Positive";
-
-export type IncidentDetailPanelData = {
-  id: string;
-  timestamp: string;
-  fusedConfidence: number;
-  confidenceBand: "Low" | "Medium" | "High";
-  decision: "Drone" | "No Drone" | "Review";
-  status: IncidentPanelStatus;
-  gatingReason: string;
-  latencyMs: number;
-  visualScore: number;
-  thermalScore: number;
-  rgbMediaLabel?: string;
-  thermalMediaLabel?: string;
-  thresholdLabel: string;
-  objectsLabel: string;
-};
 
 type IncidentDetailPanelProps = {
   incident: IncidentDetailPanelData | null;
