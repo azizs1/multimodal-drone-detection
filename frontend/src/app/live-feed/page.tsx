@@ -203,14 +203,12 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
-  const { activeAlertEvent, connectionState, dismissAlert, triggerMockAlert } =
-    useRealtimeAlerts();
+  const { activeAlertEvent, dismissAlert, triggerMockAlert } = useRealtimeAlerts();
 
   const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
   const visibleAlert = activeAlertEvent
     ? mapRealtimeAlertToBannerData(activeAlertEvent)
     : null;
-  void connectionState;
 
   return (
     <DashboardShell>

@@ -103,7 +103,7 @@ export function AlertBanner({ alert, onDismiss, action, className }: AlertBanner
 
         <div className="flex shrink-0 items-start gap-2 md:pl-4">
           {action}
-          {alert.dismissible ? (
+          {alert.dismissible && onDismiss ? (
             <button
               type="button"
               aria-label="Dismiss alert"
