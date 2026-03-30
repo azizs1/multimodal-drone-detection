@@ -3,32 +3,18 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
 import {
-  buildServiceItems,
   buildStreamPlaylistUrl,
   buildVideoSubLabel,
 } from "@/components/live-feed/live-feed-state.mjs";
+import { useDashboardDetectionState } from "@/components/live-feed/use-dashboard-detection-state";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
 import {
-  MOCK_DASHBOARD_INCIDENT_ROWS,
   type DashboardDetectionSummary,
   type DashboardIncidentRow,
   type DashboardSystemStatus,
   type DashboardSystemStatusItem,
 } from "@/lib/dashboard-detection";
-
-const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
-  { name: "Jetson Nano", status: "Unstable", source: "mock" },
-  { name: "Backend", status: "Connected", source: "mock" },
-  { name: "WebSocket", status: "Disconnected", source: "mock" },
-];
-
-const MOCK_DASHBOARD_SUMMARY: DashboardDetectionSummary = {
-  fusedConfidence: 94,
-  distanceFt: 14,
-  visualConfidence: 92,
-  thermalConfidence: 89,
-};
 
 function ConfidencePanel({
   summary,
@@ -220,16 +206,10 @@ function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[]
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
-
-  const liveServices: DashboardSystemStatusItem[] = buildServiceItems(
+  const { summary, recentIncidents, services } = useDashboardDetectionState({
     visualStream,
     thermalStream,
-    [],
-  ).map((service) => ({
-    ...service,
-    source: "live",
-  }));
-  const services: DashboardSystemStatusItem[] = [...liveServices, ...BASE_SYSTEM_STATUS];
+  });
 
   return (
     <DashboardShell>
@@ -270,11 +250,11 @@ export default function LiveFeedPage() {
             </VideoPanel>
           </div>
 
-          <RecentIncidentsTable incidents={MOCK_DASHBOARD_INCIDENT_ROWS} />
+          <RecentIncidentsTable incidents={recentIncidents} />
         </div>
 
         <div className="space-y-4">
-          <ConfidencePanel summary={MOCK_DASHBOARD_SUMMARY} />
+          <ConfidencePanel summary={summary} />
           <SystemStatusPanel services={services} />
         </div>
       </div>
