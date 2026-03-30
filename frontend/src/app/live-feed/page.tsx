@@ -9,13 +9,13 @@ import {
 } from "@/components/live-feed/live-feed-state.mjs";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
-import type {
-  DashboardDetectionSummary,
-  DashboardIncidentRow,
-  DashboardSystemStatus,
-  DashboardSystemStatusItem,
+import {
+  MOCK_DASHBOARD_INCIDENT_ROWS,
+  type DashboardDetectionSummary,
+  type DashboardIncidentRow,
+  type DashboardSystemStatus,
+  type DashboardSystemStatusItem,
 } from "@/lib/dashboard-detection";
-import { MOCK_DASHBOARD_INCIDENT_ROWS } from "@/lib/dashboard-detection";
 
 const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
   { name: "Jetson Nano", status: "Unstable", source: "mock" },
@@ -169,22 +169,51 @@ function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[]
     Disconnected: "text-rose-700",
   };
 
+  const liveServices = services.filter((service) => service.source === "live");
+  const placeholderServices = services.filter((service) => service.source === "mock");
+
   return (
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">System Status</h2>
-      <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
-        {services.map((service) => (
-          <li key={service.name} className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
-              <span>{service.name}</span>
-            </div>
-            <span className={`text-sm font-semibold ${statusTextClasses[service.status]}`}>
-              {service.status}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-4 space-y-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Live Signals
+          </p>
+          <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+            {liveServices.map((service) => (
+              <li key={service.name} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
+                  <span>{service.name}</span>
+                </div>
+                <span className={`text-sm font-semibold ${statusTextClasses[service.status]}`}>
+                  {service.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Placeholder Services
+          </p>
+          <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+            {placeholderServices.map((service) => (
+              <li key={service.name} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
+                  <span>{service.name}</span>
+                </div>
+                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Mock
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </section>
   );
 }
@@ -192,14 +221,15 @@ function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[]
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
 
-  const services: DashboardSystemStatusItem[] = buildServiceItems(
+  const liveServices: DashboardSystemStatusItem[] = buildServiceItems(
     visualStream,
     thermalStream,
-    BASE_SYSTEM_STATUS,
+    [],
   ).map((service) => ({
     ...service,
     source: "live",
   }));
+  const services: DashboardSystemStatusItem[] = [...liveServices, ...BASE_SYSTEM_STATUS];
 
   return (
     <DashboardShell>
