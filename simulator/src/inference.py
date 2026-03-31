@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""
-Inference template for drone detection.
+"""Inference and publishing loop for the stream-simulator pipeline.
 
-This is a template showing how to use the shared buffer from video ingestion.
-You can run this as-is (it will poll frames), or modify it with your own ML models.
+This module consumes synchronized RGB/thermal frames from the shared buffer,
+runs YOLO models, annotates results, and publishes frames to RTSP outputs.
+
+Important behavior:
+- only processes frames when buffer timestamp changes
+- records per-stage timing diagnostics (inference, annotation, publish)
 """
 
 import logging
@@ -60,7 +63,10 @@ def _extract_detections(results, frame_shape):
 
 
 def run_inference():
-    """Main inference loop."""
+    """Run the continuous inference loop until interrupted.
+
+    Timing logs are emitted to help identify pipeline bottlenecks.
+    """
     print("\n" + "=" * 60)
     print("SIMULATOR INFERENCE")
     print("=" * 60)

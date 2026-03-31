@@ -1,4 +1,8 @@
-"""Async frame publishers for forwarding simulator frames to stream endpoints."""
+"""Asynchronous RTSP frame publishers used by the stream-simulator.
+
+Frames are encoded with libx264 via PyAV and pushed to MediaMTX. Each publisher
+uses a single-item queue to prioritize the newest frame over stale frames.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class AvStreamPublisher:
-    """Publish BGR frames to RTSP using PyAV (no ffmpeg subprocess)."""
+    """Publish BGR frames to an RTSP endpoint using PyAV.
+
+    The worker thread handles resize, encode, and mux operations. Diagnostic
+    timing logs are emitted periodically to expose encode-side bottlenecks.
+    """
 
     def __init__(
         self,
@@ -225,7 +233,7 @@ class AvStreamPublisher:
 
 
 def build_publishers(rgb_shape, thermal_shape, fps: int):
-    """Create RGB and thermal publishers from environment settings."""
+    """Create RGB and thermal RTSP publishers from environment settings."""
     host = os.getenv("SIM_STREAM_HOST", "mediamtx")
     stream_fps = max(1, int(os.getenv("SIM_STREAM_FPS", str(fps))))
 

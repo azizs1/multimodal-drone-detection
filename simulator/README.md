@@ -1,235 +1,137 @@
-# Drone Detection Simulator
+# Drone Detection Stream Simulator
 
-Video ingestion system that reads pre-recorded drone videos and provides them through a shared buffer for ML inference testing.
+The `stream-simulator` service ingests paired RGB and thermal videos, runs YOLO inference,
+annotates frames, and publishes RTSP streams to MediaMTX.
 
-## Quick Start
+## Pipeline
 
-### Option 1: Local Development
+```
+videos/*.mp4 -> video_ingestion.py -> shared_buffer.py -> inference.py -> frame_publisher.py -> MediaMTX (RTSP/HLS)
+```
+
+Key behavior:
+- Shared buffer keeps only the latest synchronized frame pair.
+- Inference processes a frame only when a new timestamp arrives (no duplicate re-processing).
+- Publisher uses a single-slot queue, so newer frames replace stale ones under load.
+
+## Run Locally
+
+From repository root:
 
 ```bash
-# Just run video ingestion
-./simulator/start.sh
-
-# Or from repository root
 uv run python3 -m simulator.src.video_ingestion
 ```
 
-### Option 2: Docker
+This starts:
+- ingestion in the foreground
+- inference in a background thread
+- RTSP publishing when first processed frame is available
+
+## Run With Docker Compose
+
+The active service name is `stream-simulator` in `docker-compose-dev.yml`.
 
 ```bash
-cd simulator
-docker-compose -f docker-compose.simulator.yml up
+docker compose -f docker-compose-dev.yml up stream-simulator mediamtx
 ```
 
-## Architecture
+To inspect logs:
 
+```bash
+docker compose -f docker-compose-dev.yml logs -f stream-simulator mediamtx
 ```
-Video Files → Video Ingestion → Shared Buffer → Your Inference Code
+
+## Important Environment Variables
+
+### Ingestion
+
+```bash
+RGB_VIDEO_PATH=videos/drone_visual.mp4
+THERMAL_VIDEO_PATH=videos/drone_thermal.mp4
+PLAYBACK_FPS=20
+LOOP_VIDEO=true
+RGB_WIDTH=1280
+RGB_HEIGHT=720
+THERMAL_WIDTH=160
+THERMAL_HEIGHT=120
 ```
 
-**Simple and Clean:**
-- Video ingestion runs standalone or as a background thread
-- Shared buffer stores latest frame pair (thread-safe)
-- Your inference code polls the buffer
-- No complex orchestration needed
+### Stream Output
 
-## Directory Structure
+```bash
+SIM_STREAM_HOST=mediamtx
+SIM_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
+SIM_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
+SIM_STREAM_FPS=12
+SIM_VISUAL_OUT_WIDTH=640
+SIM_VISUAL_OUT_HEIGHT=360
+SIM_THERMAL_OUT_WIDTH=160
+SIM_THERMAL_OUT_HEIGHT=120
+```
+
+### Encoder (libx264)
+
+```bash
+SIM_RTSP_TRANSPORT=tcp
+SIM_X264_PRESET=ultrafast
+SIM_X264_TUNE=zerolatency
+SIM_X264_CRF=28
+SIM_X264_MAXRATE=2000
+SIM_X264_BUFSIZE=2000
+SIM_X264_KEYINT=12
+```
+
+## Diagnostics and Bottleneck Analysis
+
+The simulator emits timing logs in three stages:
+
+- `video_ingestion.py`
+  - `Slow frame read: ...ms`
+  - `Ingestion lag: frame processing took ...ms`
+  - `Ingestion stats: max_frame_read=..., max_sleep=...`
+
+- `inference.py`
+  - `Slow inference: ...ms`
+  - `Slow frame processing: ...ms (infer=..., annot=..., pub=...)`
+  - periodic summary every 30 processed frames:
+    - `Inference: avg=..., max=...`
+    - `Annotation: avg=...`
+    - `Publishing: avg=...`
+
+- `frame_publisher.py`
+  - periodic summary every 5 seconds:
+    - `stats: published=..., dropped=..., queue_size=..., avg_encode=..., max_encode=...`
+  - warnings:
+    - `slow encode: ...ms`
+    - `writer not available, dropping frame`
+
+Rule of thumb:
+- high inference time + low encode time => model compute bottleneck
+- growing queue or dropped frames => publisher cannot keep up
+- high frame read spikes => video I/O bottleneck
+
+## Files
 
 ```
 simulator/
 ├── src/
-│   ├── __init__.py              # Exports shared buffer
-│   ├── shared_buffer.py         # Thread-safe frame storage
-│   ├── video_ingestion.py       # Main video ingestion
-│   └── run_inference.py         # Template for YOUR code
+│   ├── __init__.py
+│   ├── shared_buffer.py
+│   ├── video_ingestion.py
+│   ├── inference.py
+│   ├── frame_publisher.py
+│   └── frame_annotator.py
+├── models/
+│   ├── visual_model.pt
+│   └── thermal_model.pt
 ├── videos/
-│   ├── drone_visual.mp4         # RGB video
-│   └── drone_thermal.mp4        # Thermal video
-├── Dockerfile.inference         # Python-based inference container
-├── docker-compose.simulator.yml # Docker Compose configuration
-└── start.sh                     # Quick start script
+│   ├── drone_visual.mp4
+│   └── drone_thermal.mp4
+├── mediamtx.yml
+└── Dockerfile
 ```
 
-## Writing Your Inference Code
+## Notes
 
-### Approach 1: Modify the Template
-
-Edit `src/run_inference.py` - it already has the boilerplate:
-
-```python
-# Load your models
-from ultralytics import YOLO
-rgb_model = YOLO("models/visual_model.pt")
-thermal_model = YOLO("models/thermal_model.pt")
-
-# In the main loop (around line 70)
-rgb_results = rgb_model(rgb_frame, verbose=False)[0]
-thermal_results = thermal_model(thermal_frame, verbose=False)[0]
-
-# Process results...
-```
-
-Run with:
-```bash
-uv run python3 simulator/src/run_inference.py
-```
-
-### Approach 2: Write Your Own Script
-
-```python
-#!/usr/bin/env python3
-"""Your custom inference script."""
-
-import threading
-from simulator.src import buffer
-from simulator.src.video_ingestion import start_ingestion
-
-# Start video ingestion in background
-thread = threading.Thread(target=start_ingestion, daemon=True)
-thread.start()
-
-# Load your models
-# ... your model loading code ...
-
-# Main inference loop
-while True:
-    frame_data = buffer.get()
-    if frame_data:
-        rgb = frame_data["rgb"]
-        thermal = frame_data["thermal"]
-        
-        # Run your inference
-        # ... your inference code ...
-```
-
-### Approach 3: Standalone Ingestion
-
-Run video ingestion separately, then run your inference in another terminal:
-
-```bash
-# Terminal 1: Video ingestion
-./simulator/start.sh
-
-# Terminal 2: Your inference
-python your_inference.py
-```
-
-In `your_inference.py`:
-```python
-from simulator.src import buffer
-
-while True:
-    frame_data = buffer.get()
-    if frame_data:
-        # Process frames...
-```
-
-## Environment Variables
-
-```bash
-# Video paths (relative to simulator/)
-export RGB_VIDEO_PATH=videos/drone_visual.mp4
-export THERMAL_VIDEO_PATH=videos/drone_thermal.mp4
-
-# Playback settings
-export PLAYBACK_FPS=30
-export LOOP_VIDEO=true
-
-# Frame dimensions
-export RGB_WIDTH=1280
-export RGB_HEIGHT=720
-export THERMAL_WIDTH=160
-export THERMAL_HEIGHT=120
-```
-
-## Docker Usage
-
-### Build and Run
-
-```bash
-cd simulator
-
-# Build the image
-docker build -f Dockerfile.inference -t simulator-inference ..
-
-# Run video ingestion only
-docker run -it --rm \
-  -v $(pwd)/videos:/app/videos:ro \
-  simulator-inference
-
-# Run with custom videos
-docker run -it --rm \
-  -v /path/to/your/videos:/app/videos:ro \
-  -e RGB_VIDEO_PATH=videos/my_rgb.mp4 \
-  -e THERMAL_VIDEO_PATH=videos/my_thermal.mp4 \
-  simulator-inference
-```
-
-### Docker Compose
-
-The `docker-compose.simulator.yml` file is ready for you to customize:
-
-```yaml
-services:
-  simulator-ingestion:
-    # Video ingestion service (ready to use)
-    
-  simulator-inference:
-    # YOUR inference service (uncomment and customize)
-    # Mount your models, add your command
-```
-
-Start with:
-```bash
-docker-compose -f docker-compose.simulator.yml up
-```
-
-## Frame Format
-
-- **RGB:** 1280x720, BGR format (ready for OpenCV/YOLO)
-- **Thermal:** 160x120, BGR format (upscaled from grayscale)
-- **Buffer:** Latest frame pair only (not a queue)
-- **Timestamp:** Microseconds since epoch
-
-## Testing
-
-Test video ingestion:
-```bash
-# Should show frame updates every second
-timeout 5 ./simulator/start.sh
-```
-
-Expected output:
-```
-Frame     30 | Elapsed:    1.0s | FPS:  30.0 | Buffer updated
-Frame     60 | Elapsed:    2.0s | FPS:  30.0 | Buffer updated
-```
-
-## Dependencies
-
-Required:
-- Python 3.12+
-- opencv-python >= 4.8.0
-- numpy >= 1.24.0
-
-Install:
-```bash
-uv sync
-# or
-pip install opencv-python numpy
-```
-
-## Troubleshooting
-
-**Videos not found:**
-- Check paths are relative to `simulator/` directory
-- Ensure video files exist in `simulator/videos/`
-
-**Import errors:**
-- Use `uv run` or install dependencies first
-- Check you're running from repository root
-
-**No frames in buffer:**
-- Video ingestion must start before your inference code
-- Check ingestion output for errors
-- Verify videos are valid MP4 files
+- In production, GPU acceleration can remove the main inference bottleneck.
+- Backend HLS access logs show frequent `.m3u8` and `.ts` requests by design (live HLS polling).
