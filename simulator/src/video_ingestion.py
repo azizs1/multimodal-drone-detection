@@ -26,11 +26,14 @@ Example usage:
 import os
 import threading
 import time
+import logging
 from pathlib import Path
 
 import cv2
 
 from . import buffer
+
+logger = logging.getLogger(__name__)
 
 # Default video paths - can be overridden by environment variables
 DEFAULT_RGB_VIDEO = "videos/drone_visual.mp4"
@@ -109,6 +112,9 @@ def start_ingestion():
 
     frame_count = 0
     start_time = time.time()
+    last_lag_report = time.time()
+    max_frame_read_time = 0
+    max_sleep_time = 0
 
     print("Starting video ingestion... Press Ctrl+C to stop")
     print()
@@ -117,14 +123,17 @@ def start_ingestion():
         while True:
             loop_start = time.time()
 
-            # Read frames from both videos
+            # Read frames from both videos with timing
+            read_start = time.time()
             rgb_ret, rgb_frame = rgb_cap.read()
             thermal_ret, thermal_frame = thermal_cap.read()
+            read_duration = time.time() - read_start
+            max_frame_read_time = max(max_frame_read_time, read_duration)
 
             # Check if we've reached the end of either video
             if not rgb_ret or not thermal_ret:
                 if LOOP_VIDEO:
-                    print(f"Reached end at frame {frame_count}, looping...")
+                    logger.info(f"Reached end at frame {frame_count}, looping...")
                     rgb_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     thermal_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
@@ -157,12 +166,35 @@ def start_ingestion():
                     f"Buffer updated"
                 )
 
+            # Log slow frame reads
+            if read_duration > 0.005:  # >5ms for frame read
+                logger.warning(f"Slow frame read: {read_duration * 1000:.1f}ms")
+
             # Maintain playback rate
             if frame_delay > 0:
-                elapsed = time.time() - loop_start
-                sleep_time = max(0, frame_delay - elapsed)
+                elapsed_in_loop = time.time() - loop_start
+                sleep_time = max(0, frame_delay - elapsed_in_loop)
+                max_sleep_time = max(max_sleep_time, sleep_time)
                 if sleep_time > 0:
                     time.sleep(sleep_time)
+                elif elapsed_in_loop > frame_delay * 1.5:
+                    # If we're running behind, log it
+                    logger.warning(
+                        f"Ingestion lag: frame processing took {elapsed_in_loop * 1000:.1f}ms "
+                        f"(expected {frame_delay * 1000:.1f}ms)"
+                    )
+
+            # Log lag stats periodically
+            now = time.time()
+            if now - last_lag_report > 10.0:
+                logger.info(
+                    f"Ingestion stats: "
+                    f"max_frame_read={max_frame_read_time * 1000:.1f}ms, "
+                    f"max_sleep={max_sleep_time * 1000:.1f}ms"
+                )
+                max_frame_read_time = 0
+                max_sleep_time = 0
+                last_lag_report = now
 
     except KeyboardInterrupt:
         print()

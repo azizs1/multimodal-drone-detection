@@ -4,25 +4,19 @@ Inference template for drone detection.
 
 This is a template showing how to use the shared buffer from video ingestion.
 You can run this as-is (it will poll frames), or modify it with your own ML models.
-
-Usage:
-    # Approach 1: Run directly (video ingestion starts in background)
-    python -m src.run_inference
-
-    # Approach 2: Modify this file with your models and logic
-    # (Add your model loading and inference code in the TODOs below)
-
-    # Approach 3: Use as reference for your own script
 """
 
 import os
 import time
+import logging
 
 from ultralytics import YOLO
 
 from src import buffer
 from src.frame_annotator import annotate_frame
 from src.frame_publisher import build_publishers
+
+logger = logging.getLogger(__name__)
 
 
 def load_models():
@@ -53,14 +47,12 @@ def _extract_detections(results, frame_shape):
         confidence = float(detection.conf[0]) if detection.conf is not None else 0.0
         label = names.get(class_id, str(class_id)) if isinstance(names, dict) else str(class_id)
 
-        detections.append(
-            {
-                "bbox": (x1, y1, x2, y2),
-                "class_id": class_id,
-                "label": label,
-                "confidence": confidence,
-            }
-        )
+        detections.append({
+            "bbox": (x1, y1, x2, y2),
+            "class_id": class_id,
+            "label": label,
+            "confidence": confidence,
+        })
 
     return detections
 
@@ -79,6 +71,14 @@ def run_inference():
     start_time = time.time()
     rgb_publisher = None
     thermal_publisher = None
+    last_processed_timestamp = None  # Track last processed frame to avoid duplicates
+
+    # Diagnostics
+    last_stats_time = time.time()
+    last_stats_frame_count = 0
+    inference_times = []  # Track inference time per frame
+    annotate_times = []  # Track annotation time per frame
+    publish_times = []  # Track publishing time per frame
 
     print("Waiting for frames from video ingestion...\n")
 
@@ -87,19 +87,32 @@ def run_inference():
             # Get latest frame pair from buffer
             frame_data = buffer.get()
 
-            if frame_data:
+            if frame_data and frame_data.get("timestamp") != last_processed_timestamp:
+                # Only process if timestamp has changed (new frame arrived)
+                frame_process_start = time.time()
+                last_processed_timestamp = frame_data.get("timestamp")
                 frame_count += 1
                 rgb = frame_data["rgb"]
                 thermal = frame_data["thermal"]
 
+                # Time inference
+                infer_start = time.time()
                 rgb_results = rgb_model(rgb, verbose=False)[0]
                 thermal_results = thermal_model(thermal, verbose=False)[0]
+                infer_duration = time.time() - infer_start
+                inference_times.append(infer_duration)
+                if infer_duration > 0.1:  # >100ms is slow
+                    logger.warning(f"Slow inference: {infer_duration * 1000:.1f}ms")
 
                 rgb_detections = _extract_detections(rgb_results, rgb.shape)
                 thermal_detections = _extract_detections(thermal_results, thermal.shape)
 
+                # Time annotation
+                annot_start = time.time()
                 rgb_annotated = annotate_frame(rgb, rgb_detections)
                 thermal_annotated = annotate_frame(thermal, thermal_detections)
+                annot_duration = time.time() - annot_start
+                annotate_times.append(annot_duration)
 
                 if rgb_publisher is None or thermal_publisher is None:
                     from src.video_ingestion import PLAYBACK_FPS
@@ -115,10 +128,21 @@ def run_inference():
                         f"host={os.getenv('SIM_STREAM_HOST', 'mediamtx')})"
                     )
 
+                # Time publishing
+                pub_start = time.time()
                 rgb_publisher.publish(rgb_annotated)
                 thermal_publisher.publish(thermal_annotated)
+                pub_duration = time.time() - pub_start
+                publish_times.append(pub_duration)
 
-                # Print frame info
+                frame_process_duration = time.time() - frame_process_start
+                if frame_process_duration > 0.15:  # >150ms is slow
+                    logger.warning(
+                        f"Slow frame processing: {frame_process_duration * 1000:.1f}ms "
+                        f"(infer={infer_duration * 1000:.1f}ms, annot={annot_duration * 1000:.1f}ms, pub={pub_duration * 1000:.1f}ms)"
+                    )
+
+                # Print frame info and log diagnostics
                 elapsed = time.time() - start_time
                 fps = frame_count / elapsed if elapsed > 0 else 0
 
@@ -139,6 +163,22 @@ def run_inference():
                             f"{thermal_stats['published']} "
                             f"dropped={thermal_stats['dropped']}"
                         )
+
+                    # Log timing diagnostics
+                    if inference_times:
+                        avg_infer = sum(inference_times) / len(inference_times) * 1000
+                        max_infer = max(inference_times) * 1000
+                        logger.info(f"Inference: avg={avg_infer:.1f}ms, max={max_infer:.1f}ms")
+                    if annotate_times:
+                        avg_annot = sum(annotate_times) / len(annotate_times) * 1000
+                        logger.info(f"Annotation: avg={avg_annot:.1f}ms")
+                    if publish_times:
+                        avg_pub = sum(publish_times) / len(publish_times) * 1000
+                        logger.info(f"Publishing: avg={avg_pub:.1f}ms")
+
+                    inference_times.clear()
+                    annotate_times.clear()
+                    publish_times.clear()
 
             time.sleep(0.01)  # Prevent busy waiting
 

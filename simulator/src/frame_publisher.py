@@ -5,10 +5,14 @@ from __future__ import annotations
 import os
 import queue
 import threading
+import time
+import logging
 from contextlib import suppress
 
 import av
 import cv2
+
+logger = logging.getLogger(__name__)
 
 
 class AvStreamPublisher:
@@ -39,6 +43,10 @@ class AvStreamPublisher:
         self.published_frames = 0
         self.dropped_frames = 0
 
+        # Diagnostics
+        self._frame_times = []  # Track encoding time per frame
+        self._last_stats_report = time.time()
+
     def _open_writer(self):
         if self._container is not None and self._stream is not None:
             return
@@ -67,11 +75,11 @@ class AvStreamPublisher:
             self._stream.options = {
                 "preset": os.getenv("SIM_X264_PRESET", "ultrafast"),
                 "tune": os.getenv("SIM_X264_TUNE", "zerolatency"),
-                "crf": os.getenv("SIM_X264_CRF", "23"),
+                "crf": os.getenv("SIM_X264_CRF", "28"),
                 "x264-params": (
                     f"keyint={keyint}:min-keyint={keyint}:scenecut=0:"
-                    f"vbv-maxrate={os.getenv('SIM_X264_MAXRATE', '3000')}:"
-                    f"vbv-bufsize={os.getenv('SIM_X264_BUFSIZE', '3000')}"
+                    f"vbv-maxrate={os.getenv('SIM_X264_MAXRATE', '2000')}:"
+                    f"vbv-bufsize={os.getenv('SIM_X264_BUFSIZE', '2000')}"
                 ),
             }
         except Exception as exc:
@@ -124,11 +132,42 @@ class AvStreamPublisher:
     def stats(self) -> dict[str, int]:
         return {"published": self.published_frames, "dropped": self.dropped_frames}
 
+    def _log_stats(self):
+        """Log diagnostic statistics."""
+        now = time.time()
+        self._last_stats_report = now
+
+        avg_encode_ms = 0
+        max_encode_ms = 0
+        if self._frame_times:
+            avg_encode_ms = (sum(self._frame_times) / len(self._frame_times)) * 1000
+            max_encode_ms = max(self._frame_times) * 1000
+            self._frame_times.clear()
+
+        queue_size = self._queue.qsize()
+        logger.info(
+            f"[{self.name}] stats: published={self.published_frames}, "
+            f"dropped={self.dropped_frames}, queue_size={queue_size}, "
+            f"avg_encode={avg_encode_ms:.1f}ms, max_encode={max_encode_ms:.1f}ms"
+        )
+
     def _encode_and_mux(self, frame):
+        encode_start = time.time()
         av_frame = av.VideoFrame.from_ndarray(frame, format="bgr24")
+        packets_encoded = 0
         for packet in self._stream.encode(av_frame):
             self._container.mux(packet)
+            packets_encoded += 1
+        encode_duration = time.time() - encode_start
+        self._frame_times.append(encode_duration)
         self.published_frames += 1
+
+        # Log slow frames
+        if encode_duration > 0.05:  # >50ms is slow
+            logger.warning(
+                f"[{self.name}] slow encode: {encode_duration * 1000:.1f}ms, "
+                f"packets={packets_encoded}, queue_size={self._queue.qsize()}"
+            )
 
     def _flush_encoder(self):
         if self._stream is None or self._container is None:
@@ -140,32 +179,49 @@ class AvStreamPublisher:
             pass
 
     def _worker(self):
+        worker_start = time.time()
+        logger.info(f"[{self.name}] worker thread started")
         while self._running:
             try:
                 frame = self._queue.get(timeout=0.25)
             except queue.Empty:
+                # Log stats periodically even during idle periods
+                now = time.time()
+                if now - self._last_stats_report > 5.0:
+                    self._log_stats()
                 continue
 
             if frame is None:
                 continue
 
+            resize_start = time.time()
             if frame.shape[1] != self.width or frame.shape[0] != self.height:
                 frame = cv2.resize(frame, (self.width, self.height))
+            resize_duration = time.time() - resize_start
+            if resize_duration > 0.01:
+                logger.warning(f"[{self.name}] slow resize: {resize_duration * 1000:.1f}ms")
 
             self._open_writer()
             if self._container is None or self._stream is None:
                 self.dropped_frames += 1
+                logger.error(f"[{self.name}] writer not available, dropping frame")
                 continue
 
             try:
                 self._encode_and_mux(frame)
             except Exception as exc:
                 self.dropped_frames += 1
-                print(f"[{self.name}] publish error: {exc}")
+                logger.error(f"[{self.name}] publish error: {exc}")
                 self._flush_encoder()
                 self._close_writer()
 
+            # Log stats periodically
+            now = time.time()
+            if now - self._last_stats_report > 5.0:
+                self._log_stats()
+
         self._flush_encoder()
+        logger.info(f"[{self.name}] worker thread stopped after {time.time() - worker_start:.1f}s")
 
 
 def build_publishers(rgb_shape, thermal_shape, fps: int):
