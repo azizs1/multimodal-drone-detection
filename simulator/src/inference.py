@@ -6,9 +6,9 @@ This is a template showing how to use the shared buffer from video ingestion.
 You can run this as-is (it will poll frames), or modify it with your own ML models.
 """
 
+import logging
 import os
 import time
-import logging
 
 from ultralytics import YOLO
 
@@ -47,12 +47,14 @@ def _extract_detections(results, frame_shape):
         confidence = float(detection.conf[0]) if detection.conf is not None else 0.0
         label = names.get(class_id, str(class_id)) if isinstance(names, dict) else str(class_id)
 
-        detections.append({
-            "bbox": (x1, y1, x2, y2),
-            "class_id": class_id,
-            "label": label,
-            "confidence": confidence,
-        })
+        detections.append(
+            {
+                "bbox": (x1, y1, x2, y2),
+                "class_id": class_id,
+                "label": label,
+                "confidence": confidence,
+            }
+        )
 
     return detections
 
@@ -74,8 +76,6 @@ def run_inference():
     last_processed_timestamp = None  # Track last processed frame to avoid duplicates
 
     # Diagnostics
-    last_stats_time = time.time()
-    last_stats_frame_count = 0
     inference_times = []  # Track inference time per frame
     annotate_times = []  # Track annotation time per frame
     publish_times = []  # Track publishing time per frame
@@ -137,9 +137,13 @@ def run_inference():
 
                 frame_process_duration = time.time() - frame_process_start
                 if frame_process_duration > 0.15:  # >150ms is slow
+                    infer_ms = infer_duration * 1000
+                    annot_ms = annot_duration * 1000
+                    pub_ms = pub_duration * 1000
                     logger.warning(
                         f"Slow frame processing: {frame_process_duration * 1000:.1f}ms "
-                        f"(infer={infer_duration * 1000:.1f}ms, annot={annot_duration * 1000:.1f}ms, pub={pub_duration * 1000:.1f}ms)"
+                        f"(infer={infer_ms:.1f}ms, "
+                        f"annot={annot_ms:.1f}ms, pub={pub_ms:.1f}ms)"
                     )
 
                 # Print frame info and log diagnostics

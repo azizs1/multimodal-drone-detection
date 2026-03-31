@@ -23,10 +23,10 @@ Example usage:
             # Process frames...
 """
 
+import logging
 import os
 import threading
 import time
-import logging
 from pathlib import Path
 
 import cv2
