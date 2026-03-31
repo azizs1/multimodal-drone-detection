@@ -1,7 +1,7 @@
 [project]
 name = "simulator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Simulation framework for computer-vision experiments using OpenCV, Ultralytics, and video processing tools."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

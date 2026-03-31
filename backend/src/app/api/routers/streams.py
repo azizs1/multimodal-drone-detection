@@ -6,6 +6,23 @@ from fastapi.responses import StreamingResponse
 
 from app.database.schemas import StreamInfo, StreamListResponse
 
+
+def _resolve_hls_content_type(file_path: str, upstream_content_type: str | None) -> str:
+    """Resolve HLS content type from upstream headers or file extension."""
+    if upstream_content_type:
+        return upstream_content_type.split(";", 1)[0].strip()
+
+    lowered = file_path.lower()
+    if lowered.endswith(".m3u8"):
+        return "application/vnd.apple.mpegurl"
+    if lowered.endswith(".ts"):
+        return "video/mp2t"
+    if lowered.endswith(".m4s"):
+        return "video/iso.segment"
+
+    return "application/octet-stream"
+
+
 router = APIRouter(
     prefix="/streams",
     tags=["streams"],
@@ -97,15 +114,10 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
                     status_code=status.HTTP_404_NOT_FOUND, detail="Stream file not found"
                 )
 
-            normalized = file_path.lower()
-            if normalized.endswith(".m3u8"):
-                content_type = "application/vnd.apple.mpegurl"
-            elif normalized.endswith(".ts"):
-                content_type = "video/mp2t"
-            elif normalized.endswith(".mp4") or normalized.endswith(".m4s"):
-                content_type = "video/mp4"
-            else:
-                content_type = "application/octet-stream"
+            content_type = _resolve_hls_content_type(
+                file_path=file_path,
+                upstream_content_type=response.headers.get("content-type"),
+            )
 
             return StreamingResponse(
                 response.iter_bytes(),
@@ -117,7 +129,7 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
                 },
             )
     except httpx.RequestError as e:
-        logging.error(f"MediaMTX error: {str(e)}")
+        logging.error("MediaMTX error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Failed to connect to MediaMTX: {str(e)}",
