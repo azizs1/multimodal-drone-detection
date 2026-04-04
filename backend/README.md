@@ -1,6 +1,6 @@
 # Backend API
 
-The backend is a FastAPI service providing a REST API for drone detection management and real-time WebSocket updates.
+The backend is a FastAPI service providing incident ingestion/query APIs, stream metadata endpoints, health checks, and real-time WebSocket alerts.
 
 ## Running the Backend
 
@@ -32,25 +32,52 @@ docker run -p 8000:8000 drone-detection-backend
 
 ## API Endpoints
 
-### Detection Management
+### Incident Management
 
-#### Create Detection
-**POST** `/detections`
+#### Create Incident From Fusion
+**POST** `/incidents`
 
-Creates a new drone detection record and broadcasts the detection ID to all connected WebSocket clients.
+Receives a fused decision payload from `fusion_service`, aggregates the payload into a persistence-friendly incident, and stores it in the database.
 
 **Request:**
 ```json
 {
-  "detected_at": "2026-02-21T14:32:07Z",
-  "confidence": 0.94,
-  "direction": "NE",
-  "distance_ft": 125.5,
-  "visual_confidence": 0.92,
-  "thermal_confidence": 0.89,
-  "fused_score": 0.94,
-  "frame_snapshot_url": "s3://detections/drone/2026-02-21/detection_123.jpg",
-  "stream_name": "drone"
+  "incident_id": "incident-123",
+  "has_drone": true,
+  "fused_confidence": 0.83,
+  "confidence_band": "high",
+  "decision": "drone",
+  "evidence": {
+    "rgb": {
+      "modality": "rgb",
+      "timestamp": 1739994727.123,
+      "bbox": [0.1, 0.2, 0.3, 0.4],
+      "class_id": "drone",
+      "confidence": 0.86,
+      "embedding": null,
+      "meta": {"sensor_id": "cam0"}
+    },
+    "thermal": null
+  },
+  "per_modality_scores": {
+    "rgb": 0.86,
+    "thermal": 0.79
+  },
+  "thresholds": {
+    "alert": 0.75,
+    "hold": 0.55
+  },
+  "gating_reason": "rgb+thermal",
+  "latency_ms": 21.2,
+  "media": {
+    "rgb": {
+      "frame_uri": "s3://detections/drone/frame_001.jpg",
+      "thumbnail_uri": null
+    },
+    "thermal": null
+  },
+  "objects": [],
+  "timestamp": 1739994727.123
 }
 ```
 
@@ -58,64 +85,60 @@ Creates a new drone detection record and broadcasts the detection ID to all conn
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
+  "incident_id": "incident-123",
   "detected_at": "2026-02-21T14:32:07Z",
-  "confidence": 0.94,
-  "direction": "NE",
-  "distance_ft": 125.5,
-  "visual_confidence": 0.92,
-  "thermal_confidence": 0.89,
-  "fused_score": 0.94,
-  "frame_snapshot_url": "s3://detections/drone/2026-02-21/detection_123.jpg",
-  "stream_name": "drone",
+  "source_timestamp": 1739994727.123,
+  "has_drone": true,
+  "decision": "drone",
+  "confidence_band": "high",
+  "alert_level": "high",
+  "is_confirmed": true,
+  "fused_confidence": 0.83,
+  "stream_name": "fusion",
+  "primary_frame_url": "s3://detections/drone/frame_001.jpg",
+  "primary_thumbnail_url": null,
+  "per_modality_scores": {
+    "rgb": 0.86,
+    "thermal": 0.79
+  },
+  "thresholds": {
+    "alert": 0.75,
+    "hold": 0.55
+  },
+  "gating_reason": "rgb+thermal",
+  "latency_ms": 21.2,
+  "evidence": {},
+  "media": {},
+  "objects": [],
   "created_at": "2026-02-21T14:32:07Z",
   "updated_at": "2026-02-21T14:32:07Z"
 }
 ```
 
-#### Get Detection by ID
-**GET** `/detections/{detection_id}`
+#### List Incidents
+**GET** `/incidents`
 
-Retrieve a specific detection record by its UUID.
-
-#### List Detections
-**GET** `/detections`
-
-List all detection records with optional filtering.
+List incident records with optional filtering.
 
 **Query Parameters:**
-- `skip` (int, default=0): Number of records to skip (pagination)
+- `skip` (int, default=0): Number of records to skip
 - `limit` (int, default=100, max=1000): Maximum number of records to return
+- `decision` (str, optional): Filter by `drone` or `none`
 - `stream_name` (str, optional): Filter by stream name
+- `from_ts` (datetime, optional): ISO timestamp lower bound
+- `to_ts` (datetime, optional): ISO timestamp upper bound
 
-#### Delete Detection
-**DELETE** `/detections/{detection_id}`
+#### Get Incident by ID
+**GET** `/incidents/{incident_id}`
 
-Delete a detection record by ID (returns 204 No Content).
-
-#### Get Detection Statistics
-**GET** `/detections/stats/summary`
-
-Get aggregated statistics about detections.
-
-**Query Parameters:**
-- `stream_name` (str, optional): Filter statistics by stream name
-
-**Response:**
-```json
-{
-  "total_detections": 1500,
-  "drone_detections": 342,
-  "non_drone_detections": 1158,
-  "stream_name": "drone"
-}
-```
+Retrieve a specific incident record by its incident id.
 
 ### WebSocket Endpoint (Real-time Updates)
 
 #### Alert Endpoint
 **WebSocket** `/detections/alert`
 
-Connects to a WebSocket and receives detection IDs in real-time whenever a new detection is created.
+Connects to a WebSocket and receives incident alert payloads in real-time whenever a drone-positive incident is created.
 
 **Usage Example (Python):**
 ```python
@@ -125,8 +148,8 @@ import websockets
 async def listen_for_detections():
   async with websockets.connect("ws://localhost:8000/detections/alert") as ws:
         while True:
-            detection_id = await ws.recv()
-            print(f"New detection: {detection_id}")
+            alert_payload = await ws.recv()
+            print(f"New incident alert: {alert_payload}")
 
 asyncio.run(listen_for_detections())
 ```
@@ -136,8 +159,8 @@ asyncio.run(listen_for_detections())
 const ws = new WebSocket("ws://localhost:8000/detections/alert");
 
 ws.onmessage = (event) => {
-  const detectionId = event.data;
-  console.log("New detection:", detectionId);
+  const alertPayload = JSON.parse(event.data);
+  console.log("New incident alert:", alertPayload);
 };
 
 ws.onerror = (error) => {
@@ -215,7 +238,7 @@ backend/
 │   │   ├── main.py                 # FastAPI app initialization
 │   │   ├── api/
 │   │   │   └── routers/
-│   │   │       ├── detections.py   # Detection endpoints
+│   │   │       ├── incidents.py    # Incident endpoints
 │   │   │       ├── alert.py        # WebSocket endpoint
 │   │   │       ├── streams.py      # Stream info endpoints
 │   │   │       └── health.py       # Health check endpoints
@@ -224,12 +247,12 @@ backend/
 │   │   │   ├── schemas.py          # Pydantic schemas
 │   │   │   └── models.py           # SQLAlchemy models
 │   │   ├── models/
-│   │   │   └── detection.py        # Detection model
+│   │   │   └── incident.py         # Incident model
 │   │   └── repositories/
-│   │       └── detection_repository.py  # Data access layer
+│   │       └── incident_repository.py    # Incident data access layer
 │   └── tests/
 │       ├── test_main.py            # Main app tests
-│       ├── test_detections_websocket.py # WebSocket tests
+│       ├── test_incidents.py       # Incident API and WebSocket tests
 │       └── conftest.py             # Test configuration
 ├── Dockerfile
 ├── pyproject.toml
@@ -250,7 +273,7 @@ backend/
 ### WebSocket Broadcasting
 The `/detections/alert` endpoint maintains a connection manager that:
 - Tracks all active WebSocket connections
-- Broadcasts detection IDs to all connected clients when a new detection is created
+- Broadcasts incident alert payloads when a drone-positive incident is created
 - Automatically removes stale connections if sending fails
 
 ## Common Issues

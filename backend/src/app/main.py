@@ -3,12 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import alert, detections, health, streams
+from app.api.routers import alert, health, incidents, streams
 from app.database.database import Base, engine
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     # Create database tables on startup
     Base.metadata.create_all(bind=engine)
     yield
@@ -33,7 +33,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router)
 app.include_router(alert.router)
-app.include_router(detections.router)
+app.include_router(incidents.router)
 app.include_router(streams.router)
 
 
