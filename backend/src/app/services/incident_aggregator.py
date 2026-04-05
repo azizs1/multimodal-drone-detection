@@ -8,6 +8,7 @@ from app.database.schemas import (
     Modality,
 )
 
+
 def aggregate_fused_decision(payload: FusedDecisionIngest) -> IncidentCreate:
     detected_at = datetime.fromtimestamp(payload.timestamp, tz=UTC)
     primary_frame_url, primary_thumbnail_url = _pick_primary_media_url(payload.media)
@@ -35,6 +36,8 @@ def aggregate_fused_decision(payload: FusedDecisionIngest) -> IncidentCreate:
         media=payload.media,
         objects=payload.objects,
     )
+
+
 def _pick_primary_media_url(
     media: dict[Modality, FusionMediaRef | None],
 ) -> tuple[str | None, str | None]:
@@ -53,6 +56,7 @@ def _pick_primary_media_url(
             return frame_uri, thumbnail_uri
 
     return None, None
+
 
 def _derive_alert_level(confidence: float, thresholds: dict[str, float]) -> ConfidenceBand:
     alert_threshold = thresholds.get("alert", 0.75)

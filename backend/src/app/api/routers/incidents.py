@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.routers.alert import alert_connection_manager
 from app.database.database import get_db
-from app.database.schemas import IncidentResponse, FusedDecisionIngest
+from app.database.schemas import FusedDecisionIngest, IncidentResponse
 from app.repositories import IncidentRepository
 from app.services.incident_aggregator import aggregate_fused_decision
 
