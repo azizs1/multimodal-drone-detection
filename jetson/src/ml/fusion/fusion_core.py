@@ -8,7 +8,7 @@ from collections import deque
 from collections.abc import Iterable
 
 from .config import DEFAULT_CONFIG, FusionConfig
-from .schemas import ConfidenceBand, FusedDecision, ModalityPrediction
+from .schemas import ConfidenceBand, FusedDecision, FusedObjectConfidence, ModalityPrediction
 
 
 class FusionEngine:
@@ -33,6 +33,7 @@ class FusionEngine:
 
         fused = FusedDecision(
             incident_id=str(uuid.uuid4()),
+            has_drone=any(p.class_id == self.TARGET_CLASS for p in filtered),
             fused_confidence=score,
             confidence_band=fused_conf_band,
             decision=decision,
@@ -44,6 +45,7 @@ class FusionEngine:
             },
             gating_reason=reason,
             latency_ms=latency_ms,
+            objects=self._objects_from_preds(filtered),
         )
         self.fused_history.append(fused)
 
@@ -55,19 +57,23 @@ class FusionEngine:
         self, preds: list[ModalityPrediction]
     ) -> tuple[float, str, dict[str, float]]:
         weights = self.config.weights
-        score = 0.0
+        gates = self.config.per_modality_gates
         per_modality_scores = {"rgb": 0.0, "thermal": 0.0}
-        used = []
         for p in preds:
             if p.class_id != self.TARGET_CLASS:
                 continue
-            w = weights.get(p.modality, 0.0)
-            per_modality_scores[p.modality] = p.confidence
-            gate = self.config.per_modality_gates.get(p.modality, 0.0)
-            if p.confidence < gate:
+            per_modality_scores[p.modality] = max(per_modality_scores[p.modality], p.confidence)
+
+        score = 0.0
+        used: list[str] = []
+        for modality, conf in per_modality_scores.items():
+            gate = gates.get(modality, 0.0)
+            if conf < gate:
                 continue
-            score += w * p.confidence
-            used.append(p.modality)
+            score += weights.get(modality, 0.0) * conf
+            used.append(modality)
+
+        score = max(0.0, min(1.0, score))
         reason = "no-modality-passed-gate" if not used else "+".join(sorted(set(used)))
         return score, reason, per_modality_scores
 
@@ -75,8 +81,12 @@ class FusionEngine:
         if score >= self.config.alert_threshold:
             # optional EO/IR confirmation
             if self.config.eo_ir_required:
+                thermal_gate = self.config.per_modality_gates.get("thermal", 0.0)
                 has_thermal = any(
-                    p.modality == "thermal" and p.class_id == self.TARGET_CLASS for p in preds
+                    p.modality == "thermal"
+                    and p.class_id == self.TARGET_CLASS
+                    and p.confidence >= thermal_gate
+                    for p in preds
                 )
                 if not has_thermal:
                     return "none"
@@ -93,6 +103,27 @@ class FusionEngine:
             if latest[p.modality] is None or p.timestamp > latest[p.modality].timestamp:
                 latest[p.modality] = p
         return latest
+
+    def _objects_from_preds(self, preds: list[ModalityPrediction]) -> list[FusedObjectConfidence]:
+        objects: list[FusedObjectConfidence] = []
+        for idx, pred in enumerate(preds):
+            object_id = (
+                pred.meta.get("object_id")
+                or pred.meta.get("track_id")
+                or pred.meta.get("frame_id")
+                or f"{pred.modality}-{idx}"
+            )
+            objects.append(
+                FusedObjectConfidence(
+                    object_id=object_id,
+                    modality=pred.modality,
+                    class_id=pred.class_id,
+                    confidence=pred.confidence,
+                    bbox=pred.bbox,
+                    timestamp=pred.timestamp,
+                )
+            )
+        return objects
 
     def _debounce(self, fused: FusedDecision) -> bool:
         if fused.decision != "drone":

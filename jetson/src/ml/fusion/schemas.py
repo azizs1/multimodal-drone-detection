@@ -33,8 +33,22 @@ class MediaRef(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class FusedObjectConfidence(BaseModel):
+    object_id: str = Field(..., description="stable object id within this fused response")
+    modality: Modality
+    class_id: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    bbox: tuple[float, float, float, float] | None = None
+    timestamp: float
+
+    model_config = {"extra": "forbid"}
+
+
 class FusedDecision(BaseModel):
     incident_id: str = Field(..., description="stable id for logging / dashboard")
+    has_drone: bool = Field(
+        ..., description="True if any object in this frame is classified as drone"
+    )
     fused_confidence: float = Field(..., ge=0.0, le=1.0)
     confidence_band: ConfidenceBand
     decision: Decision
@@ -45,6 +59,10 @@ class FusedDecision(BaseModel):
     latency_ms: float
     media: dict[Modality, MediaRef | None] = Field(
         default_factory=lambda: {"rgb": None, "thermal": None}
+    )
+    objects: list[FusedObjectConfidence] = Field(
+        default_factory=list,
+        description="Per-frame object confidence list for frontend overlays",
     )
     timestamp: float = Field(default_factory=lambda: time.time())
 

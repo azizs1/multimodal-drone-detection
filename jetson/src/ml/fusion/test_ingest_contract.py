@@ -50,11 +50,14 @@ def test_ingest_returns_fused_decision():
     body = resp.json()
 
     # Core contract fields
+    assert body["has_drone"] is True
     assert body["decision"] == "drone"
     assert isinstance(body["incident_id"], str) and body["incident_id"]
     assert body["confidence_band"] in {"low", "medium", "high"}
     assert "per_modality_scores" in body
     assert set(body["per_modality_scores"]) == {"rgb", "thermal"}
+    assert len(body["objects"]) == 2
+    assert {obj["modality"] for obj in body["objects"]} == {"rgb", "thermal"}
 
 
 def test_debounce_counts_fused_events_not_modalities():
@@ -117,5 +120,45 @@ def test_non_drone_predictions_do_not_trigger_drone_decision():
 
     fused = engine.fuse(preds)
     assert fused is not None
+    assert fused.has_drone is False
     assert fused.decision == "none"
     assert fused.fused_confidence == 0.0
+
+
+def test_multiple_detections_per_modality_are_capped_and_object_listed():
+    engine = FusionEngine(
+        FusionConfig(debounce=DebounceConfig(consecutive_required=1, window_ms=1000))
+    )
+
+    now = time.time()
+    preds = [
+        ModalityPrediction(
+            modality="rgb",
+            timestamp=now,
+            bbox=(0.0, 0.0, 0.3, 0.3),
+            class_id="drone",
+            confidence=0.9,
+            meta={"sensor_id": "cam0"},
+        ),
+        ModalityPrediction(
+            modality="rgb",
+            timestamp=now,
+            bbox=(0.4, 0.4, 0.7, 0.7),
+            class_id="drone",
+            confidence=0.85,
+            meta={"sensor_id": "cam0"},
+        ),
+        ModalityPrediction(
+            modality="thermal",
+            timestamp=now,
+            bbox=(0.0, 0.0, 0.3, 0.3),
+            class_id="drone",
+            confidence=0.8,
+            meta={"sensor_id": "ir0"},
+        ),
+    ]
+
+    fused = engine.fuse(preds)
+    assert fused is not None
+    assert 0.0 <= fused.fused_confidence <= 1.0
+    assert len(fused.objects) == 3
