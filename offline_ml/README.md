@@ -1,8 +1,6 @@
 # Offline ML Setup
 
-This offline_ml folder serves as an offline machine learning hub for the multimodal drone detection capstone project. The steps to install a Conda environment below ensure all users/contributors have the same package versions and dependencies.
-
----
+This offline_ml folder serves as an offline machine learning section of the repo for the multimodal drone detection capstone project. The steps to install a Conda environment below ensure all users/contributors have the same package versions and dependencies.
 
 ## 1. Prerequisites
 
@@ -31,11 +29,6 @@ deactivate
 
 ## 3. Additional Information
 
-This command below allows you to update the environment.yml file if new dependencies are introduced:
-```bash
-conda env update -f environment.yml --prune
-```
-
 This command allows you to update the environment.yml file if new packages are installed or removed:
 ```bash
 conda env export > environment.yml
@@ -57,23 +50,18 @@ ruff check --fix
 
 # Datasets
 
-There are two main datasets that will be used for this project. The two datasets are below:
+There are three main datasets that will be used for this project. The datasets are below:
 
-Zenodo Visual Drone Detection Dataset - Non-Augemented: https://zenodo.org/records/15632958
-Zenodo Thermal Drone Detection Dataset - Non-Augemented: https://zenodo.org/records/15633051
-Zenodo Thermal Drone Detection Dataset - Augemented: https://zenodo.org/records/15633098
-Anti-UAV: https://github.com/ZhaoJ9014/Anti-UAV (Scroll down to Anti-UAV300 Google Drive link and download from there)
-
-The two main datasets used will be denoted as the Zenodo Drone Detection Dataset and the Anti-UAV Dataset. Each link above should be
-downloaded and then stored in the datasets folder in the offline_ml directory. These datasets will be gitignored.
+- [Zenodo Visual Drone Detection Dataset - Non-Augemented:](https://zenodo.org/records/15632958)
+- [Zenodo Thermal Drone Detection Dataset - Non-Augemented:](https://zenodo.org/records/15633051)
+- [Anti-UAV:](https://github.com/ZhaoJ9014/Anti-UAV) (Scroll down to Anti-UAV300 Google Drive link and download from there)
 
 All datasets should be stored in the datasets/ directory and should all be at the same level. Keep the original directory structure for each of the datasets for now.
 
 The names of the datasets have been renamed as follows:
-* zenodo_visual_no_augmentation
-* zenodo_thermal_no_augmentation
-* zenodo_thermal_augmented
-* anti_uav
+ - zenodo_visual_no_augmentation
+ - zenodo_thermal_no_augmentation
+ - anti_uav
 
 These will have to be the names renamed in the datasets directory to use any associated notebooks or code.
 
@@ -249,4 +237,43 @@ find /scratch/<PID>/runs -name "best.pt"
 To copy weights to your local machine, run this from your local terminal:
 ```bash
 scp <PID>@tinkercliffs2.arc.vt.edu:/scratch/<PID>/runs/*/weights/best.pt ./offline_ml/weights/
+```
+
+# Preprocessing
+
+All preprocessing scripts should be run from the `offline_ml/` directory.
+
+### Zenodo Thermal Dataset — Pseudo Labeling
+
+To address concerns determined in the data_exploration.ipynb notebook, the zenodo_thermal_no_augmentation data has been preprocessed to add labels to the images with missing labels. This process was done by extracting the images with missing labels and storing them in a temporary storage location, rerunning the model without the missing data included, predicting the bounding box labels with the model itself, and then moving the images now with labels back into the dataset. This approach was taken due to the high accuracy and precision of the YOLO model, allowing the labels to be more accurate and less time intensive than human labeling.
+
+**Workflow:**
+
+1. Extract unlabeled images from the dataset:
+```bash
+   python src/preprocessing_zenodo.py extract
+```
+   This moves all images with empty label files to `missing_labels/` organized
+   by split, leaving only fully labeled images in the dataset.
+
+2. Retrain the model on the cleaned dataset:
+```bash
+   python src/train.py --data ../datasets
+```
+
+3. Run inference on the unlabeled images to generate new labels:
+```bash
+   python src/preprocessing_zenodo.py predict
+```
+   Predicted labels are saved to `missing_labels/<split>/predictions/labels/`
+   in YOLO format.
+
+4. Manually verify predicted labels visually to ensure the labels are correct:
+```bash
+   python src/preprocessing_zenodo.py visualize
+```
+
+5. Move images and new labels back to the dataset:
+```bash
+   python src/preprocessing_zenodo.py restore
 ```
