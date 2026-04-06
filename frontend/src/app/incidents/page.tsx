@@ -4,6 +4,13 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import {
+  INCIDENT_STATUS_BADGE_CLASSES,
+  type IncidentDetailPanelData,
+  type IncidentLogRow,
+  mapIncidentRowToDetail,
+} from "@/lib/incidents.mjs";
+import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,15 +23,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-type IncidentLogRow = {
-  id: string;
-  timestamp: string;
-  confidence: number;
-  distanceFt: number;
-  model: string;
-  status: "Confirmed" | "Pending" | "False Positive";
-};
 
 const ALL_STATUSES = ["All", "Confirmed", "Pending", "False Positive"] as const;
 const PAGE_SIZE = 10;
@@ -61,19 +59,14 @@ function generateMockIncidents(count: number): IncidentLogRow[] {
 
 const INCIDENT_LOG_ROWS: IncidentLogRow[] = generateMockIncidents(48);
 
-const STATUS_BADGE_CLASSES: Record<IncidentLogRow["status"], string> = {
-  Confirmed:
-    "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  Pending: "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  "False Positive": "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-};
-
 export default function IncidentsPage() {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<(typeof ALL_STATUSES)[number]>("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIncident, setSelectedIncident] = useState<IncidentDetailPanelData | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const hasActiveFilters = Boolean(startDate || endDate || searchTerm.trim() || status !== "All");
 
   const filteredRows = useMemo(() => {
@@ -102,10 +95,25 @@ export default function IncidentsPage() {
     { length: Math.min(3, totalPages) },
     (_, index) => pageWindowStart + index,
   );
+  const openIncidentDetail = (row: IncidentLogRow) => {
+    setSelectedIncident(mapIncidentRowToDetail(row));
+    setIsDetailOpen(true);
+  };
 
   return (
     <DashboardShell>
       <section className="space-y-4">
+        <IncidentDetailPanel
+          incident={selectedIncident}
+          open={isDetailOpen}
+          onOpenChange={(open) => {
+            setIsDetailOpen(open);
+            if (!open) {
+              setSelectedIncident(null);
+            }
+          }}
+        />
+
         <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -229,7 +237,23 @@ export default function IncidentsPage() {
             </TableHeader>
             <TableBody>
               {pagedRows.map((row) => (
-                <TableRow key={`${row.id}-${row.timestamp}`} className="border-b border-slate-200 dark:border-slate-800">
+                <TableRow
+                  key={`${row.id}-${row.timestamp}`}
+                  className={`cursor-pointer border-b border-slate-200 transition-colors dark:border-slate-800 ${
+                    selectedIncident?.id === row.id
+                      ? "bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                      : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60"
+                  }`}
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => openIncidentDetail(row)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openIncidentDetail(row);
+                    }
+                  }}
+                >
                   <TableCell className="px-2 py-3">{row.id}</TableCell>
                   <TableCell className="px-2 py-3">
                     {format(new Date(row.timestamp), "yyyy-MM-dd HH:mm:ss")}
@@ -238,7 +262,7 @@ export default function IncidentsPage() {
                   <TableCell className="px-2 py-3">{row.distanceFt}ft</TableCell>
                   <TableCell className="px-2 py-3">{row.model}</TableCell>
                   <TableCell className="px-2 py-3">
-                    <Badge className={`px-3 py-1 text-sm font-semibold ${STATUS_BADGE_CLASSES[row.status]}`}>
+                    <Badge className={`px-3 py-1 text-sm font-semibold ${INCIDENT_STATUS_BADGE_CLASSES[row.status]}`}>
                       {row.status}
                     </Badge>
                   </TableCell>
