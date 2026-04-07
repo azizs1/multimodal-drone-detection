@@ -31,10 +31,6 @@ async def create_incident(
     response: Response,
 ):
     repo = IncidentRepository(db)
-    existing = repo.get_by_incident_id(payload.incident_id)
-    if existing:
-        response.status_code = status.HTTP_200_OK
-        return existing
 
     incident_create = aggregate_fused_decision(payload)
 
