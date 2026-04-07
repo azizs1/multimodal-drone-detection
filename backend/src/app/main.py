@@ -15,8 +15,8 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Drone Detection API",
-    description="API for drone detection and tracking",
+    title="Drone Incident Management API",
+    description="API for drone incident ingestion, querying, and real-time alerting",
     version="1.0.0",
     lifespan=lifespan,
 )

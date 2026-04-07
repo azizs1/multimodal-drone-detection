@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.routers.alert import alert_connection_manager
@@ -27,14 +28,27 @@ router = APIRouter(
 async def create_incident(
     payload: FusedDecisionIngest,
     db: Annotated[Session, Depends(get_db)],
+    response: Response,
 ):
     repo = IncidentRepository(db)
     existing = repo.get_by_incident_id(payload.incident_id)
     if existing:
+        response.status_code = status.HTTP_200_OK
         return existing
 
     incident_create = aggregate_fused_decision(payload)
-    db_incident = repo.create(incident_create)
+
+    try:
+        db_incident = repo.create(incident_create)
+    except IntegrityError:
+        # Concurrent insert - rollback and fetch the existing incident
+        db.rollback()
+        existing = repo.get_by_incident_id(payload.incident_id)
+        if existing:
+            response.status_code = status.HTTP_200_OK
+            return existing
+        # If still not found, re-raise
+        raise
 
     if incident_create.has_drone is True and incident_create.decision == "drone":
         websocket_payload = {

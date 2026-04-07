@@ -33,7 +33,7 @@ class AlertConnectionManager:
 alert_connection_manager = AlertConnectionManager()
 
 
-@router.websocket("/detections/alert")
+@router.websocket("/incidents/alert")
 async def alert_socket(websocket: WebSocket):
     """Websocket endpoint to receive real-time incident alerts."""
     await alert_connection_manager.connect(websocket)
