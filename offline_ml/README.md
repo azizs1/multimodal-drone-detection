@@ -52,9 +52,9 @@ ruff check --fix
 
 There are three main datasets that will be used for this project. The datasets are below:
 
-- [Zenodo Visual Drone Detection Dataset - Non-Augemented:](https://zenodo.org/records/15632958)
-- [Zenodo Thermal Drone Detection Dataset - Non-Augemented:](https://zenodo.org/records/15633051)
-- [Anti-UAV:](https://github.com/ZhaoJ9014/Anti-UAV) (Scroll down to Anti-UAV300 Google Drive link and download from there)
+- [Zenodo Visual Drone Detection Dataset - Non-Augemented](https://zenodo.org/records/15632958)
+- [Zenodo Thermal Drone Detection Dataset - Non-Augemented](https://zenodo.org/records/15633051)
+- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) (Scroll down to Anti-UAV300 Google Drive link and download from there)
 
 All datasets should be stored in the datasets/ directory and should all be at the same level. Keep the original directory structure for each of the datasets for now.
 
@@ -234,10 +234,7 @@ Once the job finishes, results will be saved to `/scratch/<PID>/runs/`. To find 
 find /scratch/<PID>/runs -name "best.pt"
 ```
 
-To copy weights to your local machine, run this from your local terminal:
-```bash
-scp <PID>@tinkercliffs2.arc.vt.edu:/scratch/<PID>/runs/*/weights/best.pt ./offline_ml/weights/
-```
+The slurm script automatically saves these weights into the weights directory and can then be commited to git or removed.
 
 # Preprocessing
 
@@ -257,11 +254,18 @@ To address concerns determined in the data_exploration.ipynb notebook, the zenod
    by split, leaving only fully labeled images in the dataset.
 
 2. Retrain the model on the cleaned dataset:
+
+If running locally:
 ```bash
    python src/train.py --data ../datasets
 ```
 
-3. Run inference on the unlabeled images to generate new labels:
+If running on the ARC cluster, first, locally, zip the updated dataset and store it in the /projects/<project_name>/datasets directory with the other zipped dataset. Replace the old uncleaned version for now. Then, run the sbatch command on the cluster to train the model.
+```bash
+   zip -r zenodo_thermal_no_augmentation.zip zenodo_thermal_no_augmentation
+```
+
+3. Once you have the updated model weights stored in the weights directory, run this command below locally to predict the new labels.
 ```bash
    python src/preprocessing_zenodo.py predict
 ```
@@ -277,3 +281,5 @@ To address concerns determined in the data_exploration.ipynb notebook, the zenod
 ```bash
    python src/preprocessing_zenodo.py restore
 ```
+
+Then, use the same zip command above to rezip the now processed thermal dataset and put this on ARC the same way as step 2. Training can then be done on the processed data to get updated accurate weights.

@@ -36,11 +36,7 @@ def train(args):
         {
             "data": data_dir / "zenodo_thermal_no_augmentation/data.yaml",
             "name": "thermal_no_augmentation_baseline",
-        },
-        {
-            "data": data_dir / "zenodo_thermal_augmented/data.yaml",
-            "name": "thermal_augmented_baseline",
-        },
+        }
     ]
 
     # Simple training loop for each dataset.
