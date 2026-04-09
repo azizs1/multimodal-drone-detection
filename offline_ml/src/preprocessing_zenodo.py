@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 from ultralytics import YOLO
 import os
+import cv2
+import random
 
 #Store dataset, temp directory, and model paths.
 DATASET_PATH = Path("datasets/zenodo_thermal_no_augmentation")
@@ -36,20 +38,37 @@ def extract():
     print(f"  Moved {count} unlabeled images")
 
 #Predict the labels for the images with missing ones. With high model accuracy, these labels in theory should be accurate as well.
+#Save will save the images with the bounding boxes already created in addition to the updated labels.
 def predict():
     model = YOLO(str(MODEL_PATH))
 
     for split in ["train", "test", "valid"]:
         model.predict(
             source=str(TEMP_DIR / split / "original_images"),
+            save=True,
             save_txt=True,
-            project=str(TEMP_DIR / split),
+            project=str(TEMP_DIR.resolve() / split),
             name="predictions",
         )
 
-#TODO Implement a function to check the bounding boxes on each image to make sure the predictions were accurate.
+#Visualizes the predictions YOLO made to see if they are accurate.
 def visualize():
-    return
+    for split in ["train", "test", "valid"]:
+        prediction_images = TEMP_DIR / split / "predictions"
+        images_list = list(prediction_images.glob("*.jpg"))
+
+        #Displays each image in another window and moves to the next image after a key is pressed.
+        #Press q to exit out of the window.
+        for image_path in images_list:
+            image = cv2.imread(str(image_path))
+            cv2.imshow(f"{split}: {image_path.name}", image)
+
+            #Waits for a key to be pressed. If it is q, exit out of the window
+            key = cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            if key == ord("q"):
+                break
+
 
 #Move all of the images with their new labels back to the original dataset.
 def restore():
