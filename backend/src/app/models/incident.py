@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Float, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, String, Text, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
 from sqlalchemy.types import JSON
@@ -16,12 +16,12 @@ class Incident(Base):
     detected_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     source_timestamp = Column(Float, nullable=False)
     has_drone = Column(Boolean, nullable=False)
-    decision = Column(String(10), nullable=False)
+    decision = Column(String(10), nullable=False, index=True)
     confidence_band = Column(String(10), nullable=False)
     alert_level = Column(String(10), nullable=False)
     is_confirmed = Column(Boolean, nullable=False)
     fused_confidence = Column(Float, nullable=False)
-    stream_name = Column(String(100), nullable=False)
+    stream_name = Column(String(100), nullable=False, index=True)
     primary_frame_url = Column(Text)
     primary_thumbnail_url = Column(Text)
     per_modality_scores = Column(JSONB().with_variant(JSON, "sqlite"), nullable=False)
@@ -33,6 +33,9 @@ class Incident(Base):
     objects = Column(JSONB().with_variant(JSON, "sqlite"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Indexes for query performance
+    __table_args__ = (Index("idx_incidents_detected_at", "detected_at", postgresql_using="btree"),)
 
     def to_dict(self):
         return {

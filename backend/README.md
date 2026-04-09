@@ -136,7 +136,7 @@ Retrieve a specific incident record by its incident id.
 ### WebSocket Endpoint (Real-time Updates)
 
 #### Alert Endpoint
-**WebSocket** `/detections/alert`
+**WebSocket** `/incidents/alert`
 
 Connects to a WebSocket and receives incident alert payloads in real-time whenever a drone-positive incident is created.
 
@@ -146,7 +146,7 @@ import asyncio
 import websockets
 
 async def listen_for_detections():
-  async with websockets.connect("ws://localhost:8000/detections/alert") as ws:
+  async with websockets.connect("ws://localhost:8000/incidents/alert") as ws:
         while True:
             alert_payload = await ws.recv()
             print(f"New incident alert: {alert_payload}")
@@ -156,7 +156,7 @@ asyncio.run(listen_for_detections())
 
 **Usage Example (JavaScript):**
 ```javascript
-const ws = new WebSocket("ws://localhost:8000/detections/alert");
+const ws = new WebSocket("ws://localhost:8000/incidents/alert");
 
 ws.onmessage = (event) => {
   const alertPayload = JSON.parse(event.data);
@@ -271,7 +271,7 @@ backend/
 - Modify `CORSMiddleware` in `main.py` for production
 
 ### WebSocket Broadcasting
-The `/detections/alert` endpoint maintains a connection manager that:
+The `/incidents/alert` endpoint maintains a connection manager that:
 - Tracks all active WebSocket connections
 - Broadcasts incident alert payloads when a drone-positive incident is created
 - Automatically removes stale connections if sending fails
