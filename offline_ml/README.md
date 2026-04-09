@@ -69,6 +69,20 @@ These will have to be the names renamed in the datasets directory to use any ass
 
 The data_extraction Jupyter Notebook has initial data analysis on each of the Zenodo datasets, and can be reviewed in VS code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, in addition to having the datasets downloaded, however example outputs are preserved.
 
+# Preprocessing
+
+## 1. Zenodo Thermal Dataset
+
+The thermal dataset contained ~18% of images with empty label files across train, valid, and test splits. These images and their empty label files are removed from the dataset by running:
+
+```bash
+python src/preprocessing_zenodo.py
+```
+
+This script moves all images with empty label files to a temporary directory and then deletes it, leaving only fully labeled images in the dataset.
+
+Note: Run this script from the `offline_ml/` directory before training.
+
 # Initial Model Training
 
 While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
