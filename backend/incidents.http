@@ -1,0 +1,204 @@
+### Variables
+@baseUrl = http://localhost:8000
+@incidentId = 54946ce7-d9e0-4ea4-8861-720da837d74a
+
+### -----------------------------------------------------------------
+### Create incident from fused inference (single object)
+### -----------------------------------------------------------------
+POST {{baseUrl}}/incidents
+Content-Type: application/json
+
+{
+  "incident_id": "{{incidentId}}",
+  "has_drone": true,
+  "fused_confidence": 0.6580419778823853,
+  "confidence_band": "medium",
+  "decision": "none",
+  "evidence": {
+    "rgb": {
+      "modality": "rgb",
+      "timestamp": 1775329452.9548001,
+      "bbox": [755.4943237304688, 463.0047912597656, 863.6148071289062, 555.74365234375],
+      "class_id": "drone",
+      "confidence": 0.5766928195953369,
+      "embedding": null,
+      "meta": { "sensor_id": "rgb_cam0" }
+    },
+    "thermal": {
+      "modality": "thermal",
+      "timestamp": 1775329452.9548001,
+      "bbox": [252.14231872558594, 264.61376953125, 295.2435302734375, 300.427978515625],
+      "class_id": "drone",
+      "confidence": 0.7800657153129578,
+      "embedding": null,
+      "meta": { "sensor_id": "thermal_cam0" }
+    }
+  },
+  "per_modality_scores": {
+    "rgb": 0.5766928195953369,
+    "thermal": 0.7800657153129578
+  },
+  "thresholds": {
+    "alert": 0.75,
+    "hold": 0.55
+  },
+  "gating_reason": "rgb+thermal",
+  "latency_ms": 0.0069141387939453125,
+  "media": {
+    "rgb": null,
+    "thermal": null
+  },
+  "objects": [
+    {
+      "object_id": "rgb-0",
+      "modality": "rgb",
+      "class_id": "drone",
+      "confidence": 0.5766928195953369,
+      "bbox": [755.4943237304688, 463.0047912597656, 863.6148071289062, 555.74365234375],
+      "timestamp": 1775329452.9548001
+    },
+    {
+      "object_id": "thermal-1",
+      "modality": "thermal",
+      "class_id": "drone",
+      "confidence": 0.7800657153129578,
+      "bbox": [252.14231872558594, 264.61376953125, 295.2435302734375, 300.427978515625],
+      "timestamp": 1775329452.9548001
+    }
+  ],
+  "timestamp": 1775329453.026127
+}
+
+### -----------------------------------------------------------------
+### Create incident with one modality missing (rgb is null)
+### -----------------------------------------------------------------
+POST {{baseUrl}}/incidents
+Content-Type: application/json
+
+{
+  "incident_id": "incident-http-sample-rgb-null",
+  "has_drone": true,
+  "fused_confidence": 0.30023806095123295,
+  "confidence_band": "low",
+  "decision": "none",
+  "evidence": {
+    "rgb": null,
+    "thermal": {
+      "modality": "thermal",
+      "timestamp": 1775329454.028016,
+      "bbox": [256.61053466796875, 259.5091857910156, 299.61090087890625, 294.4189147949219],
+      "class_id": "drone",
+      "confidence": 0.7505951523780823,
+      "embedding": null,
+      "meta": { "sensor_id": "thermal_cam0" }
+    }
+  },
+  "per_modality_scores": {
+    "rgb": 0.0,
+    "thermal": 0.7505951523780823
+  },
+  "thresholds": {
+    "alert": 0.75,
+    "hold": 0.55
+  },
+  "gating_reason": "thermal",
+  "latency_ms": 0.007152557373046875,
+  "media": {
+    "rgb": null,
+    "thermal": null
+  },
+  "objects": [
+    {
+      "object_id": "thermal-1",
+      "modality": "thermal",
+      "class_id": "drone",
+      "confidence": 0.7505951523780823,
+      "bbox": [256.61053466796875, 259.5091857910156, 299.61090087890625, 294.4189147949219],
+      "timestamp": 1775329454.028016
+    }
+  ],
+  "timestamp": 1775329454.1
+}
+
+### -----------------------------------------------------------------
+### Get one incident by incident_id
+### -----------------------------------------------------------------
+GET {{baseUrl}}/incidents/{{incidentId}}
+
+### -----------------------------------------------------------------
+### List incidents (default pagination)
+### -----------------------------------------------------------------
+GET {{baseUrl}}/incidents
+
+### -----------------------------------------------------------------
+### List incidents with pagination
+### -----------------------------------------------------------------
+GET {{baseUrl}}/incidents?skip=0&limit=10
+
+### -----------------------------------------------------------------
+### List incidents filtered by decision and stream
+### -----------------------------------------------------------------
+GET {{baseUrl}}/incidents?decision=none&stream_name=fusion
+
+### -----------------------------------------------------------------
+### List incidents by time window (ISO timestamps)
+### -----------------------------------------------------------------
+GET {{baseUrl}}/incidents?from_ts=2026-04-03T00:00:00Z&to_ts=2026-04-06T00:00:00Z
+
+### -----------------------------------------------------------------
+### Idempotency check: same incident_id returns existing record
+### -----------------------------------------------------------------
+POST {{baseUrl}}/incidents
+Content-Type: application/json
+
+{
+  "incident_id": "{{incidentId}}",
+  "has_drone": true,
+  "fused_confidence": 0.9,
+  "confidence_band": "high",
+  "decision": "drone",
+  "evidence": {
+    "rgb": null,
+    "thermal": null
+  },
+  "per_modality_scores": {
+    "rgb": 0.0,
+    "thermal": 0.0
+  },
+  "thresholds": {
+    "alert": 0.75,
+    "hold": 0.55
+  },
+  "gating_reason": "test-idempotency",
+  "latency_ms": 0.01,
+  "media": {
+    "rgb": null,
+    "thermal": null
+  },
+  "objects": [],
+  "timestamp": 1775329453.026127
+}
+
+### -----------------------------------------------------------------
+### Negative test: bulk payload array is NOT supported by POST /incidents
+### -----------------------------------------------------------------
+POST {{baseUrl}}/incidents
+Content-Type: application/json
+
+[
+  {
+    "incident_id": "bulk-not-supported-1",
+    "has_drone": true,
+    "fused_confidence": 0.5,
+    "confidence_band": "low",
+    "decision": "none",
+    "evidence": { "rgb": null, "thermal": null },
+    "per_modality_scores": { "rgb": 0.0, "thermal": 0.0 },
+    "thresholds": { "alert": 0.75, "hold": 0.55 },
+    "gating_reason": "bulk-test",
+    "latency_ms": 0.01,
+    "media": { "rgb": null, "thermal": null },
+    "objects": [],
+    "timestamp": 1775329453.026127
+  }
+]
