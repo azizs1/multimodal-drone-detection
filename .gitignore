@@ -17,3 +17,6 @@ __pycache__/
 
 #Datasets
 offline_ml/datasets/*
+
+#Simulator Videos
+*.mp4
