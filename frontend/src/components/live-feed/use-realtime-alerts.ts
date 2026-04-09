@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { type RealtimeAlertEvent } from "@/lib/alerts";
+import { useEffect, useMemo, useState } from "react";
+import {
+  normalizeRealtimeAlertEvent,
+  type IncomingRealtimeAlertPayload,
+  type RealtimeAlertEvent,
+} from "@/lib/alerts";
 
 export type RealtimeAlertConnectionState =
   | "mock"
@@ -49,23 +53,56 @@ export type UseRealtimeAlertsResult = {
 };
 
 export function useRealtimeAlerts(): UseRealtimeAlertsResult {
-  const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(
-    buildMockAlertEvent(0),
-  );
+  const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(null);
   const [mockAlertIndex, setMockAlertIndex] = useState(1);
+  const [connectionState, setConnectionState] = useState<RealtimeAlertConnectionState>("connecting");
 
-  // TODO: Replace mock state with websocket-driven alerts once the backend
-  // finalizes the realtime event contract for fused alert payloads.
-  //
-  // Expected follow-up shape:
-  // 1. Open websocket connection in an effect on mount.
-  // 2. Parse incoming JSON payloads into RealtimeAlertEvent.
-  // 3. Set activeAlertEvent when a valid alert arrives.
-  // 4. Update connectionState from mock to connected/disconnected/error.
+  const websocketUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+    const endpoint = new URL("/incidents/alert", apiBaseUrl);
+    endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
+    return endpoint.toString();
+  }, []);
+
+  useEffect(() => {
+    if (!websocketUrl) {
+      return undefined;
+    }
+
+    const socket = new WebSocket(websocketUrl);
+
+    socket.onopen = () => {
+      setConnectionState("connected");
+    };
+
+    socket.onmessage = (event) => {
+      const payload = JSON.parse(event.data) as IncomingRealtimeAlertPayload;
+      setActiveAlertEvent(normalizeRealtimeAlertEvent(payload));
+    };
+
+    socket.onerror = () => {
+      setConnectionState("error");
+    };
+
+    socket.onclose = () => {
+      setConnectionState("disconnected");
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [websocketUrl]);
+
+  // TODO: Add reconnect/backoff handling and malformed payload protection so
+  // transient websocket failures do not require a page refresh.
 
   return {
     activeAlertEvent,
-    connectionState: "mock",
+    connectionState,
     dismissAlert: () => setActiveAlertEvent(null),
     triggerMockAlert: () => {
       setActiveAlertEvent(buildMockAlertEvent(mockAlertIndex));

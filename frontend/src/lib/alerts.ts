@@ -30,6 +30,15 @@ export type RealtimeAlertEvent = {
   streamName?: string;
 };
 
+export type IncomingRealtimeAlertPayload = {
+  incident_id: string;
+  decision: RealtimeAlertDecision;
+  fused_confidence: number;
+  confidence_band: AlertConfidenceBand;
+  gating_reason: string;
+  timestamp?: number;
+};
+
 export function mapRealtimeAlertSeverity(confidenceBand: AlertConfidenceBand): AlertSeverity {
   if (confidenceBand === "high") {
     return "critical";
@@ -68,4 +77,17 @@ export function mapRealtimeAlertToBannerData(alert: RealtimeAlertEvent): AlertBa
 
 export function mapFusionAlertToBannerData(alert: RealtimeAlertEvent): AlertBannerData | null {
   return mapRealtimeAlertToBannerData(alert);
+}
+
+export function normalizeRealtimeAlertEvent(
+  payload: IncomingRealtimeAlertPayload,
+): RealtimeAlertEvent {
+  return {
+    incidentId: payload.incident_id,
+    decision: payload.decision,
+    fusedConfidence: payload.fused_confidence,
+    confidenceBand: payload.confidence_band,
+    gatingReason: payload.gating_reason,
+    timestamp: payload.timestamp ?? Date.now() / 1000,
+  };
 }
