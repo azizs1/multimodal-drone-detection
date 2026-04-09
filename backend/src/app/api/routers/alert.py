@@ -18,12 +18,12 @@ class AlertConnectionManager:
     def disconnect(self, websocket: WebSocket) -> None:
         self._connections.discard(websocket)
 
-    async def broadcast_detection_id(self, detection_id: str) -> None:
+    async def broadcast_alert(self, payload: dict) -> None:
         stale_connections: list[WebSocket] = []
         for connection in list(self._connections):
             try:
-                await connection.send_text(detection_id)
-            except Exception:
+                await connection.send_json(payload)
+            except (WebSocketDisconnect, RuntimeError, OSError):
                 stale_connections.append(connection)
 
         for connection in stale_connections:
@@ -33,9 +33,9 @@ class AlertConnectionManager:
 alert_connection_manager = AlertConnectionManager()
 
 
-@router.websocket("/detections/alert")
+@router.websocket("/incidents/alert")
 async def alert_socket(websocket: WebSocket):
-    """Websocket endpoint to receive real-time detection IDs."""
+    """Websocket endpoint to receive real-time incident alerts."""
     await alert_connection_manager.connect(websocket)
     try:
         while True:
