@@ -42,22 +42,6 @@ const BASE_SYSTEM_STATUS: ServiceItem[] = [
   { name: "WebSocket", status: "Disconnected" },
 ];
 
-function AlertPreviewControls({
-  onTriggerAlert,
-}: {
-  onTriggerAlert: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onTriggerAlert}
-      className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-    >
-      Trigger Mock Alert
-    </button>
-  );
-}
-
 function ConfidencePanel() {
   return (
     <section className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -203,7 +187,7 @@ function SystemStatusPanel({ services }: { services: ServiceItem[] }) {
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
-  const { activeAlertEvent, dismissAlert, triggerMockAlert } = useRealtimeAlerts();
+  const { activeAlertEvent, dismissAlert } = useRealtimeAlerts();
 
   const services: ServiceItem[] = buildServiceItems(visualStream, thermalStream, BASE_SYSTEM_STATUS);
   const visibleAlert = activeAlertEvent
@@ -221,10 +205,6 @@ export default function LiveFeedPage() {
           {errorMessage ? (
             <StreamsMetaErrorBanner errorMessage={errorMessage} onRetry={() => void refresh()} />
           ) : null}
-
-          <div className="flex justify-end">
-            <AlertPreviewControls onTriggerAlert={triggerMockAlert} />
-          </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
             <VideoPanel

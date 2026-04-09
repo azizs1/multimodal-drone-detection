@@ -14,42 +14,10 @@ export type RealtimeAlertConnectionState =
   | "disconnected"
   | "error";
 
-const MOCK_ALERT_EVENTS: RealtimeAlertEvent[] = [
-  {
-    incidentId: "mock-fusion-alert-001",
-    decision: "drone",
-    fusedConfidence: 0.82,
-    confidenceBand: "high",
-    gatingReason: "rgb+thermal",
-    timestamp: Date.now() / 1000,
-    streamName: "visual",
-  },
-  {
-    incidentId: "mock-fusion-alert-002",
-    decision: "drone",
-    fusedConfidence: 0.91,
-    confidenceBand: "high",
-    gatingReason: "thermal confirmation",
-    timestamp: Date.now() / 1000 + 12,
-    streamName: "thermal",
-  },
-];
-
-function buildMockAlertEvent(index: number): RealtimeAlertEvent {
-  const seed = MOCK_ALERT_EVENTS[index % MOCK_ALERT_EVENTS.length];
-
-  return {
-    ...seed,
-    incidentId: `${seed.incidentId}-${index + 1}`,
-    timestamp: Date.now() / 1000,
-  };
-}
-
 export type UseRealtimeAlertsResult = {
   activeAlertEvent: RealtimeAlertEvent | null;
   connectionState: RealtimeAlertConnectionState;
   dismissAlert: () => void;
-  triggerMockAlert: () => void;
 };
 
 function isIncomingRealtimeAlertPayload(value: unknown): value is IncomingRealtimeAlertPayload {
@@ -73,7 +41,6 @@ function isIncomingRealtimeAlertPayload(value: unknown): value is IncomingRealti
 
 export function useRealtimeAlerts(): UseRealtimeAlertsResult {
   const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(null);
-  const [mockAlertIndex, setMockAlertIndex] = useState(1);
   const [connectionState, setConnectionState] = useState<RealtimeAlertConnectionState>("connecting");
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -167,9 +134,5 @@ export function useRealtimeAlerts(): UseRealtimeAlertsResult {
     activeAlertEvent,
     connectionState,
     dismissAlert: () => setActiveAlertEvent(null),
-    triggerMockAlert: () => {
-      setActiveAlertEvent(buildMockAlertEvent(mockAlertIndex));
-      setMockAlertIndex((current) => current + 1);
-    },
   };
 }

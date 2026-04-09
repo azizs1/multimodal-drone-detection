@@ -69,6 +69,6 @@ test("mapRealtimeAlertToBannerData uses generic messaging when threshold is not 
 
   assert.equal(
     alert?.message,
-    "Fusion decision flagged a drone event (thermal confirmation).",
+    "Fusion decision triggered a drone event (thermal confirmation).",
   );
 });

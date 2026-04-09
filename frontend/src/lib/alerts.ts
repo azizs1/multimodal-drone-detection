@@ -59,7 +59,7 @@ export function mapRealtimeAlertToBannerData(alert: RealtimeAlertEvent): AlertBa
   const hasThresholdReason = alert.gatingReason.toLowerCase().includes("threshold");
   const message = hasThresholdReason
     ? `Fusion confidence exceeded alert threshold (${alert.gatingReason}).`
-    : `Fusion decision flagged a drone event (${alert.gatingReason}).`;
+    : `Fusion decision triggered a drone event (${alert.gatingReason}).`;
 
   return {
     id: alert.incidentId,
