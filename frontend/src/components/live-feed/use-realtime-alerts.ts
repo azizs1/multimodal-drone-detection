@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   normalizeRealtimeAlertEvent,
   type IncomingRealtimeAlertPayload,
@@ -52,10 +52,30 @@ export type UseRealtimeAlertsResult = {
   triggerMockAlert: () => void;
 };
 
+function isIncomingRealtimeAlertPayload(value: unknown): value is IncomingRealtimeAlertPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+
+  return (
+    typeof payload.incident_id === "string" &&
+    (payload.decision === "drone" || payload.decision === "none") &&
+    typeof payload.fused_confidence === "number" &&
+    (payload.confidence_band === "low" ||
+      payload.confidence_band === "medium" ||
+      payload.confidence_band === "high") &&
+    typeof payload.gating_reason === "string" &&
+    (payload.timestamp === undefined || typeof payload.timestamp === "number")
+  );
+}
+
 export function useRealtimeAlerts(): UseRealtimeAlertsResult {
   const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(null);
   const [mockAlertIndex, setMockAlertIndex] = useState(1);
   const [connectionState, setConnectionState] = useState<RealtimeAlertConnectionState>("connecting");
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const websocketUrl = useMemo(() => {
     if (typeof window === "undefined") {
@@ -73,32 +93,75 @@ export function useRealtimeAlerts(): UseRealtimeAlertsResult {
       return undefined;
     }
 
-    const socket = new WebSocket(websocketUrl);
+    let socket: WebSocket | null = null;
+    let isUnmounted = false;
 
-    socket.onopen = () => {
-      setConnectionState("connected");
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     };
 
-    socket.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as IncomingRealtimeAlertPayload;
-      setActiveAlertEvent(normalizeRealtimeAlertEvent(payload));
+    const connect = () => {
+      if (isUnmounted) {
+        return;
+      }
+
+      setConnectionState("connecting");
+      socket = new WebSocket(websocketUrl);
+
+      socket.onopen = () => {
+        clearReconnectTimeout();
+        setConnectionState("connected");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as unknown;
+
+          if (!isIncomingRealtimeAlertPayload(payload)) {
+            return;
+          }
+
+          setActiveAlertEvent(normalizeRealtimeAlertEvent(payload));
+        } catch {
+          setConnectionState("error");
+        }
+      };
+
+      socket.onerror = () => {
+        setConnectionState("error");
+      };
+
+      socket.onclose = () => {
+        if (isUnmounted) {
+          return;
+        }
+
+        setConnectionState("disconnected");
+        clearReconnectTimeout();
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connect();
+        }, 1500);
+      };
     };
 
-    socket.onerror = () => {
-      setConnectionState("error");
-    };
-
-    socket.onclose = () => {
-      setConnectionState("disconnected");
-    };
+    connect();
 
     return () => {
-      socket.close();
+      isUnmounted = true;
+      clearReconnectTimeout();
+
+      if (socket) {
+        socket.close();
+      }
     };
   }, [websocketUrl]);
 
-  // TODO: Add reconnect/backoff handling and malformed payload protection so
-  // transient websocket failures do not require a page refresh.
+  // TODO: If the dashboard starts consuming this state too, move the websocket
+  // connection into a shared realtime incident/alert adapter to avoid duplicate
+  // live subscriptions across components.
 
   return {
     activeAlertEvent,
