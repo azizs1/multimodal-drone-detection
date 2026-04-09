@@ -50,18 +50,16 @@ ruff check --fix
 
 # Datasets
 
-There are three main datasets that will be used for this project. The datasets are below:
+There are two main datasets that will be used for this project. The datasets are below:
 
 - [Zenodo Visual Drone Detection Dataset - Non-Augemented](https://zenodo.org/records/15632958)
 - [Zenodo Thermal Drone Detection Dataset - Non-Augemented](https://zenodo.org/records/15633051)
-- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) (Scroll down to Anti-UAV300 Google Drive link and download from there)
 
 All datasets should be stored in the datasets/ directory and should all be at the same level. Keep the original directory structure for each of the datasets for now.
 
 The names of the datasets have been renamed as follows:
  - zenodo_visual_no_augmentation
  - zenodo_thermal_no_augmentation
- - anti_uav
 
 These will have to be the names renamed in the datasets directory to use any associated notebooks or code.
 
@@ -85,16 +83,16 @@ Note: Run this script from the `offline_ml/` directory before training.
 
 # Initial Model Training
 
-While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLOv8, so I conducted an initial benchmark training session on the three different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
+While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLO26, so I conducted an initial benchmark training session on the two different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
 
-To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
+<!-- To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
 ```bash
 cd ~/multimodal-drone-detection
 python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
 mv yolov8n.pt offline_ml/weights/
-```
+``` -->
 
-Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt.
+<!-- Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt. -->
 
 In order to keep all code in the repository and limit the use of external tools, the train.ipynb notebook was converted into train.py, and training is now conducted on the VT ARC Cluster. Instructions below serve as a walkthrough to getting this resource set up. To run train.py locally to test it works, you can run this bash command below, however, CPU training would be too time intensive to train each of these models locally. Make sure this command is ran in the offline_ml/src directory.
 
@@ -108,7 +106,7 @@ To be able to run python scripts connected to the rest of the repository but sti
 
 ## 1. Setting up VPN
 
-To be able to access the ARC cluster when you are at home or not on eduroam wifi, you must use a VPN. To access the VPN, please follow the instructions for your specific configuration using this link: https://www.nis.vt.edu/ServicePortfolio/Network/RemoteAccess-VPN.html
+To be able to access the ARC cluster when you are at home or not on eduroam wifi, you must use a VPN. To access the VPN, please follow the instructions for your specific configuration using this [link](https://www.nis.vt.edu/ServicePortfolio/Network/RemoteAccess-VPN.html).
 
 ## 2. Setting up SSH Connection
 
@@ -120,7 +118,7 @@ ssh <your_PID>@tinkercliffs2.arc.vt.edu
 
 There are multiple different resources (such as tinkercliffs1 or falcon1, but tinkercliffs had the GPU resources that would work the best for our project). The SSH config file selection should already be created for you and be in your Users directory, so select this one. If this works, you will be asked to enter your Virginia Tech password and then will have to authenticate using DUO mobile on your phone or other device.
 
-This tutorial provides more in-depth instructions: https://video.vt.edu/media/Connect+to+ARC+Systems+with+VSCode/1_5q3mxyi0
+This [tutorial](https://video.vt.edu/media/Connect+to+ARC+Systems+with+VSCode/1_5q3mxyi0) provides more in-depth instructions.
 
 ## 3. Git Clone Repository
 
@@ -190,7 +188,6 @@ mkdir datasets
 cd datasets
 wget "https://zenodo.org/records/15632958/files/Visual%20drone%20detection.v2i.yolov11_no_augmentation.zip?download=1" -O zenodo_visual_no_augmentation.zip
 wget "https://zenodo.org/records/15633051/files/Thermal_drone_detection.v1i.yolov11_no_augmentation.zip?download=1" -O zenodo_thermal_no_augmentation.zip
-wget "https://zenodo.org/records/15633098/files/Thermal_drone_detection.v4i.yolov11.zip?download=1" -O zenodo_thermal_augmented.zip
 ```
 
 ## 6. Creating and Submitting a SLURM Job
@@ -249,3 +246,20 @@ find /scratch/<PID>/runs -name "best.pt"
 ```
 
 The slurm script automatically saves these weights into the weights directory and can then be commited to git or removed.
+
+# Improving Model Robustness
+
+The following datasets will be used to improve model robustness:
+
+- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) (Scroll down to Anti-UAV300 Google Drive link and download from there)
+- [WOSDETC](https://github.com/wosdetc/challenge) (Send an email to wosdetc@googlegroups.com to request access and sign a data usage agreement)
+- [FBD-SV-2024](https://github.com/Ziwei89/FBD-SV-2024_github) ()
+- [LRDDv2](https://research.coe.drexel.edu/ece/imaple/lrddv2/) (Fill out the google form to gain access)
+- [Drone-Detection](https://github.com/DroneDetectionThesis/Drone-detection-dataset/blob/master/Data/Video_IR/IR_AIRPLANE_001_LABELS.mat) ()
+
+The names of the datasets have been renamed as follows:
+ - 
+
+
+Fix yolo26n problem and make it modularizable if I want to to look at other models to use
+Go through all files in tabs above and make sure what is mentioned makes sense with current trajectory.

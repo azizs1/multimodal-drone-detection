@@ -13,7 +13,7 @@ def parse_args():
         "--project", type=str, default="../runs", help="Path to save training outputs"
     )
     parser.add_argument(
-        "--model", type=str, default="../weights/yolov8n.pt", help="YOLO model size"
+        "--model", type=str, default="../weights/yolo26n.pt", help="YOLO model size"
     )
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     return parser.parse_args()
