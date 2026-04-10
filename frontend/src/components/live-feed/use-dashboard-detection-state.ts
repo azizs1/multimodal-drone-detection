@@ -14,6 +14,8 @@ import { getIncidents, type IncidentResponse } from "@/lib/api/incidents";
 import { getHealthReady } from "@/lib/api/health";
 
 const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
+  // TODO: Replace this placeholder once the frontend has a real Jetson/device
+  // health source. Backend and websocket status are already live below.
   { name: "Jetson Nano", status: "Unstable", source: "mock" },
 ];
 
@@ -61,6 +63,12 @@ export function useDashboardDetectionState({
       isMounted = false;
     };
   }, []);
+
+  // Remaining live-feed gap after this integration pass:
+  // - Jetson Nano/device health is still placeholder-only.
+  // - The dashboard currently refreshes incidents by refetching the list when a
+  //   websocket alert arrives; if a richer dashboard-specific stream is added
+  //   later, this hook should switch to consuming that directly.
 
   const summary = useMemo(
     () => mapIncidentToDashboardSummary(incidents[0]),
