@@ -12,12 +12,13 @@ from .adapters import adapt_yolo_results
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_RGB_MODEL_PATH = (
-    REPO_ROOT / "offline_ml/runs/visual_no_augmentation_baseline/weights/best.pt"
+    REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
 )
 DEFAULT_THERMAL_MODEL_PATH = (
-    REPO_ROOT / "offline_ml/runs/thermal_no_augmentation_baseline/weights/best.pt"
+    REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
 )
 DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
+DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://127.0.0.1:8000/incidents"
 DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
 DEFAULT_THERMAL_VIDEO_PATH = REPO_ROOT / "simulator/videos/infrared.mp4"
 
@@ -66,12 +67,32 @@ def _post_to_fusion(fusion_endpoint: str, payload: list[dict]) -> dict | None:
     return None
 
 
+def _post_to_backend_incidents(backend_endpoint: str, fused_decision: dict) -> None:
+    req = request.Request(
+        backend_endpoint,
+        data=json.dumps(fused_decision).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with request.urlopen(req, timeout=2) as resp:
+            print(f"backend incident status={resp.status}")
+    except error.HTTPError as exc:
+        body = ""
+        if exc.fp is not None:
+            body = exc.fp.read().decode("utf-8", errors="replace")
+        print(f"backend incident post failed: status={exc.code} body={body}")
+    except error.URLError as exc:
+        print(f"backend incident post failed: {exc}")
+
+
 def _infer_and_send(
     rgb_model,
     thermal_model,
     rgb_frame,
     thermal_frame,
     fusion_endpoint: str,
+    backend_incident_endpoint: str | None,
 ) -> None:
     timestamp = time.time()
 
@@ -94,7 +115,12 @@ def _infer_and_send(
 
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
     if payload:
-        _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
+        fused_decision = _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
+        if fused_decision and backend_incident_endpoint:
+            _post_to_backend_incidents(
+                backend_endpoint=backend_incident_endpoint,
+                fused_decision=fused_decision,
+            )
 
 
 def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
@@ -124,9 +150,13 @@ def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
 
 def main() -> int:
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
+    backend_incident_endpoint = os.getenv(
+        "BACKEND_INCIDENT_ENDPOINT", DEFAULT_BACKEND_INCIDENT_ENDPOINT
+    )
     source_mode = os.getenv("INFERENCE_SOURCE", "idle").lower()
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
+    print(f"backend incidents endpoint: {backend_incident_endpoint}")
     print(f"inference source mode: {source_mode}")
 
     rgb_model, thermal_model = _load_models()
@@ -150,6 +180,7 @@ def main() -> int:
                 rgb_frame=rgb_frame,
                 thermal_frame=thermal_frame,
                 fusion_endpoint=fusion_endpoint,
+                backend_incident_endpoint=backend_incident_endpoint,
             )
             frame_count += 1
             if max_frames > 0 and frame_count >= max_frames:
@@ -163,7 +194,14 @@ def main() -> int:
         while True:
             # TODO(Sprint 2): Replace with real frame pull from sensor ingestion.
             # Once frames are wired in, call:
-            # _infer_and_send(rgb_model, thermal_model, rgb_frame, thermal_frame, fusion_endpoint)
+            # _infer_and_send(
+            #     rgb_model,
+            #     thermal_model,
+            #     rgb_frame,
+            #     thermal_frame,
+            #     fusion_endpoint,
+            #     backend_incident_endpoint,
+            # )
             time.sleep(5)
     except KeyboardInterrupt:
         print("ml.inference stopped")
