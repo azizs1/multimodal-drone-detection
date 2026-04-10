@@ -11,12 +11,8 @@ from urllib import error, request
 from .adapters import adapt_yolo_results
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_RGB_MODEL_PATH = (
-    REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
-)
-DEFAULT_THERMAL_MODEL_PATH = (
-    REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
-)
+DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
+DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
 DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
 DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://127.0.0.1:8000/incidents"
 DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
