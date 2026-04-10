@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 /**
  * @typedef {"Confirmed" | "Pending" | "False Positive"} DashboardIncidentStatus
  */
@@ -5,7 +7,6 @@
 /**
  * @typedef {{
  *   fusedConfidence: number;
- *   distanceFt: number;
  *   visualConfidence: number;
  *   thermalConfidence: number;
  * }} DashboardDetectionSummary
@@ -14,10 +15,11 @@
 /**
  * @typedef {{
  *   id: string;
- *   occurredAt: string;
- *   fusedConfidence: number;
- *   distanceFt: number;
- *   status: DashboardIncidentStatus;
+  *   occurredAt: string;
+  *   fusedConfidence: number;
+ *   visualConfidence: number;
+ *   thermalConfidence: number;
+ *   decision: string;
  * }} DashboardIncidentRow
  */
 
@@ -33,11 +35,38 @@
  * }} DashboardSystemStatusItem
  */
 
-/** @type {DashboardIncidentRow[]} */
-export const MOCK_DASHBOARD_INCIDENT_ROWS = [
-  { id: "#001", occurredAt: "14:32:07", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
-  { id: "#002", occurredAt: "14:33:16", fusedConfidence: 92, distanceFt: 15, status: "Confirmed" },
-  { id: "#003", occurredAt: "14:35:44", fusedConfidence: 93, distanceFt: 14, status: "Confirmed" },
-  { id: "#004", occurredAt: "14:37:09", fusedConfidence: 95, distanceFt: 13, status: "Confirmed" },
-  { id: "#005", occurredAt: "14:40:51", fusedConfidence: 94, distanceFt: 14, status: "Confirmed" },
-];
+/**
+ * @param {import("./api/incidents").IncidentResponse} incident
+ * @param {import("./api/incidents").IncidentResponse} incident
+ * @returns {DashboardIncidentRow}
+ */
+export function mapIncidentToDashboardRow(incident) {
+  return {
+    id: incident.incident_id,
+    occurredAt: format(new Date(incident.detected_at), "MMM dd, h:mm a"),
+    fusedConfidence: Math.round(incident.fused_confidence * 100),
+    visualConfidence: Math.round((incident.per_modality_scores.rgb ?? 0) * 100),
+    thermalConfidence: Math.round((incident.per_modality_scores.thermal ?? 0) * 100),
+    decision: incident.decision,
+  };
+}
+
+/**
+ * @param {import("./api/incidents").IncidentResponse | undefined} incident
+ * @returns {DashboardDetectionSummary}
+ */
+export function mapIncidentToDashboardSummary(incident) {
+  if (!incident) {
+    return {
+      fusedConfidence: 0,
+      visualConfidence: 0,
+      thermalConfidence: 0,
+    };
+  }
+
+  return {
+    fusedConfidence: Math.round(incident.fused_confidence * 100),
+    visualConfidence: Math.round((incident.per_modality_scores.rgb ?? 0) * 100),
+    thermalConfidence: Math.round((incident.per_modality_scores.thermal ?? 0) * 100),
+  };
+}

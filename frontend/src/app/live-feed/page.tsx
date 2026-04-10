@@ -32,34 +32,25 @@ function ConfidencePanel({
               {summary.fusedConfidence}%
             </p>
           </div>
-
-          <div className="rounded-md border border-cyan-100 bg-cyan-50/60 px-3 py-4 text-center dark:border-cyan-700/50 dark:bg-slate-800">
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Distance</p>
-            <p className="mt-1 text-4xl font-extrabold text-cyan-500 dark:text-cyan-400">
-              ~{summary.distanceFt}ft
-            </p>
-          </div>
         </div>
       </div>
 
       <div className="mt-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Secondary Metrics
+          Per-Modality Confidence
         </p>
-        <div className="mt-2 rounded-md border border-slate-200 bg-slate-100 p-3 text-center dark:border-slate-700 dark:bg-slate-800">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Visual Confidence</p>
-              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">
-                {summary.visualConfidence}%
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Thermal Confidence</p>
-              <p className="mt-1 text-3xl font-bold text-slate-400 dark:text-slate-300">
-                {summary.thermalConfidence}%
-              </p>
-            </div>
+        <div className="mt-2 grid h-28 rounded-md border border-slate-200 bg-slate-100 px-3 dark:border-slate-700 dark:bg-slate-800">
+          <div className="grid grid-cols-[1fr_auto] items-center border-b border-slate-200/80 dark:border-slate-700">
+            <p className="text-sm font-medium leading-none text-slate-500 dark:text-slate-400">RGB</p>
+            <p className="text-2xl font-bold leading-none text-slate-500 dark:text-slate-300">
+              {summary.visualConfidence}%
+            </p>
+          </div>
+          <div className="grid grid-cols-[1fr_auto] items-center">
+            <p className="text-sm font-medium leading-none text-slate-500 dark:text-slate-400">Thermal</p>
+            <p className="text-2xl font-bold leading-none text-slate-500 dark:text-slate-300">
+              {summary.thermalConfidence}%
+            </p>
           </div>
         </div>
       </div>
@@ -105,12 +96,12 @@ function RecentIncidentsTable({
         <table className="w-full min-w-[760px] border-collapse text-left text-sm text-slate-600 dark:text-slate-300">
           <thead className="text-slate-500 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-3 py-3 font-semibold">ID</th>
+              <th className="px-3 py-3 font-semibold">Incident ID</th>
               <th className="px-3 py-3 font-semibold">Time</th>
               <th className="px-3 py-3 font-semibold">Fused Confidence</th>
-              <th className="px-3 py-3 font-semibold">Distance</th>
-              <th className="px-3 py-3 font-semibold">Status</th>
-              <th className="px-3 py-3 font-semibold">Actions</th>
+              <th className="px-3 py-3 font-semibold">RGB Confidence</th>
+              <th className="px-3 py-3 font-semibold">Thermal Confidence</th>
+              <th className="px-3 py-3 font-semibold">Decision</th>
             </tr>
           </thead>
           <tbody>
@@ -119,19 +110,18 @@ function RecentIncidentsTable({
                 <td className="px-3 py-3">{row.id}</td>
                 <td className="px-3 py-3">{row.occurredAt}</td>
                 <td className="px-3 py-3">{row.fusedConfidence}%</td>
-                <td className="px-3 py-3">~{row.distanceFt}ft</td>
+                <td className="px-3 py-3">{row.visualConfidence}%</td>
+                <td className="px-3 py-3">{row.thermalConfidence}%</td>
                 <td className="px-3 py-3">
-                  <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {row.status}
-                  </span>
-                </td>
-                <td className="px-3 py-3">
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded-md border border-slate-300 bg-slate-100 px-4 py-1 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold uppercase tracking-wide ${
+                      row.decision === "drone"
+                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                        : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    }`}
                   >
-                    View
-                  </button>
+                    {row.decision}
+                  </span>
                 </td>
               </tr>
             ))}
