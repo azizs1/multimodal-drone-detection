@@ -30,11 +30,49 @@ iface eth0 inet static
 From repository root, run the following commands to build and run the Docker container:
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
-sudo docker run --rm -it --network host --runtime nvidia --env-file .env --privileged jetson-si-ml
+sudo docker run --rm -it --network host --runtime nvidia --env-file .env --privileged jetson-si-ml --device /dev/video0:/dev/video0
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
 ### Running Without Container
 If running without the container is desired, navigate to `multimodal-drone-detection/jetson/src` and run:
 ```
 python3 -m sensor_ingestion.ingest_gi
+```
+# Initialize venv
+A dedicated Jetson Docker container was not used due to container network passthrough issues and space issues on a 32GB limited SD card. To maintain dependency management, `uv` was used:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv venv --python 3.10 --system-site-packages
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv sync --no-build-isolation
+```
+# Low Space on Disk
+Especially during development when it is easier to work with full JetPack 6.1, space can be a concern. For this, another USB drive can be used (WARNING: THIS WILL COMPLETELY WIPE THE USB):
+```bash
+# find USB device name (probs /dev/sda1)
+lsblk
+# format to ext4
+sudo mkfs.ext4 /dev/sda1
+# create mount point and mount it
+sudo mkdir -p /mnt/usb
+sudo mount /dev/sda1 /mnt/usb
+# set write permissions
+sudo chown jetson:jetson /mnt/usb
+```
+Clone the repo here. Now Docker should be configured to use this USB drive:
+```bash
+sudo systemctl stop docker
+sudo mkdir -p /mnt/usb_storage/docker-data
+```
+Now we must edit `/etc/docker/daemon.json` and add to the file:
+```json
+"data-root": "/mnt/usb_storage/docker-data"
+```
+
+
+ and initialize the virtual environment. When creating this virtual environment, it will still try to download packages on the initial SD card, so we need to create a temp cache on the USB drive:
+```bash
+mkdir -p /mnt/usb_storage/.uv_cache
+export UV_CACHE_DIR="/mnt/usb_storage/.uv_cache"
+# optional, but add to bashrc for future sessions. remember to source in current one
+echo 'export UV_CACHE_DIR="/mnt/usb_storage/.uv_cache"' >> ~/.bashrc
 ```

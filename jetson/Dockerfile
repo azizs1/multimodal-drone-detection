@@ -1,23 +1,22 @@
-FROM bluenviron/mediamtx:1.6.0-rtp7 AS mediamtx AS mediamtx_source
+FROM bluenviron/mediamtx:latest AS mediamtx_source
 # https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
 # this is for JetPack 4.6.1, but NO DEEPSTREAM (switch later if needed)
-FROM nvcr.io/nvidia/l4t-base:r32.7.1
+# FROM nvcr.io/nvidia/l4t-base:r32.7.1
 # TODO: Switch to the following once we have Orin nano:
-# FROM nvcr.io/nvidia/l4t-pytorch:r35.4.1-pth2.0-py3
+FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
+
 
 WORKDIR /app
 
-COPY src/ ./src/
 COPY --from=mediamtx_source /mediamtx ./mediamtx
 COPY mediamtx.yml ./mediamtx.yml
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
     tzdata \
-    python3 python3-pip python3-dev \
-    python3-opencv \
     python3-gi \
     gir1.2-gstreamer-1.0 \
     gir1.2-glib-2.0 \
@@ -30,16 +29,6 @@ RUN apt-get update && apt-get install -y \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# RUN pip3 install uv
-
-#COPY pyproject.toml uv.lock ./
-COPY pyproject.toml ./
-COPY src/ ./src/
-
-# JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
-# figure this out later
-# RUN pip3 install --no-cache-dir \
-#     https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
 RUN pip3 install --no-cache-dir \
     uv \
     ultralytics \
@@ -49,6 +38,10 @@ RUN pip3 install --no-cache-dir \
     pydantic \
     numpy \
     pyzmq
+
+#COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
+COPY src/ ./src/
 
 # MediaMTX ports: 
 # 8554: RTSP
