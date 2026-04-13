@@ -1,16 +1,17 @@
 # Drone Detection Stream Simulator
 
-The `stream-simulator` service ingests paired RGB and thermal videos, runs YOLO inference,
-annotates frames, and publishes RTSP streams to MediaMTX.
+The `stream-simulator` service ingests paired RGB and thermal videos, publishes synchronized
+frame pairs over ZeroMQ, runs YOLO inference, annotates frames, and publishes RTSP streams to MediaMTX.
 
 ## Pipeline
 
 ```
-videos/*.mp4 -> video_ingestion.py -> shared_buffer.py -> inference.py -> frame_publisher.py -> MediaMTX (RTSP/HLS)
+videos/*.mp4 -> video_ingestion.py -> ZeroMQ -> jetson/src/ml/inference/__main__.py
+                     \-> inference.py -> frame_publisher.py -> MediaMTX (RTSP/HLS)
 ```
 
 Key behavior:
-- Shared buffer keeps only the latest synchronized frame pair.
+- ZeroMQ publishes synchronized frame pairs from the ingestion process.
 - Inference processes a frame only when a new timestamp arrives (no duplicate re-processing).
 - Publisher uses a single-slot queue, so newer frames replace stale ones under load.
 
@@ -22,10 +23,7 @@ From repository root:
 uv run python3 -m simulator.src.video_ingestion
 ```
 
-This starts:
-- ingestion in the foreground
-- inference in a background thread
-- RTSP publishing when first processed frame is available
+This starts ingestion in the foreground and publishes frame pairs over ZeroMQ. If you want the legacy local inference loop, run `simulator.src.inference` separately.
 
 ## Run With Docker Compose
 
@@ -54,6 +52,7 @@ RGB_WIDTH=1280
 RGB_HEIGHT=720
 THERMAL_WIDTH=160
 THERMAL_HEIGHT=120
+ZMQ_FRAME_BIND_ENDPOINT=tcp://*:5560
 ```
 
 ### Stream Output

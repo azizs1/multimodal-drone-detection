@@ -8,15 +8,16 @@ import time
 from pathlib import Path
 from urllib import error, request
 
+from frame_pair_transport import DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
+
 from .adapters import adapt_yolo_results
+from .zmq_bridge import run_one_zmq_inference
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
 DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
-DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
-DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://127.0.0.1:8000/incidents"
-DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
-DEFAULT_THERMAL_VIDEO_PATH = REPO_ROOT / "simulator/videos/infrared.mp4"
+DEFAULT_FUSION_ENDPOINT = "http://fusion:8050/fusion/ingest"
+DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT = DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
 
 
 def _load_models():
@@ -63,32 +64,13 @@ def _post_to_fusion(fusion_endpoint: str, payload: list[dict]) -> dict | None:
     return None
 
 
-def _post_to_backend_incidents(backend_endpoint: str, fused_decision: dict) -> None:
-    req = request.Request(
-        backend_endpoint,
-        data=json.dumps(fused_decision).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with request.urlopen(req, timeout=2) as resp:
-            print(f"backend incident status={resp.status}")
-    except error.HTTPError as exc:
-        body = ""
-        if exc.fp is not None:
-            body = exc.fp.read().decode("utf-8", errors="replace")
-        print(f"backend incident post failed: status={exc.code} body={body}")
-    except error.URLError as exc:
-        print(f"backend incident post failed: {exc}")
-
-
 def _infer_and_send(
     rgb_model,
     thermal_model,
     rgb_frame,
     thermal_frame,
     fusion_endpoint: str,
-    backend_incident_endpoint: str | None,
+    publishers=None,
 ) -> None:
     timestamp = time.time()
 
@@ -110,98 +92,63 @@ def _infer_and_send(
     )
 
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
+    if publishers is not None:
+        rgb_publisher, thermal_publisher = publishers
+        rgb_publisher.publish(rgb_frame)
+        thermal_publisher.publish(thermal_frame)
+
     if payload:
-        fused_decision = _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
-        if fused_decision and backend_incident_endpoint:
-            _post_to_backend_incidents(
-                backend_endpoint=backend_incident_endpoint,
-                fused_decision=fused_decision,
-            )
-
-
-def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
-    try:
-        import cv2
-    except ImportError as exc:  # pragma: no cover - runtime dependency
-        raise RuntimeError("opencv-python is required for video-frame inference mode.") from exc
-
-    rgb_cap = cv2.VideoCapture(str(rgb_video_path))
-    thermal_cap = cv2.VideoCapture(str(thermal_video_path))
-    if not rgb_cap.isOpened():
-        raise FileNotFoundError(f"RGB video not found or unreadable: {rgb_video_path}")
-    if not thermal_cap.isOpened():
-        raise FileNotFoundError(f"Thermal video not found or unreadable: {thermal_video_path}")
-
-    try:
-        while True:
-            ok_rgb, rgb_frame = rgb_cap.read()
-            ok_thermal, thermal_frame = thermal_cap.read()
-            if not ok_rgb or not ok_thermal:
-                break
-            yield rgb_frame, thermal_frame
-    finally:
-        rgb_cap.release()
-        thermal_cap.release()
+        _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
 
 
 def main() -> int:
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
-    backend_incident_endpoint = os.getenv(
-        "BACKEND_INCIDENT_ENDPOINT", DEFAULT_BACKEND_INCIDENT_ENDPOINT
-    )
-    source_mode = os.getenv("INFERENCE_SOURCE", "idle").lower()
+    publish_rtsp = os.getenv("INFERENCE_PUBLISH_RTSP", "false").lower() == "true"
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
-    print(f"backend incidents endpoint: {backend_incident_endpoint}")
-    print(f"inference source mode: {source_mode}")
+    print("inference source mode: zmq")
+    print(f"rtsp publishing enabled: {publish_rtsp}")
 
     rgb_model, thermal_model = _load_models()
     print("loaded RGB and thermal models")
     print(f"rgb classes: {getattr(rgb_model, 'names', {})}")
     print(f"thermal classes: {getattr(thermal_model, 'names', {})}")
 
-    if source_mode == "videos":
-        rgb_video_path = Path(os.getenv("RGB_VIDEO_PATH", str(DEFAULT_RGB_VIDEO_PATH)))
-        thermal_video_path = Path(os.getenv("THERMAL_VIDEO_PATH", str(DEFAULT_THERMAL_VIDEO_PATH)))
-        max_frames = int(os.getenv("MAX_FRAMES", "0"))
-        print(f"rgb video path: {rgb_video_path}")
-        print(f"thermal video path: {thermal_video_path}")
-        if max_frames > 0:
-            print(f"max frames: {max_frames}")
-        frame_count = 0
-        for rgb_frame, thermal_frame in _iter_video_frames(rgb_video_path, thermal_video_path):
-            _infer_and_send(
-                rgb_model=rgb_model,
-                thermal_model=thermal_model,
-                rgb_frame=rgb_frame,
-                thermal_frame=thermal_frame,
-                fusion_endpoint=fusion_endpoint,
-                backend_incident_endpoint=backend_incident_endpoint,
-            )
-            frame_count += 1
-            if max_frames > 0 and frame_count >= max_frames:
-                break
-        print(f"video inference finished, processed {frame_count} frame pairs")
-        return 0
+    publishers = None
+    build_publishers = None
+    if publish_rtsp:
+        from .frame_publisher import build_publishers as _build_publishers
 
-    print("waiting for frame source integration (sensor ingestion -> inference bridge)")
+        build_publishers = _build_publishers
+
+    connect_endpoint = os.getenv("ZMQ_FRAME_CONNECT_ENDPOINT", DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT)
+    print(f"ZeroMQ frame connect endpoint: {connect_endpoint}")
+
+    def _infer_with_optional_publish(**kwargs):
+        nonlocal publishers
+        if publish_rtsp and publishers is None and build_publishers is not None:
+            publishers = build_publishers(
+                rgb_shape=kwargs["rgb_frame"].shape,
+                thermal_shape=kwargs["thermal_frame"].shape,
+                fps=30,
+            )
+        _infer_and_send(**kwargs, publishers=publishers)
 
     try:
-        while True:
-            # TODO(Sprint 2): Replace with real frame pull from sensor ingestion.
-            # Once frames are wired in, call:
-            # _infer_and_send(
-            #     rgb_model,
-            #     thermal_model,
-            #     rgb_frame,
-            #     thermal_frame,
-            #     fusion_endpoint,
-            #     backend_incident_endpoint,
-            # )
-            time.sleep(5)
-    except KeyboardInterrupt:
-        print("ml.inference stopped")
-        return 0
+        run_one_zmq_inference(
+            _infer_with_optional_publish,
+            rgb_model=rgb_model,
+            thermal_model=thermal_model,
+            fusion_endpoint=fusion_endpoint,
+            connect_endpoint=connect_endpoint,
+        )
+    finally:
+        if publishers is not None:
+            publishers[0].stop()
+            publishers[1].stop()
+
+    print("ZeroMQ inference finished after one frame pair")
+    return 0
 
 
 if __name__ == "__main__":

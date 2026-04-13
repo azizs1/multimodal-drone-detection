@@ -8,10 +8,10 @@ This MEng capstone project aims to build a drone detection system with an AI-ena
 
 The system consists of four main components:
 
-1. **Simulator** - Video streamer that loops drone footage to RTSP
+1. **Simulator** - Video streamer that loops drone footage and publishes synchronized frames over ZeroMQ
 2. **MediaMTX** - RTSP/HLS media server that handles stream distribution
 3. **Backend** - FastAPI service providing REST API and stream information
-4. **Jetson** - Edge AI processing on Jetson Nano (ML + sensor ingestion)
+4. **Jetson** - Edge AI processing on Jetson Nano (ML + ZeroMQ inference bridge)
 
 ### Streaming Pipeline
 
@@ -23,10 +23,9 @@ The streaming pipeline uses different encoders depending on the environment:
 | **Production (Jetson Nano)** | GStreamer | `docker-compose.jetson.yaml` | Hardware-accelerated encoding via NVENC on the Jetson Nano |
 
 ```
-[Simulator] --RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
-                           ^
-                           |
-                      [Backend API]
+[Simulator] --ZeroMQ--> [Jetson Inference] --HTTP--> [Fusion/Backend]
+   |
+   +--RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
 ```
 
 ## Quick Start
@@ -113,7 +112,7 @@ uv run pytest
 ## How to Use
 
 ### Simulator
-The simulator loops drone video footage over RTSP to the MediaMTX server using **FFmpeg**.
+The simulator still loops drone video footage for RTSP output, and it now also publishes synchronized RGB/thermal frame pairs over **ZeroMQ** for Jetson inference.
 
 - **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** (`libx264`, `ultrafast` preset) for software-based RTSP streaming. Works on any development machine without special hardware.
 - **Production (`docker-compose.jetson.yaml`):** Uses **GStreamer** with hardware-accelerated encoding on the **Jetson Nano**.
@@ -128,6 +127,8 @@ The Docker Compose dev file launches **two simulator containers** — one per st
 | `gst-thermal-simulator` | `thermal`   | `drone_thermal.mp4` | `rtsp://mediamtx:8554/thermal` |
 
 Both containers use the same Dockerfile; behavior is controlled by the `STREAM_NAME` and `VIDEO_FILE` environment variables.
+
+For Jetson inference integration, the simulator publishes frame pairs on `tcp://*:5560` by default.
 
 **Configuration:**
 - Video files: Place `.mp4` files in `simulator/videos/`

@@ -38,3 +38,14 @@ If running without the container is desired, navigate to `multimodal-drone-detec
 ```
 python3 -m sensor_ingestion.ingest_gi
 ```
+
+### ZeroMQ Inference Bridge
+
+To consume simulator frames once and exit after a single inference cycle:
+
+```bash
+cd jetson/src
+uv run python -m ml.inference
+```
+
+By default the Jetson subscriber connects to `tcp://127.0.0.1:5560`. Override with `ZMQ_FRAME_CONNECT_ENDPOINT` if the simulator is binding elsewhere.

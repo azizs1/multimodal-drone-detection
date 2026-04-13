@@ -80,6 +80,60 @@ services:
       - mediamtx
     restart: always
 
+  # ML Inference (subscribes to ZeroMQ frames from simulator)
+  ml-inference:
+    build:
+      context: .
+      dockerfile: jetson/Dockerfile
+    container_name: ml-inference
+    environment:
+      # ZeroMQ frame transport
+      - ZMQ_FRAME_CONNECT_ENDPOINT=tcp://stream-simulator:5560
+      - FUSION_ENDPOINT=http://fusion:8050/fusion/ingest
+      # RTSP publishing (set to 'true' to enable)
+      - INFERENCE_PUBLISH_RTSP=false
+      - INFERENCE_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual-inference
+      - INFERENCE_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal-inference
+      # Output frame sizing
+      - INFERENCE_VISUAL_OUT_WIDTH=640
+      - INFERENCE_VISUAL_OUT_HEIGHT=360
+      - INFERENCE_THERMAL_OUT_WIDTH=160
+      - INFERENCE_THERMAL_OUT_HEIGHT=120
+      # Encoding parameters for RTSP output
+      - INFERENCE_X264_CRF=30
+      - INFERENCE_X264_MAXRATE=900
+      - INFERENCE_X264_BUFSIZE=900
+      - INFERENCE_X264_KEYINT=12
+    networks:
+      - drone-network
+    depends_on:
+      - mediamtx
+      - stream-simulator
+      - fusion
+    restart: always
+
+  # Fusion service (aggregates RGB/thermal predictions and posts to backend)
+  fusion:
+    build:
+      context: .
+      dockerfile: jetson/Dockerfile
+    container_name: fusion
+    environment:
+      - FUSION_HOST=0.0.0.0
+      - FUSION_PORT=8050
+      - BACKEND_INCIDENT_ENDPOINT=http://backend:8000/incidents
+    ports:
+      - "8050:8050"
+    networks:
+      - drone-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    entrypoint: ["uv", "run", "python", "-m", "ml.fusion_service"]
+    restart: always
+
   # Backend
   backend:
     build: ./backend
@@ -92,6 +146,7 @@ services:
       - DATABASE_URL=postgresql://droneuser:dronepass@postgres:5432/drone_detection
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
+
       - POSTGRES_DB=drone_detection
       - POSTGRES_USER=droneuser
       - POSTGRES_PASSWORD=dronepass
