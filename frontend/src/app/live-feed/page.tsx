@@ -6,9 +6,12 @@ import {
   buildStreamPlaylistUrl,
   buildVideoSubLabel,
 } from "@/components/live-feed/live-feed-state.mjs";
+import { useRealtimeAlerts } from "@/components/live-feed/use-realtime-alerts";
 import { useDashboardDetectionState } from "@/components/live-feed/use-dashboard-detection-state";
 import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { mapRealtimeAlertToBannerData } from "@/lib/alerts";
 import {
   type DashboardDetectionSummary,
   type DashboardIncidentRow,
@@ -196,15 +199,24 @@ function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[]
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
+  const { activeAlertEvent, dismissAlert } = useRealtimeAlerts();
   const { summary, recentIncidents, services } = useDashboardDetectionState({
     visualStream,
     thermalStream,
   });
 
+  const visibleAlert = activeAlertEvent
+    ? mapRealtimeAlertToBannerData(activeAlertEvent)
+    : null;
+
   return (
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
+          {visibleAlert ? (
+            <AlertBanner alert={visibleAlert} onDismiss={dismissAlert} />
+          ) : null}
+
           {errorMessage ? (
             <StreamsMetaErrorBanner errorMessage={errorMessage} onRetry={() => void refresh()} />
           ) : null}
