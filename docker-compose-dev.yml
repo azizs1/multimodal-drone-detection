@@ -58,7 +58,7 @@ services:
       dockerfile: simulator/Dockerfile
     container_name: stream-simulator
     environment:
-      - SIM_STREAM_MODE=rtsp
+      - SIM_STREAM_MODE=zmq
       - SIM_STREAM_HOST=mediamtx
       - SIM_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
       - SIM_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
@@ -86,14 +86,18 @@ services:
       context: .
       dockerfile: jetson/Dockerfile
     container_name: ml-inference
+    volumes:
+      - ./offline_ml/weights:/app/offline_ml/weights:ro
     environment:
       # ZeroMQ frame transport
       - ZMQ_FRAME_CONNECT_ENDPOINT=tcp://stream-simulator:5560
       - FUSION_ENDPOINT=http://fusion:8050/fusion/ingest
+      - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
+      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
       # RTSP publishing (set to 'true' to enable)
-      - INFERENCE_PUBLISH_RTSP=false
-      - INFERENCE_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual-inference
-      - INFERENCE_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal-inference
+      - INFERENCE_PUBLISH_RTSP=true
+      - INFERENCE_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
+      - INFERENCE_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
       # Output frame sizing
       - INFERENCE_VISUAL_OUT_WIDTH=640
       - INFERENCE_VISUAL_OUT_HEIGHT=360

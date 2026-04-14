@@ -20,6 +20,7 @@ THERMAL_VIDEO_PATH = os.getenv("THERMAL_VIDEO_PATH", DEFAULT_THERMAL_VIDEO)
 PLAYBACK_FPS = int(os.getenv("PLAYBACK_FPS", "30"))
 LOOP_VIDEO = os.getenv("LOOP_VIDEO", "true").lower() == "true"
 ZMQ_FRAME_BIND_ENDPOINT = os.getenv("ZMQ_FRAME_BIND_ENDPOINT", DEFAULT_FRAME_PUB_BIND_ENDPOINT)
+SIM_STREAM_MODE = os.getenv("SIM_STREAM_MODE", "rtsp").lower()
 
 # Target dimensions (matching jetson expectations)
 RGB_TARGET_WIDTH = int(os.getenv("RGB_WIDTH", "1280"))
@@ -81,6 +82,7 @@ def start_ingestion():
 
     context = None
     pub_socket = None
+    publishers = None
 
     # Get video properties
     rgb_fps = rgb_cap.get(cv2.CAP_PROP_FPS)
@@ -103,6 +105,7 @@ def start_ingestion():
 
     print("Starting video ingestion... Press Ctrl+C to stop")
     print(f"ZeroMQ publish endpoint: {ZMQ_FRAME_BIND_ENDPOINT}")
+    print(f"RTSP publish enabled: {SIM_STREAM_MODE == 'rtsp'}")
     print()
 
     try:
@@ -143,6 +146,21 @@ def start_ingestion():
             # Publish the synchronized frame pair over ZeroMQ.
             timestamp = time.time()
             pub_socket.send_multipart(encode_frame_pair(timestamp, rgb_frame, thermal_frame))
+
+            if SIM_STREAM_MODE == "rtsp":
+                if publishers is None:
+                    from src.frame_publisher import build_publishers
+
+                    publishers = build_publishers(
+                        rgb_shape=rgb_frame.shape,
+                        thermal_shape=thermal_frame.shape,
+                        fps=PLAYBACK_FPS,
+                    )
+                    print("Started RTSP publishers for visual and thermal streams")
+
+                rgb_publisher, thermal_publisher = publishers
+                rgb_publisher.publish(rgb_frame)
+                thermal_publisher.publish(thermal_frame)
 
             frame_count += 1
 
@@ -192,6 +210,9 @@ def start_ingestion():
         print()
         print("Video ingestion stopped by user")
     finally:
+        if publishers is not None:
+            publishers[0].stop()
+            publishers[1].stop()
         rgb_cap.release()
         thermal_cap.release()
         if pub_socket is not None:

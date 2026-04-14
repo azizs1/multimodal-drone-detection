@@ -6,7 +6,8 @@ RUN apt-get update \
     build-essential \
     pkg-config \
     libcairo2-dev \
-    libgirepository1.0-dev \
+    libgirepository-2.0-dev \
+    gobject-introspection \
     libgl1 \
     libglib2.0-0 \
     libxcb1 \
@@ -55,5 +56,8 @@ ENV INFERENCE_X264_KEYINT=12
 # Set working directory to jetson
 WORKDIR /app/jetson
 
-# Run ML inference and fusion
+# Ensure imports resolve from jetson/src (ml package, frame_pair_transport, etc.)
+ENV PYTHONPATH=/app/jetson/src
+
+# Run ML inference
 CMD ["uv", "run", "python", "-m", "ml.inference"]

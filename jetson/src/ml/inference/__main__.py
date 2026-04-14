@@ -20,6 +20,33 @@ DEFAULT_FUSION_ENDPOINT = "http://fusion:8050/fusion/ingest"
 DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT = DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
 
 
+def _annotate_frame(frame, predictions):
+    """Render prediction boxes and labels on a BGR frame."""
+    try:
+        import cv2
+    except ImportError:
+        return frame
+
+    annotated = frame.copy()
+    for pred in predictions:
+        x1, y1, x2, y2 = (int(v) for v in pred.bbox)
+        label = f"{pred.class_id} {pred.confidence:.2f}"
+        color = (0, 255, 0)
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(
+            annotated,
+            label,
+            (x1, max(16, y1 - 6)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            1,
+            cv2.LINE_AA,
+        )
+
+    return annotated
+
+
 def _load_models():
     try:
         from ultralytics import YOLO
@@ -94,8 +121,8 @@ def _infer_and_send(
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
     if publishers is not None:
         rgb_publisher, thermal_publisher = publishers
-        rgb_publisher.publish(rgb_frame)
-        thermal_publisher.publish(thermal_frame)
+        rgb_publisher.publish(_annotate_frame(rgb_frame, rgb_predictions))
+        thermal_publisher.publish(_annotate_frame(thermal_frame, thermal_predictions))
 
     if payload:
         _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
@@ -135,19 +162,23 @@ def main() -> int:
         _infer_and_send(**kwargs, publishers=publishers)
 
     try:
-        run_one_zmq_inference(
-            _infer_with_optional_publish,
-            rgb_model=rgb_model,
-            thermal_model=thermal_model,
-            fusion_endpoint=fusion_endpoint,
-            connect_endpoint=connect_endpoint,
-        )
+        while True:
+            try:
+                run_one_zmq_inference(
+                    _infer_with_optional_publish,
+                    rgb_model=rgb_model,
+                    thermal_model=thermal_model,
+                    fusion_endpoint=fusion_endpoint,
+                    connect_endpoint=connect_endpoint,
+                )
+            except Exception as exc:  # pragma: no cover - runtime resilience
+                print(f"inference loop error: {exc}")
+                time.sleep(0.25)
     finally:
         if publishers is not None:
             publishers[0].stop()
             publishers[1].stop()
 
-    print("ZeroMQ inference finished after one frame pair")
     return 0
 
 
