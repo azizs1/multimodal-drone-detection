@@ -41,7 +41,6 @@ def test_one_shot_zmq_inference_uses_received_frames(monkeypatch):
         rgb_model=DummyModel(),
         thermal_model=DummyModel(),
         fusion_endpoint="http://fusion",
-        backend_incident_endpoint="http://backend",
         connect_endpoint="tcp://127.0.0.1:5560",
     )
 

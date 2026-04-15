@@ -158,6 +158,16 @@ class RustFSStorage:
         thermal_url = self._upload_jpeg(thermal_key, thermal_frame)
         return UploadURLs(rgb=rgb_url, thermal=thermal_url)
 
+    def upload_detection_image_bytes(
+        self,
+        timestamp: float,
+        modality: str,
+        jpeg_bytes: bytes,
+    ) -> str | None:
+        ts_ms = int(timestamp * 1000)
+        key = f"detections/{ts_ms}/{modality}.jpg"
+        return self._upload_jpeg_bytes(key=key, jpeg_bytes=jpeg_bytes)
+
     def _upload_jpeg(self, key: str, frame) -> str | None:
         try:
             import cv2
@@ -170,11 +180,14 @@ class RustFSStorage:
             logger.warning("RustFS jpeg encode failed key=%s", key)
             return None
 
+        return self._upload_jpeg_bytes(key=key, jpeg_bytes=encoded.tobytes())
+
+    def _upload_jpeg_bytes(self, key: str, jpeg_bytes: bytes) -> str | None:
         self._call_s3(
             "put_object",
             Bucket=self.bucket,
             Key=key,
-            Body=encoded.tobytes(),
+            Body=jpeg_bytes,
             ContentType="image/jpeg",
         )
         public_url = f"{self.public_base_url}/{self.bucket}/{quote(key)}"

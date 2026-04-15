@@ -564,7 +564,6 @@ dependencies = [
 [package.optional-dependencies]
 sensor = [
     { name = "opencv-python" },
-    { name = "pygobject", marker = "sys_platform == 'linux'" },
     { name = "python-dotenv" },
 ]
 
@@ -578,10 +577,9 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "opencv-python", marker = "extra == 'sensor'", specifier = ">=4.11.0.86" },
     { name = "pydantic", specifier = ">=2.7.0" },
-    { name = "pygobject", marker = "sys_platform == 'linux' and extra == 'sensor'", specifier = ">=3.46.0" },
     { name = "python-dotenv", marker = "extra == 'sensor'", specifier = ">=1.1.1" },
     { name = "pyzmq", specifier = ">=26.0.0" },
-    { name = "torch", specifier = ">=2.1.0" },
+    { name = "torch", specifier = ">=2.1.0,<2.11.0" },
     { name = "torchsummary", specifier = ">=1.5.1" },
     { name = "ultralytics", specifier = ">=8.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
@@ -869,12 +867,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pycairo"
-version = "1.29.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/22/d9/1728840a22a4ef8a8f479b9156aa2943cd98c3907accd3849fb0d5f82bfd/pycairo-1.29.0.tar.gz", hash = "sha256:f3f7fde97325cae80224c09f12564ef58d0d0f655da0e3b040f5807bd5bd3142", size = 665871 }
-
-[[package]]
 name = "pycparser"
 version = "3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -935,15 +927,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b014
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217 },
 ]
-
-[[package]]
-name = "pygobject"
-version = "3.56.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pycairo", marker = "sys_platform != 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/f6/46e5d170c46a9fcf44c740bad5f919fccb3e822d7578bd24b9d8d5918312/pygobject-3.56.1.tar.gz", hash = "sha256:2ec1cc8c55c7ffeebb97e58a9bba7aa1e74611f1173628084685446804a8881a", size = 1408136 }
 
 [[package]]
 name = "pyparsing"
@@ -1131,20 +1114,16 @@ name = "simulator"
 version = "0.1.0"
 source = { virtual = "simulator" }
 dependencies = [
-    { name = "av" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "pyzmq" },
-    { name = "ultralytics" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "av", specifier = ">=12.0.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "opencv-python", specifier = ">=4.8.0" },
     { name = "pyzmq", specifier = ">=26.0.0" },
-    { name = "ultralytics", specifier = ">=8.4.22" },
 ]
 
 [[package]]

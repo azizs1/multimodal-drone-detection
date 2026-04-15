@@ -46,6 +46,9 @@ services:
       - "9001:9001" # Console
     volumes:
       - ./storage:/data
+    environment:
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
     networks:
       - drone-network
     command: /data
@@ -71,7 +74,7 @@ services:
   ml-inference:
     build:
       context: .
-      dockerfile: jetson/Dockerfile
+      dockerfile: jetson/Dockerfile-dev
     container_name: ml-inference
     volumes:
       - ./offline_ml/weights:/app/offline_ml/weights:ro
@@ -79,12 +82,7 @@ services:
       # ZeroMQ frame transport
       - ZMQ_FRAME_CONNECT_ENDPOINT=tcp://stream-simulator:5560
       - FUSION_ENDPOINT=http://fusion:8050/fusion/ingest
-      - RUSTFS_ENDPOINT=http://rustfs:9000
-      - RUSTFS_PUBLIC_BASE_URL=http://localhost:9000
-      - RUSTFS_BUCKET=drone-detection
-      - RUSTFS_SKIP_BOOTSTRAP=true
-      - RUSTFS_STARTUP_PROBE=true
-      - INFERENCE_SAVE_CONF_THRESHOLD=0.75
+      - FRAME_PAIR_TOLERANCE_MS=300
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
       - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
       # RTSP publishing is always enabled in ml-inference
@@ -113,12 +111,19 @@ services:
   fusion:
     build:
       context: .
-      dockerfile: jetson/Dockerfile
+      dockerfile: jetson/Dockerfile-dev
     container_name: fusion
     environment:
       - FUSION_HOST=0.0.0.0
       - FUSION_PORT=8050
       - BACKEND_INCIDENT_ENDPOINT=http://backend:8000/incidents
+      - RUSTFS_ENDPOINT=http://rustfs:9000
+      - RUSTFS_PUBLIC_BASE_URL=http://localhost:9000
+      - RUSTFS_BUCKET=drone-detection
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+      - RUSTFS_SKIP_BOOTSTRAP=false
+      - RUSTFS_STARTUP_PROBE=true
     ports:
       - "8050:8050"
     networks:

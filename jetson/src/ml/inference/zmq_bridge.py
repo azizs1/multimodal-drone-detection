@@ -32,6 +32,8 @@ def run_one_zmq_inference(
     thermal_model,
     fusion_endpoint: str,
     connect_endpoint: str,
+    backend_incident_endpoint: str | None = None,
+    **kwargs,
 ) -> None:
     metadata, rgb_frame, thermal_frame = _recv_zmq_frame_pair(connect_endpoint)
     print(
@@ -45,4 +47,7 @@ def run_one_zmq_inference(
         rgb_frame=rgb_frame,
         thermal_frame=thermal_frame,
         fusion_endpoint=fusion_endpoint,
+        backend_incident_endpoint=backend_incident_endpoint,
+        metadata=metadata,
+        **kwargs,
     )

@@ -5,18 +5,7 @@ WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    build-essential \
-    pkg-config \
-    libcairo2-dev \
-    libgirepository-2.0-dev \
-    gobject-introspection \
-    libgl1 \
-    libglib2.0-0 \
-    libxcb1 \
-    libxext6 \
-    libxrender1 \
+RUN apt-get update && apt-get install -y \
     curl \
     tzdata \
     python3 python3-pip python3-dev \

@@ -17,7 +17,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.4.27 /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Copy workspace configuration from root
-COPY pyproject.toml uv.lock* /app/
+COPY pyproject.toml uv.lock /app/
 
 # Copy simulator package
 COPY simulator /app/simulator

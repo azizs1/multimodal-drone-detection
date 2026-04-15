@@ -1,0 +1,32 @@
+# Development Dockerfile for Jetson services used by docker-compose-dev.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv from the official binary image instead of pip.
+COPY --from=ghcr.io/astral-sh/uv:0.4.27 /uv /usr/local/bin/uv
+
+# docker-compose-dev uses repo root as build context, so copy from jetson/ paths.
+COPY jetson/pyproject.toml ./pyproject.toml
+COPY jetson/src ./src
+ENV PYTHONPATH=/app/src
+
+# Keep dependency sync deterministic for dev container builds.
+RUN uv sync --python 3.11 --no-dev --extra sensor
+
+# Default command is inference; compose can override for fusion.
+CMD ["uv", "run", "python3", "-m", "ml.inference"]
