@@ -19,6 +19,7 @@ DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_
 DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
 DEFAULT_FUSION_ENDPOINT = "http://fusion:8050/fusion/ingest"
 DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT = DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
+DEFAULT_SAVE_CONF_THRESHOLD = 0.75
 
 
 def _annotate_frame(frame, predictions):
@@ -98,6 +99,7 @@ def _infer_and_send(
     rgb_frame,
     thermal_frame,
     fusion_endpoint: str,
+    save_conf_threshold: float,
     publishers=None,
     storage=None,
 ) -> None:
@@ -123,9 +125,25 @@ def _infer_and_send(
     rgb_annotated = _annotate_frame(rgb_frame, rgb_predictions)
     thermal_annotated = _annotate_frame(thermal_frame, thermal_predictions)
 
-    should_upload = bool(rgb_predictions or thermal_predictions)
-    if not should_upload:
-        print("storage upload skipped: no detections in current frame")
+    all_predictions = rgb_predictions + thermal_predictions
+    drone_predictions = [pred for pred in all_predictions if pred.class_id == "drone"]
+    max_drone_conf = max((pred.confidence for pred in drone_predictions), default=0.0)
+    should_upload = bool(drone_predictions) and max_drone_conf >= save_conf_threshold
+
+    if not drone_predictions:
+        print("storage upload skipped: no drone detections in current frame")
+    elif not should_upload:
+        print(
+            "storage upload skipped: drone confidence below threshold "
+            f"max_conf={max_drone_conf:.3f} threshold={save_conf_threshold:.3f}"
+        )
+
+    if should_upload and storage is None:
+        print(
+            "storage upload skipped: storage unavailable "
+            f"max_conf={max_drone_conf:.3f} threshold={save_conf_threshold:.3f}"
+        )
+
     if should_upload and storage is not None:
         try:
             uploaded = storage.upload_detection_images(
@@ -135,6 +153,7 @@ def _infer_and_send(
             )
             print(
                 "storage upload attempted "
+                f"max_conf={max_drone_conf:.3f} threshold={save_conf_threshold:.3f} "
                 f"rgb_url={uploaded.rgb is not None} thermal_url={uploaded.thermal is not None}"
             )
             for pred in rgb_predictions:
@@ -169,6 +188,11 @@ def main() -> int:
     print(f"rgb classes: {getattr(rgb_model, 'names', {})}")
     print(f"thermal classes: {getattr(thermal_model, 'names', {})}")
 
+    save_conf_threshold = float(
+        os.getenv("INFERENCE_SAVE_CONF_THRESHOLD", str(DEFAULT_SAVE_CONF_THRESHOLD))
+    )
+    print(f"image save confidence threshold: {save_conf_threshold}")
+
     from .frame_publisher import build_publishers
 
     publishers = None
@@ -180,8 +204,12 @@ def main() -> int:
             from .storage import RustFSStorage
 
             storage = RustFSStorage.from_env()
-            storage.ensure_bucket_public()
-            print(f"RustFS bucket ready: {storage.bucket}")
+            try:
+                storage.ensure_bucket_public()
+                print(f"RustFS bucket ready: {storage.bucket}")
+            except Exception as exc:
+                print(f"RustFS bootstrap warning (continuing uploads): {exc!r}")
+                print(traceback.format_exc())
         except Exception as exc:  # pragma: no cover - runtime resilience
             print(f"RustFS storage disabled due to error: {exc!r}")
             print(traceback.format_exc())
@@ -198,7 +226,12 @@ def main() -> int:
                 thermal_shape=kwargs["thermal_frame"].shape,
                 fps=30,
             )
-        _infer_and_send(**kwargs, publishers=publishers, storage=storage)
+        _infer_and_send(
+            **kwargs,
+            save_conf_threshold=save_conf_threshold,
+            publishers=publishers,
+            storage=storage,
+        )
 
     try:
         while True:

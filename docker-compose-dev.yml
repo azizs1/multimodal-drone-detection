@@ -82,7 +82,9 @@ services:
       - RUSTFS_ENDPOINT=http://rustfs:9000
       - RUSTFS_PUBLIC_BASE_URL=http://localhost:9000
       - RUSTFS_BUCKET=drone-detection
+      - RUSTFS_SKIP_BOOTSTRAP=true
       - RUSTFS_STARTUP_PROBE=true
+      - INFERENCE_SAVE_CONF_THRESHOLD=0.75
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
       - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
       # RTSP publishing is always enabled in ml-inference

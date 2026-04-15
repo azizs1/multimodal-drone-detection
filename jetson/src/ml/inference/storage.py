@@ -102,6 +102,10 @@ class RustFSStorage:
             return fallback_method(**kwargs)
 
     def ensure_bucket_public(self) -> None:
+        if os.getenv("RUSTFS_SKIP_BOOTSTRAP", "false").lower() == "true":
+            logger.info("RustFS bootstrap skipped by config for bucket=%s", self.bucket)
+            return
+
         logger.info("RustFS ensure bucket start bucket=%s", self.bucket)
         try:
             self._call_s3("head_bucket", Bucket=self.bucket)
