@@ -27,25 +27,29 @@ iface eth0 inet static
     netmask 255.255.255.0
 ```
 ### Docker Deployment
-From repository root, run the following commands to build and run the Docker container:
+From repository root, run the following commands to build and run Jetson services:
 ```bash
-docker build -t jetson-si-ml -f jetson/Dockerfile jetson
-sudo docker run --rm -it --network host --runtime nvidia --env-file .env --privileged jetson-si-ml
+docker compose -f docker-compose.jetson.yaml build
+
+# Run all Jetson services (sensor ingestion + fusion + inference)
+docker compose -f docker-compose.jetson.yaml up -d
+
+# Or run only fusion + inference
+docker compose -f docker-compose.jetson.yaml up -d jetson-fusion jetson-inference
+
+# Video-demo mode (uses simulator/videos as inference source)
+docker compose -f docker-compose.jetson.yaml --profile videos up -d jetson-fusion jetson-inference-videos
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
+
+Useful logs:
+```bash
+docker compose -f docker-compose.jetson.yaml logs -f jetson-fusion
+docker compose -f docker-compose.jetson.yaml logs -f jetson-inference
+docker compose -f docker-compose.jetson.yaml logs -f jetson-sensor-ingestion
+```
 ### Running Without Container
 If running without the container is desired, navigate to `multimodal-drone-detection/jetson/src` and run:
 ```
 python3 -m sensor_ingestion.ingest_gi
 ```
-
-### ZeroMQ Inference Bridge
-
-To consume simulator frames once and exit after a single inference cycle:
-
-```bash
-cd jetson/src
-uv run python -m ml.inference
-```
-
-By default the Jetson subscriber connects to `tcp://127.0.0.1:5560`. Override with `ZMQ_FRAME_CONNECT_ENDPOINT` if the simulator is binding elsewhere.

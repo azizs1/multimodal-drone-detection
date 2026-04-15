@@ -1,13 +1,57 @@
 services:
-  jetson_si_ml:
+  jetson-sensor-ingestion:
     build: ./jetson
-    container_name: jetson-si-ml
+    container_name: jetson-sensor-ingestion
     network_mode: host
     runtime: nvidia
     privileged: true
     environment:
-      # this and X11 stuff is just used for debugging output
       - DISPLAY=${DISPLAY}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-    command: uv run python3 src/ingest_gi.py
+    command: uv run python3 -m sensor_ingestion.ingest_gi
+    restart: unless-stopped
+
+  jetson-fusion:
+    build: ./jetson
+    container_name: jetson-fusion
+    network_mode: host
+    runtime: nvidia
+    privileged: true
+    environment:
+      - FUSION_HOST=0.0.0.0
+      - FUSION_PORT=8050
+    command: uv run python3 -m ml.fusion_service
+    restart: unless-stopped
+
+  jetson-inference:
+    build: ./jetson
+    container_name: jetson-inference
+    network_mode: host
+    runtime: nvidia
+    privileged: true
+    environment:
+      - INFERENCE_SOURCE=idle
+      - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
+      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
+    command: uv run python3 -m ml.inference
+    restart: unless-stopped
+
+  jetson-inference-videos:
+    profiles: ["videos"]
+    build: ./jetson
+    container_name: jetson-inference-videos
+    network_mode: host
+    runtime: nvidia
+    privileged: true
+    volumes:
+      - ./simulator/videos:/app/simulator/videos:ro
+    environment:
+      - INFERENCE_SOURCE=videos
+      - MAX_FRAMES=0
+      - RGB_VIDEO_PATH=/app/simulator/videos/drone_visual.mp4
+      - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
+      - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
+      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
+    command: uv run python3 -m ml.inference
+    restart: unless-stopped
