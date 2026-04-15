@@ -1,5 +1,4 @@
 import numpy as np
-
 from frame_pair_transport import decode_frame_pair, encode_frame_pair
 
 from . import zmq_bridge

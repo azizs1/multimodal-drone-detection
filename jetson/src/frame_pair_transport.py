@@ -20,7 +20,9 @@ def _frame_spec(frame: np.ndarray) -> dict[str, Any]:
     }
 
 
-def encode_frame_pair(timestamp: float, rgb_frame: np.ndarray, thermal_frame: np.ndarray) -> list[bytes]:
+def encode_frame_pair(
+    timestamp: float, rgb_frame: np.ndarray, thermal_frame: np.ndarray
+) -> list[bytes]:
     rgb = np.ascontiguousarray(rgb_frame)
     thermal = np.ascontiguousarray(thermal_frame)
     metadata = {
@@ -48,7 +50,9 @@ def _rebuild_frame(frame_bytes: bytes, spec: dict[str, Any]) -> np.ndarray:
     return frame.reshape(shape).copy()
 
 
-def decode_frame_pair(parts: list[bytes] | tuple[bytes, ...]) -> tuple[dict[str, Any], np.ndarray, np.ndarray]:
+def decode_frame_pair(
+    parts: list[bytes] | tuple[bytes, ...],
+) -> tuple[dict[str, Any], np.ndarray, np.ndarray]:
     if len(parts) != 4:
         raise ValueError(f"expected 4 multipart frames, received {len(parts)}")
 

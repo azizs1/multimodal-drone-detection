@@ -10,9 +10,8 @@ import base64
 import json
 import os
 import time
-from urllib import error, request
 from typing import Any
-
+from urllib import error, request
 
 try:
     from fastapi import APIRouter

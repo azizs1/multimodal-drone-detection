@@ -6,12 +6,13 @@ This MEng capstone project aims to build a drone detection system with an AI-ena
 
 ## Architecture
 
-The system consists of four main components:
+The system consists of five main components:
 
 1. **Simulator** - Video streamer that loops drone footage and publishes synchronized frames over ZeroMQ
 2. **MediaMTX** - RTSP/HLS media server that handles stream distribution
-3. **Backend** - FastAPI service providing REST API and stream information
-4. **Jetson** - Edge AI processing on Jetson Nano (ML + ZeroMQ inference bridge)
+3. **Jetson Inference** - Edge AI detection and annotation on Jetson Nano (ML + ZeroMQ inference bridge)
+4. **Fusion** - Late-fusion service that aggregates modality predictions, uploads evidence to RustFS, and posts incidents
+5. **Backend** - FastAPI service providing REST APIs, stream information, and incident storage/query
 
 ### Streaming Pipeline
 
@@ -23,10 +24,22 @@ The streaming pipeline uses different encoders depending on the environment:
 | **Production (Jetson Nano)** | GStreamer | `docker-compose.jetson.yaml` | Hardware-accelerated encoding via NVENC on the Jetson Nano |
 
 ```
-[Simulator] --ZeroMQ--> [Jetson Inference] --HTTP--> [Fusion/Backend]
-   |
-   +--RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
+[Simulator] --ZeroMQ--> [Jetson Inference] --HTTP--> [Fusion] --POST /incidents--> [Backend]
+   |                                           |
+   +--RTSP--> [MediaMTX] --HLS--> [Frontend]   +--Upload evidence--> [RustFS]
 ```
+
+### Incident Evidence Flow
+
+1. Jetson inference publishes per-modality predictions (RGB and thermal) to fusion.
+2. Fusion builds a fused decision and decodes annotated frame payloads from prediction metadata.
+3. Fusion uploads available annotated frames to RustFS and sets `media.rgb.frame_uri` and/or `media.thermal.frame_uri`.
+4. Fusion then POSTs the fused payload to backend `POST /incidents`.
+5. If RustFS upload fails, fusion logs the upload error and still posts the incident (non-fatal upload behavior).
+
+Fusion runtime logging now includes a pre-send line for incident posting:
+- `posting /incidents endpoint=... timestamp=... objects=... media=...`
+- `backend incident status=...`
 
 ## Quick Start
 

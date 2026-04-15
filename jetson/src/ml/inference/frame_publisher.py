@@ -64,16 +64,31 @@ class AvStreamPublisher:
                     )
                 ),
             )
+            maxrate = os.getenv(
+                "INFERENCE_X264_MAXRATE",
+                os.getenv("SIM_X264_MAXRATE", "2000"),
+            )
+            bufsize = os.getenv(
+                "INFERENCE_X264_BUFSIZE",
+                os.getenv("SIM_X264_BUFSIZE", "2000"),
+            )
+            preset = os.getenv(
+                "INFERENCE_X264_PRESET",
+                os.getenv("SIM_X264_PRESET", "ultrafast"),
+            )
+            tune = os.getenv(
+                "INFERENCE_X264_TUNE",
+                os.getenv("SIM_X264_TUNE", "zerolatency"),
+            )
+            crf = os.getenv("INFERENCE_X264_CRF", os.getenv("SIM_X264_CRF", "28"))
             self._stream.options = {
-                "preset": os.getenv(
-                    "INFERENCE_X264_PRESET", os.getenv("SIM_X264_PRESET", "ultrafast")
-                ),
-                "tune": os.getenv("INFERENCE_X264_TUNE", os.getenv("SIM_X264_TUNE", "zerolatency")),
-                "crf": os.getenv("INFERENCE_X264_CRF", os.getenv("SIM_X264_CRF", "28")),
+                "preset": preset,
+                "tune": tune,
+                "crf": crf,
                 "x264-params": (
                     f"keyint={keyint}:min-keyint={keyint}:scenecut=0:"
-                    f"vbv-maxrate={os.getenv('INFERENCE_X264_MAXRATE', os.getenv('SIM_X264_MAXRATE', '2000'))}:"
-                    f"vbv-bufsize={os.getenv('INFERENCE_X264_BUFSIZE', os.getenv('SIM_X264_BUFSIZE', '2000'))}"
+                    f"vbv-maxrate={maxrate}:"
+                    f"vbv-bufsize={bufsize}"
                 ),
             }
         except Exception:
