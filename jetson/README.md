@@ -41,6 +41,9 @@ docker compose -f docker-compose.jetson.yaml up -d jetson-fusion jetson-inferenc
 docker compose -f docker-compose.jetson.yaml --profile videos up -d jetson-fusion jetson-inference-videos
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
+>Inference services mount `offline_ml/weights` into the container and read:
+>`/app/offline_ml/weights/visual_no_augmentation_best.pt` and
+>`/app/offline_ml/weights/thermal_no_augmentation_best.pt`.
 
 Useful logs:
 ```bash
