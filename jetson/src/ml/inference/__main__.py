@@ -15,12 +15,11 @@ from .adapters import adapt_yolo_results
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
-DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
+DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_augmented_best.pt"
 DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
 DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://127.0.0.1:8000/incidents"
 DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
 DEFAULT_THERMAL_VIDEO_PATH = REPO_ROOT / "simulator/videos/infrared.mp4"
-DEFAULT_FRAME_PAIR_TOLERANCE_MS = 100.0
 DEFAULT_BACKEND_POST_QUEUE_SIZE = 256
 
 
@@ -124,10 +123,6 @@ class BackendIncidentPublisher:
             )
 
 
-def _within_pair_tolerance(rgb_ts: float, thermal_ts: float, tolerance_ms: float) -> bool:
-    return abs(rgb_ts - thermal_ts) * 1000.0 <= tolerance_ms
-
-
 def _infer_and_send(
     rgb_model,
     thermal_model,
@@ -135,41 +130,28 @@ def _infer_and_send(
     thermal_frame,
     fusion_endpoint: str,
     backend_publisher: BackendIncidentPublisher | None,
-    pair_tolerance_ms: float,
-    frame_index: int,
+    pair_timestamp: float,
+    pair_id: str,
 ) -> None:
-    rgb_ts = time.time()
     rgb_result = rgb_model(rgb_frame, verbose=False)[0]
-    thermal_ts = time.time()
     thermal_result = thermal_model(thermal_frame, verbose=False)[0]
-
-    if not _within_pair_tolerance(
-        rgb_ts=rgb_ts, thermal_ts=thermal_ts, tolerance_ms=pair_tolerance_ms
-    ):
-        print(
-            "skipping unpaired frame: "
-            f"rgb_ts={rgb_ts:.6f} thermal_ts={thermal_ts:.6f} "
-            f"tolerance_ms={pair_tolerance_ms}"
-        )
-        return
 
     rgb_predictions = adapt_yolo_results(
         modality="rgb",
-        timestamp=rgb_ts,
+        timestamp=pair_timestamp,
         result=rgb_result,
         sensor_id="rgb_cam0",
     )
     thermal_predictions = adapt_yolo_results(
         modality="thermal",
-        timestamp=thermal_ts,
+        timestamp=pair_timestamp,
         result=thermal_result,
         sensor_id="thermal_cam0",
         class_aliases={"0": "drone"},
     )
 
-    frame_id = f"frame-{frame_index:06d}"
     for pred in rgb_predictions + thermal_predictions:
-        pred.meta["frame_id"] = frame_id
+        pred.meta["frame_id"] = pair_id
 
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
     if payload:
@@ -211,15 +193,12 @@ def main() -> int:
     backend_post_queue_size = int(
         os.getenv("BACKEND_POST_QUEUE_SIZE", str(DEFAULT_BACKEND_POST_QUEUE_SIZE))
     )
-    pair_tolerance_ms = float(
-        os.getenv("FRAME_PAIR_TOLERANCE_MS", str(DEFAULT_FRAME_PAIR_TOLERANCE_MS))
-    )
     source_mode = os.getenv("INFERENCE_SOURCE", "idle").lower()
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
     print(f"backend incidents endpoint: {backend_incident_endpoint}")
     print(f"backend post queue size: {backend_post_queue_size}")
-    print(f"frame pair tolerance (ms): {pair_tolerance_ms}")
+    print("frame pairing mode: shared source frame id/timestamp")
     print(f"inference source mode: {source_mode}")
 
     rgb_model, thermal_model = _load_models()
@@ -248,6 +227,8 @@ def main() -> int:
             frame_count = 0
             for rgb_frame, thermal_frame in _iter_video_frames(rgb_video_path, thermal_video_path):
                 frame_count += 1
+                pair_timestamp = time.time()
+                pair_id = f"frame-{frame_count:06d}"
                 _infer_and_send(
                     rgb_model=rgb_model,
                     thermal_model=thermal_model,
@@ -255,8 +236,8 @@ def main() -> int:
                     thermal_frame=thermal_frame,
                     fusion_endpoint=fusion_endpoint,
                     backend_publisher=backend_publisher,
-                    pair_tolerance_ms=pair_tolerance_ms,
-                    frame_index=frame_count,
+                    pair_timestamp=pair_timestamp,
+                    pair_id=pair_id,
                 )
                 if max_frames > 0 and frame_count >= max_frames:
                     break
@@ -275,8 +256,8 @@ def main() -> int:
             #     thermal_frame,
             #     fusion_endpoint,
             #     backend_publisher,
-            #     pair_tolerance_ms,
-            #     frame_index,
+            #     pair_timestamp,
+            #     pair_id,
             # )
             time.sleep(5)
     except KeyboardInterrupt:

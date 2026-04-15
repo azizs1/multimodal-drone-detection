@@ -64,15 +64,20 @@ class FusionEngine:
                 continue
             per_modality_scores[p.modality] = max(per_modality_scores[p.modality], p.confidence)
 
-        score = 0.0
+        weighted_sum = 0.0
+        total_weight = 0.0
         used: list[str] = []
         for modality, conf in per_modality_scores.items():
             gate = gates.get(modality, 0.0)
             if conf < gate:
                 continue
-            score += weights.get(modality, 0.0) * conf
+            weight = weights.get(modality, 0.0)
+            weighted_sum += weight * conf
+            total_weight += weight
             used.append(modality)
 
+        # Keep score on the same 0..1 scale as raw model confidence.
+        score = weighted_sum / total_weight if total_weight > 0 else 0.0
         score = max(0.0, min(1.0, score))
         reason = "no-modality-passed-gate" if not used else "+".join(sorted(set(used)))
         return score, reason, per_modality_scores

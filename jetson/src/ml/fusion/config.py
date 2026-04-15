@@ -12,10 +12,10 @@ class DebounceConfig:
 @dataclass
 class FusionConfig:
     weights: dict[str, float] = field(default_factory=lambda: {"rgb": 0.6, "thermal": 0.4})
-    alert_threshold: float = 0.75
-    hold_threshold: float = 0.55
+    alert_threshold: float = 0.6
+    hold_threshold: float = 0.4
     per_modality_gates: dict[str, float] = field(
-        default_factory=lambda: {"rgb": 0.45, "thermal": 0.35}
+        default_factory=lambda: {"rgb": 0.0, "thermal": 0.0}
     )
     eo_ir_required: bool = False  # set True to require thermal confirmation when available
     debounce: DebounceConfig = field(default_factory=DebounceConfig)

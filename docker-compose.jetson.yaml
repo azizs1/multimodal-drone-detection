@@ -35,7 +35,7 @@ services:
     environment:
       - INFERENCE_SOURCE=idle
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
-      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
+      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_augmented_best.pt
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
       - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
     command: uv run python3 -m ml.inference
@@ -55,7 +55,7 @@ services:
       - INFERENCE_SOURCE=videos
       - MAX_FRAMES=0
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
-      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
+      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_augmented_best.pt
       - RGB_VIDEO_PATH=/app/simulator/videos/drone_visual.mp4
       - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
