@@ -33,7 +33,10 @@ def test_ingest_returns_fused_decision():
             "bbox": [0.1, 0.2, 0.3, 0.4],
             "class_id": "drone",
             "confidence": 0.8,
-            "meta": {"sensor_id": "cam0"},
+            "meta": {
+                "sensor_id": "cam0",
+                "frame_uri": "http://localhost:9000/drone-detection/detections/test/rgb.jpg",
+            },
         },
         {
             "modality": "thermal",
@@ -58,6 +61,7 @@ def test_ingest_returns_fused_decision():
     assert set(body["per_modality_scores"]) == {"rgb", "thermal"}
     assert len(body["objects"]) == 2
     assert {obj["modality"] for obj in body["objects"]} == {"rgb", "thermal"}
+    assert body["media"]["rgb"]["frame_uri"].startswith("http://localhost:9000/")
 
 
 def test_debounce_counts_fused_events_not_modalities():

@@ -58,20 +58,7 @@ services:
       dockerfile: simulator/Dockerfile
     container_name: stream-simulator
     environment:
-      - SIM_STREAM_MODE=zmq
-      - SIM_STREAM_HOST=mediamtx
-      - SIM_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
-      - SIM_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
       - PLAYBACK_FPS=20
-      - SIM_STREAM_FPS=12
-      - SIM_VISUAL_OUT_WIDTH=640
-      - SIM_VISUAL_OUT_HEIGHT=360
-      - SIM_THERMAL_OUT_WIDTH=160
-      - SIM_THERMAL_OUT_HEIGHT=120
-      - SIM_X264_CRF=30
-      - SIM_X264_MAXRATE=900
-      - SIM_X264_BUFSIZE=900
-      - SIM_X264_KEYINT=12
       - LOOP_VIDEO=true
       - OPENCV_VIDEOIO_PRIORITY_FFMPEG=1000
     networks:
@@ -92,10 +79,13 @@ services:
       # ZeroMQ frame transport
       - ZMQ_FRAME_CONNECT_ENDPOINT=tcp://stream-simulator:5560
       - FUSION_ENDPOINT=http://fusion:8050/fusion/ingest
+      - RUSTFS_ENDPOINT=http://rustfs:9000
+      - RUSTFS_PUBLIC_BASE_URL=http://localhost:9000
+      - RUSTFS_BUCKET=drone-detection
+      - RUSTFS_STARTUP_PROBE=true
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
       - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
-      # RTSP publishing (set to 'true' to enable)
-      - INFERENCE_PUBLISH_RTSP=true
+      # RTSP publishing is always enabled in ml-inference
       - INFERENCE_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
       - INFERENCE_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
       # Output frame sizing
@@ -114,6 +104,7 @@ services:
       - mediamtx
       - stream-simulator
       - fusion
+      - rustfs
     restart: always
 
   # Fusion service (aggregates RGB/thermal predictions and posts to backend)

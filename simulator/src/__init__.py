@@ -1,12 +1,8 @@
-"""Simulator package for reading video files and populating shared buffer."""
+"""Simulator package for video ingestion and frame transport."""
 
 import logging
 
-from .shared_buffer import buffer
-
-__all__ = ["buffer"]
-
-# Configure logging with timestamps, level, logger name, and message
+# Configure logging with timestamps, level, logger name, and message.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

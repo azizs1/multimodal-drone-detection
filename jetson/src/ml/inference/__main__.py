@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import traceback
 from pathlib import Path
 from urllib import error, request
 
@@ -98,6 +99,7 @@ def _infer_and_send(
     thermal_frame,
     fusion_endpoint: str,
     publishers=None,
+    storage=None,
 ) -> None:
     timestamp = time.time()
 
@@ -118,11 +120,38 @@ def _infer_and_send(
         class_aliases={"0": "drone"},
     )
 
+    rgb_annotated = _annotate_frame(rgb_frame, rgb_predictions)
+    thermal_annotated = _annotate_frame(thermal_frame, thermal_predictions)
+
+    should_upload = bool(rgb_predictions or thermal_predictions)
+    if not should_upload:
+        print("storage upload skipped: no detections in current frame")
+    if should_upload and storage is not None:
+        try:
+            uploaded = storage.upload_detection_images(
+                timestamp=timestamp,
+                rgb_frame=rgb_annotated,
+                thermal_frame=thermal_annotated,
+            )
+            print(
+                "storage upload attempted "
+                f"rgb_url={uploaded.rgb is not None} thermal_url={uploaded.thermal is not None}"
+            )
+            for pred in rgb_predictions:
+                if uploaded.rgb:
+                    pred.meta["frame_uri"] = uploaded.rgb
+            for pred in thermal_predictions:
+                if uploaded.thermal:
+                    pred.meta["frame_uri"] = uploaded.thermal
+        except Exception as exc:  # pragma: no cover - runtime resilience
+            print(f"storage upload failed: {exc!r}")
+            print(traceback.format_exc())
+
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
     if publishers is not None:
         rgb_publisher, thermal_publisher = publishers
-        rgb_publisher.publish(_annotate_frame(rgb_frame, rgb_predictions))
-        thermal_publisher.publish(_annotate_frame(thermal_frame, thermal_predictions))
+        rgb_publisher.publish(rgb_annotated)
+        thermal_publisher.publish(thermal_annotated)
 
     if payload:
         _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
@@ -130,36 +159,46 @@ def _infer_and_send(
 
 def main() -> int:
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
-    publish_rtsp = os.getenv("INFERENCE_PUBLISH_RTSP", "false").lower() == "true"
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
     print("inference source mode: zmq")
-    print(f"rtsp publishing enabled: {publish_rtsp}")
+    print("rtsp publishing enabled: True")
 
     rgb_model, thermal_model = _load_models()
     print("loaded RGB and thermal models")
     print(f"rgb classes: {getattr(rgb_model, 'names', {})}")
     print(f"thermal classes: {getattr(thermal_model, 'names', {})}")
 
-    publishers = None
-    build_publishers = None
-    if publish_rtsp:
-        from .frame_publisher import build_publishers as _build_publishers
+    from .frame_publisher import build_publishers
 
-        build_publishers = _build_publishers
+    publishers = None
+    storage = None
+
+    upload_enabled = os.getenv("INFERENCE_UPLOAD_ENABLED", "true").lower() == "true"
+    if upload_enabled:
+        try:
+            from .storage import RustFSStorage
+
+            storage = RustFSStorage.from_env()
+            storage.ensure_bucket_public()
+            print(f"RustFS bucket ready: {storage.bucket}")
+        except Exception as exc:  # pragma: no cover - runtime resilience
+            print(f"RustFS storage disabled due to error: {exc!r}")
+            print(traceback.format_exc())
+            storage = None
 
     connect_endpoint = os.getenv("ZMQ_FRAME_CONNECT_ENDPOINT", DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT)
     print(f"ZeroMQ frame connect endpoint: {connect_endpoint}")
 
     def _infer_with_optional_publish(**kwargs):
         nonlocal publishers
-        if publish_rtsp and publishers is None and build_publishers is not None:
+        if publishers is None:
             publishers = build_publishers(
                 rgb_shape=kwargs["rgb_frame"].shape,
                 thermal_shape=kwargs["thermal_frame"].shape,
                 fps=30,
             )
-        _infer_and_send(**kwargs, publishers=publishers)
+        _infer_and_send(**kwargs, publishers=publishers, storage=storage)
 
     try:
         while True:

@@ -8,7 +8,13 @@ from collections import deque
 from collections.abc import Iterable
 
 from .config import DEFAULT_CONFIG, FusionConfig
-from .schemas import ConfidenceBand, FusedDecision, FusedObjectConfidence, ModalityPrediction
+from .schemas import (
+    ConfidenceBand,
+    FusedDecision,
+    FusedObjectConfidence,
+    MediaRef,
+    ModalityPrediction,
+)
 
 
 class FusionEngine:
@@ -31,13 +37,14 @@ class FusionEngine:
 
         fused_conf_band = self._band(score)
 
+        evidence = self._latest_by_modality(filtered)
         fused = FusedDecision(
             incident_id=str(uuid.uuid4()),
             has_drone=any(p.class_id == self.TARGET_CLASS for p in filtered),
             fused_confidence=score,
             confidence_band=fused_conf_band,
             decision=decision,
-            evidence=self._latest_by_modality(filtered),
+            evidence=evidence,
             per_modality_scores=per_modality_scores,
             thresholds={
                 "alert": self.config.alert_threshold,
@@ -45,6 +52,7 @@ class FusionEngine:
             },
             gating_reason=reason,
             latency_ms=latency_ms,
+            media=self._media_from_evidence(evidence),
             objects=self._objects_from_preds(filtered),
         )
         self.fused_history.append(fused)
@@ -124,6 +132,18 @@ class FusionEngine:
                 )
             )
         return objects
+
+    def _media_from_evidence(
+        self, evidence: dict[str, ModalityPrediction | None]
+    ) -> dict[str, MediaRef | None]:
+        media: dict[str, MediaRef | None] = {"rgb": None, "thermal": None}
+        for modality, pred in evidence.items():
+            if pred is None:
+                continue
+            frame_uri = pred.meta.get("frame_uri")
+            if frame_uri:
+                media[modality] = MediaRef(frame_uri=frame_uri)
+        return media
 
     def _debounce(self, fused: FusedDecision) -> bool:
         if fused.decision != "drone":

@@ -1,19 +1,17 @@
 # Drone Detection Stream Simulator
 
-The `stream-simulator` service ingests paired RGB and thermal videos, publishes synchronized
-frame pairs over ZeroMQ, runs YOLO inference, annotates frames, and publishes RTSP streams to MediaMTX.
+The `stream-simulator` service ingests paired RGB and thermal videos and publishes synchronized
+frame pairs over ZeroMQ.
 
 ## Pipeline
 
-```
-videos/*.mp4 -> video_ingestion.py -> ZeroMQ -> jetson/src/ml/inference/__main__.py
-                     \-> inference.py -> frame_publisher.py -> MediaMTX (RTSP/HLS)
+```text
+videos/*.mp4 -> video_ingestion.py -> ZeroMQ -> jetson/src/ml/inference/__main__.py -> MediaMTX (RTSP/HLS)
 ```
 
 Key behavior:
+
 - ZeroMQ publishes synchronized frame pairs from the ingestion process.
-- Inference processes a frame only when a new timestamp arrives (no duplicate re-processing).
-- Publisher uses a single-slot queue, so newer frames replace stale ones under load.
 
 ## Run Locally
 
@@ -23,7 +21,7 @@ From repository root:
 uv run python3 -m simulator.src.video_ingestion
 ```
 
-This starts ingestion in the foreground and publishes frame pairs over ZeroMQ. If you want the legacy local inference loop, run `simulator.src.inference` separately.
+This starts ingestion in the foreground and publishes frame pairs over ZeroMQ.
 
 ## Run With Docker Compose
 
@@ -55,74 +53,26 @@ THERMAL_HEIGHT=120
 ZMQ_FRAME_BIND_ENDPOINT=tcp://*:5560
 ```
 
-### Stream Output
-
-```bash
-SIM_STREAM_HOST=mediamtx
-SIM_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
-SIM_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
-SIM_STREAM_FPS=12
-SIM_VISUAL_OUT_WIDTH=640
-SIM_VISUAL_OUT_HEIGHT=360
-SIM_THERMAL_OUT_WIDTH=160
-SIM_THERMAL_OUT_HEIGHT=120
-```
-
-### Encoder (libx264)
-
-```bash
-SIM_RTSP_TRANSPORT=tcp
-SIM_X264_PRESET=ultrafast
-SIM_X264_TUNE=zerolatency
-SIM_X264_CRF=28
-SIM_X264_MAXRATE=2000
-SIM_X264_BUFSIZE=2000
-SIM_X264_KEYINT=12
-```
-
 ## Diagnostics and Bottleneck Analysis
 
-The simulator emits timing logs in three stages:
+The simulator emits timing logs in one stage:
 
 - `video_ingestion.py`
   - `Slow frame read: ...ms`
   - `Ingestion lag: frame processing took ...ms`
   - `Ingestion stats: max_frame_read=..., max_sleep=...`
 
-- `inference.py`
-  - `Slow inference: ...ms`
-  - `Slow frame processing: ...ms (infer=..., annot=..., pub=...)`
-  - periodic summary every 30 processed frames:
-    - `Inference: avg=..., max=...`
-    - `Annotation: avg=...`
-    - `Publishing: avg=...`
-
-- `frame_publisher.py`
-  - periodic summary every 5 seconds:
-    - `stats: published=..., dropped=..., queue_size=..., avg_encode=..., max_encode=...`
-  - warnings:
-    - `slow encode: ...ms`
-    - `writer not available, dropping frame`
-
 Rule of thumb:
-- high inference time + low encode time => model compute bottleneck
-- growing queue or dropped frames => publisher cannot keep up
+
 - high frame read spikes => video I/O bottleneck
 
 ## Files
 
-```
+```text
 simulator/
 ├── src/
 │   ├── __init__.py
-│   ├── shared_buffer.py
-│   ├── video_ingestion.py
-│   ├── inference.py
-│   ├── frame_publisher.py
-│   └── frame_annotator.py
-├── models/
-│   ├── visual_model.pt
-│   └── thermal_model.pt
+│   └── video_ingestion.py
 ├── videos/
 │   ├── drone_visual.mp4
 │   └── drone_thermal.mp4
