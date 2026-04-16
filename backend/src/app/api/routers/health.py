@@ -56,13 +56,13 @@ async def database_health_check(db: Annotated[Session, Depends(get_db)]) -> Data
         version_result = db.execute(text("SELECT version()"))
         version = version_result.fetchone()[0]
 
-        # Check if detections table exists
+        # Check if incidents table exists
         table_check = db.execute(
             text("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
-                AND table_name = 'detections'
+                AND table_name = 'incidents'
             )
         """)
         )
@@ -72,7 +72,7 @@ async def database_health_check(db: Annotated[Session, Depends(get_db)]) -> Data
             status="healthy",
             database="connected",
             version=version.split()[0:2],  # PostgreSQL version
-            detections_table_exists=table_exists,
+            incidents_table_exists=table_exists,
             timestamp=time.time(),
         )
     except Exception as e:
@@ -100,13 +100,13 @@ async def readiness_check(db: Annotated[Session, Depends(get_db)]) -> ReadinessC
         # Check database
         db.execute(text("SELECT 1"))
 
-        # Check if detections table exists
+        # Check if incidents table exists
         table_check = db.execute(
             text("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
-                AND table_name = 'detections'
+                AND table_name = 'incidents'
             )
         """)
         )
@@ -114,7 +114,7 @@ async def readiness_check(db: Annotated[Session, Depends(get_db)]) -> ReadinessC
 
         if not table_exists:
             return ReadinessCheckResponse(
-                status="not_ready", reason="detections table does not exist", timestamp=time.time()
+                status="not_ready", reason="incidents table does not exist", timestamp=time.time()
             )
 
         return ReadinessCheckResponse(status="ready", timestamp=time.time())

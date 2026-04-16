@@ -1,5 +1,4 @@
-# https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
-# this is for JetPack 4.6.1, but NO DEEPSTREAM (switch later if needed)
+# Base image for Jetson runtime; adjust tag per JetPack if needed.
 FROM nvcr.io/nvidia/l4t-base:r32.7.1
 
 WORKDIR /app
@@ -7,6 +6,7 @@ WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
+    curl \
     tzdata \
     python3 python3-pip python3-dev \
     python3-opencv \
@@ -22,23 +22,20 @@ RUN apt-get update && apt-get install -y \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# RUN pip3 install uv
+# Install uv to manage project dependencies and runtime commands.
+RUN pip3 install --no-cache-dir uv
 
-#COPY pyproject.toml uv.lock ./
 COPY pyproject.toml ./
-COPY src/sensor_ingestion ./sensor_ingestion
-COPY src/ml ./ml
+COPY src ./src
+ENV PYTHONPATH=/app/src
 
 # JetPack 4.6.1 older PyTorch (1.10.0). also install this separately since there is special jetson version
 # figure this out later
 # RUN pip3 install --no-cache-dir \
 #     https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl
-RUN pip3 install --no-cache-dir python-dotenv
+RUN uv sync --no-dev --extra sensor
 
-# This is commented out for now for running on Jetson Nano
-# RUN uv sync --frozen --no-install torch
-
-#CMD ["uv", "run", "python3", "-m", "run_both"]
-# CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
 ENV GST_DEBUG=3
-CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
+
+# Default command keeps existing sensor-ingestion behavior.
+CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
