@@ -141,7 +141,7 @@ function StackedAlerts({
   onDismiss,
   onDismissAll,
 }: {
-  alerts: ReturnType<typeof mapRealtimeAlertToBannerData>[];
+  alerts: NonNullable<ReturnType<typeof mapRealtimeAlertToBannerData>>[];
   onDismiss: (alertId: string) => void;
   onDismissAll: () => void;
 }) {
@@ -152,10 +152,6 @@ function StackedAlerts({
     <div className="space-y-3">
       <div className="space-y-0">
         {visibleAlerts.map((alert, index) => {
-          if (!alert) {
-            return null;
-          }
-
           const isTopAlert = index === 0;
 
           return (
@@ -179,7 +175,7 @@ function StackedAlerts({
                 index === 0
                   ? "relative z-30"
                   : index === 1
-                    ? "-mt-18 relative z-20"
+                    ? "-mt-[4.5rem] relative z-20"
                     : "-mt-20 relative z-10"
               }
             />
