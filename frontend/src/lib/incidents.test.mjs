@@ -43,7 +43,16 @@ test("mapIncidentResponseToRow returns the API-backed incident table fields", ()
         thumbnail_uri: null,
       },
     },
-    objects: [{ label: "drone", confidence: 0.94 }],
+    objects: [
+      {
+        object_id: "rgb-0",
+        modality: "rgb",
+        class_id: "drone",
+        confidence: 0.94,
+        bbox: [0.1, 0.2, 0.3, 0.4],
+        timestamp: 1771511527,
+      },
+    ],
     created_at: "2026-02-19T14:32:08Z",
     updated_at: "2026-02-19T14:32:08Z",
   });
@@ -95,7 +104,16 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
         thumbnail_uri: null,
       },
     },
-    objects: [{ label: "drone", confidence: 0.94 }],
+    objects: [
+      {
+        object_id: "rgb-0",
+        modality: "rgb",
+        class_id: "drone",
+        confidence: 0.94,
+        bbox: [0.1, 0.2, 0.3, 0.4],
+        timestamp: 1771511527,
+      },
+    ],
     created_at: "2026-02-19T14:32:08Z",
     updated_at: "2026-02-19T14:32:08Z",
   });
@@ -107,6 +125,7 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
     confidenceBand: "High",
     decision: "Drone",
     status: "Confirmed",
+    alertLevel: "High",
     gatingReason: "Fusion threshold exceeded.",
     latencyMs: 86,
     visualScore: 92,
@@ -119,8 +138,20 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
       frameUrl: "https://example.com/thermal.jpg",
       thumbnailUrl: null,
     },
-    thresholdLabel: "drone: 0.85, thermal: 0.6",
-    objectsLabel: '{\n  "label": "drone",\n  "confidence": 0.94\n}',
+    thresholds: [
+      { key: "drone", label: "Drone", value: 0.85 },
+      { key: "thermal", label: "Thermal", value: 0.6 },
+    ],
+    objects: [
+      {
+        uniqueKey: "rgb-0::0",
+        id: "rgb-0",
+        modality: "rgb",
+        classId: "drone",
+        confidence: 0.94,
+        bboxLabel: "0.10, 0.20, 0.30, 0.40",
+      },
+    ],
   });
 });
 
@@ -152,6 +183,7 @@ test("mapIncidentResponseToDetail falls back cleanly when optional incident fiel
 
   assert.equal(detail.decision, "No Drone");
   assert.equal(detail.confidenceBand, "Low");
+  assert.equal(detail.alertLevel, "Low");
   assert.equal(detail.gatingReason, "--");
   assert.equal(detail.visualScore, 0);
   assert.equal(detail.thermalScore, 0);
@@ -163,6 +195,6 @@ test("mapIncidentResponseToDetail falls back cleanly when optional incident fiel
     frameUrl: null,
     thumbnailUrl: null,
   });
-  assert.equal(detail.thresholdLabel, "--");
-  assert.equal(detail.objectsLabel, "--");
+  assert.deepEqual(detail.thresholds, []);
+  assert.deepEqual(detail.objects, []);
 });

@@ -69,6 +69,20 @@ function DetailBlock({
   );
 }
 
+function MetadataGrid({
+  items,
+}: {
+  items: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      {items.map((item) => (
+        <DetailBlock key={item.label} label={item.label} value={item.value} />
+      ))}
+    </div>
+  );
+}
+
 function MediaLink({ href, children }: { href: string; children: string }) {
   return (
     <a
@@ -139,6 +153,20 @@ export function IncidentDetailPanel({
     }
   };
 
+  const metadataItems = incident
+    ? [
+        { label: "Detected At", value: formatIncidentTimestamp(incident.timestamp) },
+        { label: "Decision", value: incident.decision },
+        { label: "Alert Level", value: incident.alertLevel },
+        { label: "Confidence Band", value: incident.confidenceBand },
+      ]
+    : [
+        { label: "Detected At", value: "--" },
+        { label: "Decision", value: "--" },
+        { label: "Alert Level", value: "--" },
+        { label: "Confidence Band", value: "--" },
+      ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-0 right-0 left-auto h-screen max-w-[720px] translate-x-0 translate-y-0 rounded-none border-y-0 border-r-0 border-l border-slate-200 bg-slate-50 p-0 duration-300 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[720px] dark:border-slate-800 dark:bg-slate-950">
@@ -199,7 +227,7 @@ export function IncidentDetailPanel({
                     Gating Reason
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    {incident?.gatingReason ?? "Fusion gating and threshold reasoning will appear here."}
+                    {incident?.gatingReason ?? "--"}
                   </p>
                 </div>
               </section>
@@ -249,18 +277,65 @@ export function IncidentDetailPanel({
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Thresholds
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {incident?.thresholdLabel ?? "Configured threshold values will be summarized here."}
-                  </p>
+                  {incident && incident.thresholds.length > 0 ? (
+                    <div className="mt-3 space-y-3">
+                      {incident.thresholds.map((threshold) => (
+                        <div
+                          key={threshold.key}
+                          className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
+                        >
+                          <span className="text-sm text-slate-600 dark:text-slate-300">
+                            {threshold.label}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {formatPercent(threshold.value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      No thresholds available
+                    </p>
+                  )}
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Objects / Overlay
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {incident?.objectsLabel ?? "Detected objects and overlay-ready summaries will appear here."}
-                  </p>
+                  {incident && incident.objects.length > 0 ? (
+                    <div className="mt-3 space-y-3">
+                      {incident.objects.map((object) => (
+                        <div
+                          key={object.uniqueKey}
+                          className="rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                {object.classId}
+                              </p>
+                              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                {object.modality}
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                              {formatPercent(object.confidence)}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <DetailBlock label="Object ID" value={object.id} />
+                            <DetailBlock label="BBox" value={object.bboxLabel ?? "--"} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      No objects available
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -268,12 +343,8 @@ export function IncidentDetailPanel({
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Event Metadata
                 </p>
-                <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                  <DetailBlock
-                    label="Timestamp"
-                    value={incident ? formatIncidentTimestamp(incident.timestamp) : "--"}
-                  />
-                  <DetailBlock label="Status" value={incident?.status ?? "--"} />
+                <div className="mt-4">
+                  <MetadataGrid items={metadataItems} />
                 </div>
               </section>
             </div>
