@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   type IncidentDetailPanelData,
@@ -14,23 +13,20 @@ import { getIncidents, type IncidentResponse } from "@/lib/api/incidents";
 import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const ALL_DECISIONS = ["all", "drone", "none"] as const;
 const ALL_ALERT_LEVELS = ["all", "low", "medium", "high"] as const;
 const PAGE_SIZE = 10;
-
-function toDateKey(date: Date): string {
-  return format(date, "yyyy-MM-dd");
-}
+const DEFAULT_LIMIT = 1000;
+const RANGE_LIMIT = 10000;
 
 function formatDisplayTimestamp(value: string): string {
   const date = new Date(value);
@@ -65,6 +61,25 @@ function getAlertLevelBadgeClasses(alertLevel: IncidentTableRow["alertLevel"]): 
   return "border-transparent bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
 }
 
+function toDateTimeInputValue(value: Date | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  const offset = value.getTimezoneOffset();
+  const localDate = new Date(value.getTime() - offset * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function parseDateTimeInputValue(value: string): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +92,7 @@ export default function IncidentsPage() {
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailPanelData | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const hasActiveFilters = Boolean(startDate || endDate || decision !== "all" || alertLevel !== "all");
+  const hasTimeRange = Boolean(startDate || endDate);
 
   useEffect(() => {
     let isMounted = true;
@@ -86,7 +102,12 @@ export default function IncidentsPage() {
       setErrorMessage(null);
 
       try {
-        const response = await getIncidents();
+        const response = await getIncidents({
+          limit: hasTimeRange ? RANGE_LIMIT : DEFAULT_LIMIT,
+          decision: decision !== "all" ? decision : undefined,
+          fromTs: startDate?.toISOString(),
+          toTs: endDate?.toISOString(),
+        });
 
         if (!isMounted) {
           return;
@@ -111,7 +132,7 @@ export default function IncidentsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [decision, endDate, hasTimeRange, startDate]);
 
   const tableRows = useMemo(
     () => incidents.map((incident) => mapIncidentResponseToRow(incident)),
@@ -119,19 +140,11 @@ export default function IncidentsPage() {
   );
 
   const filteredRows = useMemo(() => {
-    const startKey = startDate ? toDateKey(startDate) : "";
-    const endKey = endDate ? toDateKey(endDate) : "";
-
     return tableRows.filter((row) => {
-      const rowDate = row.detectedAt.slice(0, 10);
-      const matchesStart = !startKey || rowDate >= startKey;
-      const matchesEnd = !endKey || rowDate <= endKey;
-      const matchesDecision = decision === "all" || row.decision === decision;
       const matchesAlertLevel = alertLevel === "all" || row.alertLevel === alertLevel;
-
-      return matchesStart && matchesEnd && matchesDecision && matchesAlertLevel;
+      return matchesAlertLevel;
     });
-  }, [alertLevel, decision, endDate, startDate, tableRows]);
+  }, [alertLevel, tableRows]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -169,56 +182,32 @@ export default function IncidentsPage() {
         />
 
         <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Start Date
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="mt-1 w-full justify-between border-slate-300 bg-slate-50 text-sm font-normal text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  >
-                    {startDate ? toDateKey(startDate) : "Select date"}
-                    <CalendarIcon className="size-4 text-slate-500 dark:text-slate-400" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto border-slate-300 p-0 dark:border-slate-700" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => {
-                      setStartDate(date);
-                      setCurrentPage(1);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Start
+              <Input
+                type="datetime-local"
+                value={toDateTimeInputValue(startDate)}
+                onChange={(event) => {
+                  setStartDate(parseDateTimeInputValue(event.target.value));
+                  setCurrentPage(1);
+                }}
+                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </label>
 
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              End Date
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="mt-1 w-full justify-between border-slate-300 bg-slate-50 text-sm font-normal text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  >
-                    {endDate ? toDateKey(endDate) : "Select date"}
-                    <CalendarIcon className="size-4 text-slate-500 dark:text-slate-400" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto border-slate-300 p-0 dark:border-slate-700" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => {
-                      setEndDate(date);
-                      setCurrentPage(1);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              End
+              <Input
+                type="datetime-local"
+                value={toDateTimeInputValue(endDate)}
+                onChange={(event) => {
+                  setEndDate(parseDateTimeInputValue(event.target.value));
+                  setCurrentPage(1);
+                }}
+                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </label>
 
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Decision
