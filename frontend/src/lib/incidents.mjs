@@ -3,6 +3,18 @@
  */
 
 /**
+ * @typedef {"drone" | "none"} IncidentDecision
+ */
+
+/**
+ * @typedef {"low" | "medium" | "high"} IncidentConfidenceBand
+ */
+
+/**
+ * @typedef {import("./api/incidents").IncidentResponse} IncidentResponse
+ */
+
+/**
  * @typedef {{
  *   id: string;
  *   timestamp: string;
@@ -11,6 +23,16 @@
  *   model: string;
  *   status: IncidentLogStatus;
  * }} IncidentLogRow
+ */
+
+/**
+ * @typedef {{
+ *   incidentId: string;
+ *   detectedAt: string;
+ *   decision: IncidentDecision;
+ *   alertLevel: IncidentConfidenceBand;
+ *   fusedConfidence: number;
+ * }} IncidentTableRow
  */
 
 /**
@@ -45,6 +67,125 @@ export const INCIDENT_STATUS_BADGE_CLASSES = {
   "False Positive":
     "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
+
+/**
+ * @param {IncidentConfidenceBand} value
+ * @returns {"Low" | "Medium" | "High"}
+ */
+function formatConfidenceBand(value) {
+  if (value === "high") {
+    return "High";
+  }
+
+  if (value === "medium") {
+    return "Medium";
+  }
+
+  return "Low";
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function toDisplayValue(value) {
+  if (value == null) {
+    return "--";
+  }
+
+  if (typeof value === "string") {
+    return value.trim().length > 0 ? value : "--";
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+/**
+ * @param {Record<string, number>} thresholds
+ * @returns {string}
+ */
+function formatThresholdLabel(thresholds) {
+  const entries = Object.entries(thresholds ?? {});
+
+  if (entries.length === 0) {
+    return "--";
+  }
+
+  return entries.map(([key, value]) => `${key}: ${value}`).join(", ");
+}
+
+/**
+ * @param {unknown[]} objects
+ * @returns {string}
+ */
+function formatObjectsLabel(objects) {
+  if (!Array.isArray(objects) || objects.length === 0) {
+    return "--";
+  }
+
+  return objects.map((object) => toDisplayValue(object)).join("\n");
+}
+
+/**
+ * @param {Record<string, unknown>} media
+ * @returns {{ rgbMediaLabel: string; thermalMediaLabel: string }}
+ */
+function formatMediaLabels(media) {
+  const rgbValue = media?.rgb_frame_url ?? media?.rgb ?? media?.visual ?? media?.visible;
+  const thermalValue = media?.thermal_frame_url ?? media?.thermal ?? media?.infrared;
+
+  return {
+    rgbMediaLabel: toDisplayValue(rgbValue),
+    thermalMediaLabel: toDisplayValue(thermalValue),
+  };
+}
+
+/**
+ * @param {IncidentResponse} incident
+ * @returns {IncidentTableRow}
+ */
+export function mapIncidentResponseToRow(incident) {
+  return {
+    incidentId: incident.incident_id,
+    detectedAt: incident.detected_at,
+    decision: incident.decision,
+    alertLevel: incident.alert_level,
+    fusedConfidence: incident.fused_confidence,
+  };
+}
+
+/**
+ * @param {IncidentResponse} incident
+ * @returns {IncidentDetailPanelData}
+ */
+export function mapIncidentResponseToDetail(incident) {
+  const mediaLabels = formatMediaLabels(incident.media);
+
+  return {
+    id: incident.incident_id,
+    timestamp: incident.detected_at,
+    fusedConfidence: incident.fused_confidence,
+    confidenceBand: formatConfidenceBand(incident.confidence_band),
+    decision: incident.decision === "drone" ? "Drone" : "No Drone",
+    status: incident.is_confirmed ? "Confirmed" : "Pending",
+    gatingReason: toDisplayValue(incident.gating_reason),
+    latencyMs: incident.latency_ms,
+    visualScore: incident.per_modality_scores.rgb ?? 0,
+    thermalScore: incident.per_modality_scores.thermal ?? 0,
+    rgbMediaLabel: mediaLabels.rgbMediaLabel,
+    thermalMediaLabel: mediaLabels.thermalMediaLabel,
+    thresholdLabel: formatThresholdLabel(incident.thresholds),
+    objectsLabel: formatObjectsLabel(incident.objects),
+  };
+}
 
 /**
  * @param {IncidentLogRow} row
