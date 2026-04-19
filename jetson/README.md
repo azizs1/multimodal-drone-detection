@@ -39,6 +39,13 @@ sudo apt install v4l-utils
 ```
 v4l2-ctl is useful when debugging device issues. Use `v4l2-ctl --list-devices` to identify connected devices, and once devices are identified, use `v4l2-ctl --device=/dev/video0 --list-formats-ext` to identify formats to use for GStreamer caps.
 
+In order to see the RTSP stream, install `ffmpeg`:
+```
+sudo apt install ffmpeg
+ffplay rtsp://localhost:8554/visual
+```
+while the WebRTC stream can be accessed by opening a browser and going to `http://localhost:9998/visual/`.
+
 The MediaMTX configuration uses both RTP and WebRTC, with the WebRTC having significantly lower latency. Access `http://localhost:9997/v3/paths/list` to see the list of streams and identify if there are any bytes coming through.
 
 In order to debug on the inference side `jetson/src/ml/inference/__main__.py` has some commented out cv2.imshow calls that open windows to "see" what the inference module is receiving. Use the following when running the container:
