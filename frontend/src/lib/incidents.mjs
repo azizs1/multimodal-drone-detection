@@ -41,18 +41,25 @@
 
 /**
  * @typedef {{
+ *   frameUrl: string | null;
+ *   thumbnailUrl: string | null;
+ * }} IncidentMediaReference
+ */
+
+/**
+ * @typedef {{
  *   id: string;
  *   timestamp: string;
- *   fusedConfidence: number;
- *   confidenceBand: "Low" | "Medium" | "High";
+  *   fusedConfidence: number;
+  *   confidenceBand: "Low" | "Medium" | "High";
  *   decision: "Drone" | "No Drone" | "Review";
  *   status: IncidentPanelStatus;
  *   gatingReason: string;
  *   latencyMs: number;
  *   visualScore: number;
  *   thermalScore: number;
- *   rgbMediaLabel?: string;
- *   thermalMediaLabel?: string;
+ *   rgbMedia: IncidentMediaReference;
+ *   thermalMedia: IncidentMediaReference;
  *   thresholdLabel: string;
  *   objectsLabel: string;
  * }} IncidentDetailPanelData
@@ -135,16 +142,26 @@ function formatObjectsLabel(objects) {
 }
 
 /**
- * @param {Record<string, unknown>} media
- * @returns {{ rgbMediaLabel: string; thermalMediaLabel: string }}
+ * @param {unknown} mediaRef
+ * @returns {IncidentMediaReference}
  */
-function formatMediaLabels(media) {
-  const rgbValue = media?.rgb_frame_url ?? media?.rgb ?? media?.visual ?? media?.visible;
-  const thermalValue = media?.thermal_frame_url ?? media?.thermal ?? media?.infrared;
+function mapMediaReference(mediaRef) {
+  if (!mediaRef || typeof mediaRef !== "object") {
+    return {
+      frameUrl: null,
+      thumbnailUrl: null,
+    };
+  }
 
   return {
-    rgbMediaLabel: toDisplayValue(rgbValue),
-    thermalMediaLabel: toDisplayValue(thermalValue),
+    frameUrl:
+      typeof mediaRef.frame_uri === "string" && mediaRef.frame_uri.trim().length > 0
+        ? mediaRef.frame_uri
+        : null,
+    thumbnailUrl:
+      typeof mediaRef.thumbnail_uri === "string" && mediaRef.thumbnail_uri.trim().length > 0
+        ? mediaRef.thumbnail_uri
+        : null,
   };
 }
 
@@ -167,8 +184,6 @@ export function mapIncidentResponseToRow(incident) {
  * @returns {IncidentDetailPanelData}
  */
 export function mapIncidentResponseToDetail(incident) {
-  const mediaLabels = formatMediaLabels(incident.media);
-
   return {
     id: incident.incident_id,
     timestamp: incident.detected_at,
@@ -180,8 +195,8 @@ export function mapIncidentResponseToDetail(incident) {
     latencyMs: incident.latency_ms,
     visualScore: incident.per_modality_scores.rgb ?? 0,
     thermalScore: incident.per_modality_scores.thermal ?? 0,
-    rgbMediaLabel: mediaLabels.rgbMediaLabel,
-    thermalMediaLabel: mediaLabels.thermalMediaLabel,
+    rgbMedia: mapMediaReference(incident.media?.rgb),
+    thermalMedia: mapMediaReference(incident.media?.thermal),
     thresholdLabel: formatThresholdLabel(incident.thresholds),
     objectsLabel: formatObjectsLabel(incident.objects),
   };
@@ -212,8 +227,14 @@ export function mapIncidentRowToDetail(row) {
     latencyMs: 82 + (row.confidence % 9),
     visualScore: Math.max(0, Math.min(99, row.confidence - 2)),
     thermalScore: Math.max(0, Math.min(99, row.confidence - 5)),
-    rgbMediaLabel: `RGB snapshot reference for ${row.id}`,
-    thermalMediaLabel: `Thermal snapshot reference for ${row.id}`,
+    rgbMedia: {
+      frameUrl: null,
+      thumbnailUrl: null,
+    },
+    thermalMedia: {
+      frameUrl: null,
+      thumbnailUrl: null,
+    },
     thresholdLabel: "Confidence threshold and gating rules will be surfaced from the fused payload.",
     objectsLabel: "Detected object summaries and overlay metadata will be rendered here.",
   };

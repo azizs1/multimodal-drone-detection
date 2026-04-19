@@ -34,8 +34,14 @@ test("mapIncidentResponseToRow returns the API-backed incident table fields", ()
       visual_bbox: [12, 20, 60, 90],
     },
     media: {
-      rgb_frame_url: "https://example.com/rgb.jpg",
-      thermal_frame_url: "https://example.com/thermal.jpg",
+      rgb: {
+        frame_uri: "https://example.com/rgb.jpg",
+        thumbnail_uri: null,
+      },
+      thermal: {
+        frame_uri: "https://example.com/thermal.jpg",
+        thumbnail_uri: null,
+      },
     },
     objects: [{ label: "drone", confidence: 0.94 }],
     created_at: "2026-02-19T14:32:08Z",
@@ -80,8 +86,14 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
       visual_bbox: [12, 20, 60, 90],
     },
     media: {
-      rgb_frame_url: "https://example.com/rgb.jpg",
-      thermal_frame_url: "https://example.com/thermal.jpg",
+      rgb: {
+        frame_uri: "https://example.com/rgb.jpg",
+        thumbnail_uri: null,
+      },
+      thermal: {
+        frame_uri: "https://example.com/thermal.jpg",
+        thumbnail_uri: null,
+      },
     },
     objects: [{ label: "drone", confidence: 0.94 }],
     created_at: "2026-02-19T14:32:08Z",
@@ -99,8 +111,14 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
     latencyMs: 86,
     visualScore: 92,
     thermalScore: 89,
-    rgbMediaLabel: "https://example.com/rgb.jpg",
-    thermalMediaLabel: "https://example.com/thermal.jpg",
+    rgbMedia: {
+      frameUrl: "https://example.com/rgb.jpg",
+      thumbnailUrl: null,
+    },
+    thermalMedia: {
+      frameUrl: "https://example.com/thermal.jpg",
+      thumbnailUrl: null,
+    },
     thresholdLabel: "drone: 0.85, thermal: 0.6",
     objectsLabel: '{\n  "label": "drone",\n  "confidence": 0.94\n}',
   });
@@ -137,8 +155,14 @@ test("mapIncidentResponseToDetail falls back cleanly when optional incident fiel
   assert.equal(detail.gatingReason, "--");
   assert.equal(detail.visualScore, 0);
   assert.equal(detail.thermalScore, 0);
-  assert.equal(detail.rgbMediaLabel, "--");
-  assert.equal(detail.thermalMediaLabel, "--");
+  assert.deepEqual(detail.rgbMedia, {
+    frameUrl: null,
+    thumbnailUrl: null,
+  });
+  assert.deepEqual(detail.thermalMedia, {
+    frameUrl: null,
+    thumbnailUrl: null,
+  });
   assert.equal(detail.thresholdLabel, "--");
   assert.equal(detail.objectsLabel, "--");
 });

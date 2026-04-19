@@ -1,20 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
-  INCIDENT_STATUS_BADGE_CLASSES,
   type IncidentDetailPanelData,
-  type IncidentLogRow,
-  mapIncidentRowToDetail,
+  type IncidentTableRow,
+  mapIncidentResponseToDetail,
+  mapIncidentResponseToRow,
 } from "@/lib/incidents.mjs";
+import { getIncidents, type IncidentResponse } from "@/lib/api/incidents";
 import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
@@ -24,67 +24,114 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const ALL_STATUSES = ["All", "Confirmed", "Pending", "False Positive"] as const;
+const ALL_DECISIONS = ["all", "drone", "none"] as const;
+const ALL_ALERT_LEVELS = ["all", "low", "medium", "high"] as const;
 const PAGE_SIZE = 10;
 
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-function generateMockIncidents(count: number): IncidentLogRow[] {
-  const statuses: IncidentLogRow["status"][] = ["Confirmed", "Pending", "False Positive"];
-  const rows: IncidentLogRow[] = [];
+function formatDisplayTimestamp(value: string): string {
+  const date = new Date(value);
 
-  for (let i = 1; i <= count; i += 1) {
-    const day = 18 + Math.floor((i - 1) / 12);
-    const hour = 10 + (i % 10);
-    const minute = (7 + i * 3) % 60;
-    const second = (11 + i * 5) % 60;
-    const status = statuses[i % statuses.length];
-
-    rows.push({
-      id: `#${String(i).padStart(3, "0")}`,
-      timestamp: `2026-02-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(
-        minute,
-      ).padStart(2, "0")}:${String(second).padStart(2, "0")}`,
-      confidence: 70 + (i % 26),
-      distanceFt: 8 + (i % 18),
-      model: i % 5 === 0 ? "HolyStone-v2" : "HolyStone",
-      status,
-    });
+  if (Number.isNaN(date.getTime())) {
+    return value;
   }
 
-  return rows;
+  return format(date, "yyyy-MM-dd HH:mm:ss");
 }
 
-const INCIDENT_LOG_ROWS: IncidentLogRow[] = generateMockIncidents(48);
+function formatConfidencePercentage(value: number): string {
+  const normalized = value <= 1 ? value * 100 : value;
+  return `${Math.round(normalized)}%`;
+}
+
+function getDecisionBadgeClasses(decision: IncidentTableRow["decision"]): string {
+  return decision === "drone"
+    ? "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+    : "border-transparent bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
+}
+
+function getAlertLevelBadgeClasses(alertLevel: IncidentTableRow["alertLevel"]): string {
+  if (alertLevel === "high") {
+    return "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
+  }
+
+  if (alertLevel === "medium") {
+    return "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+  }
+
+  return "border-transparent bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+}
 
 export default function IncidentsPage() {
+  const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [status, setStatus] = useState<(typeof ALL_STATUSES)[number]>("All");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [decision, setDecision] = useState<(typeof ALL_DECISIONS)[number]>("all");
+  const [alertLevel, setAlertLevel] = useState<(typeof ALL_ALERT_LEVELS)[number]>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailPanelData | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const hasActiveFilters = Boolean(startDate || endDate || searchTerm.trim() || status !== "All");
+  const hasActiveFilters = Boolean(startDate || endDate || decision !== "all" || alertLevel !== "all");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadIncidents() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const response = await getIncidents();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setIncidents(response);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setErrorMessage(error instanceof Error ? error.message : "Failed to load incidents.");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadIncidents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const tableRows = useMemo(
+    () => incidents.map((incident) => mapIncidentResponseToRow(incident)),
+    [incidents],
+  );
 
   const filteredRows = useMemo(() => {
     const startKey = startDate ? toDateKey(startDate) : "";
     const endKey = endDate ? toDateKey(endDate) : "";
 
-    return INCIDENT_LOG_ROWS.filter((row) => {
-      const rowDate = row.timestamp.slice(0, 10);
+    return tableRows.filter((row) => {
+      const rowDate = row.detectedAt.slice(0, 10);
       const matchesStart = !startKey || rowDate >= startKey;
       const matchesEnd = !endKey || rowDate <= endKey;
-      const matchesStatus = status === "All" || row.status === status;
-      const query = searchTerm.trim().toLowerCase();
-      const matchesSearch =
-        query.length === 0 || row.id.toLowerCase().includes(query) || row.model.toLowerCase().includes(query);
+      const matchesDecision = decision === "all" || row.decision === decision;
+      const matchesAlertLevel = alertLevel === "all" || row.alertLevel === alertLevel;
 
-      return matchesStart && matchesEnd && matchesStatus && matchesSearch;
+      return matchesStart && matchesEnd && matchesDecision && matchesAlertLevel;
     });
-  }, [endDate, searchTerm, startDate, status]);
+  }, [alertLevel, decision, endDate, startDate, tableRows]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -95,8 +142,15 @@ export default function IncidentsPage() {
     { length: Math.min(3, totalPages) },
     (_, index) => pageWindowStart + index,
   );
-  const openIncidentDetail = (row: IncidentLogRow) => {
-    setSelectedIncident(mapIncidentRowToDetail(row));
+
+  const openIncidentDetail = (row: IncidentTableRow) => {
+    const incident = incidents.find((entry) => entry.incident_id === row.incidentId);
+
+    if (!incident) {
+      return;
+    }
+
+    setSelectedIncident(mapIncidentResponseToDetail(incident));
     setIsDetailOpen(true);
   };
 
@@ -167,19 +221,19 @@ export default function IncidentsPage() {
             </div>
 
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Status
+              Decision
               <Select
-                value={status}
+                value={decision}
                 onValueChange={(value) => {
-                  setStatus(value as (typeof ALL_STATUSES)[number]);
+                  setDecision(value as (typeof ALL_DECISIONS)[number]);
                   setCurrentPage(1);
                 }}
               >
                 <SelectTrigger className="mt-1 w-full border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                  <SelectValue placeholder="All" />
+                  <SelectValue placeholder="All decisions" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_STATUSES.map((option) => (
+                  {ALL_DECISIONS.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>
@@ -188,18 +242,26 @@ export default function IncidentsPage() {
               </Select>
             </label>
 
-            <label className="text-sm font-medium text-slate-700 xl:col-span-2 dark:text-slate-300">
-              Search
-              <Input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Alert Level
+              <Select
+                value={alertLevel}
+                onValueChange={(value) => {
+                  setAlertLevel(value as (typeof ALL_ALERT_LEVELS)[number]);
                   setCurrentPage(1);
                 }}
-                placeholder="Search ID or model..."
-                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+              >
+                <SelectTrigger className="mt-1 w-full border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                  <SelectValue placeholder="All alert levels" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_ALERT_LEVELS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
 
             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -211,8 +273,8 @@ export default function IncidentsPage() {
                 onClick={() => {
                   setStartDate(undefined);
                   setEndDate(undefined);
-                  setStatus("All");
-                  setSearchTerm("");
+                  setDecision("all");
+                  setAlertLevel("all");
                   setCurrentPage(1);
                 }}
                 className="mt-1 w-full border-slate-300 bg-slate-100 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
@@ -224,23 +286,27 @@ export default function IncidentsPage() {
         </div>
 
         <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+          {errorMessage ? (
+            <div className="mb-4 rounded-sm border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200">
+              Failed to load incidents: {errorMessage}
+            </div>
+          ) : null}
+
           <Table className="min-w-[880px] text-left text-sm text-slate-700 dark:text-slate-200">
             <TableHeader className="text-slate-500 dark:text-slate-400">
               <TableRow className="border-b border-slate-300 hover:bg-transparent dark:border-slate-700">
-                <TableHead className="px-2 py-3 font-semibold">ID</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Timestamp</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Confidence</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Distance</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Model</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Status</TableHead>
+                <TableHead className="px-2 py-3 font-semibold">Detected At</TableHead>
+                <TableHead className="px-2 py-3 font-semibold">Decision</TableHead>
+                <TableHead className="px-2 py-3 font-semibold">Alert Level</TableHead>
+                <TableHead className="px-2 py-3 font-semibold">Fused Confidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pagedRows.map((row) => (
                 <TableRow
-                  key={`${row.id}-${row.timestamp}`}
+                  key={`${row.incidentId}-${row.detectedAt}`}
                   className={`cursor-pointer border-b border-slate-200 transition-colors dark:border-slate-800 ${
-                    selectedIncident?.id === row.id
+                    selectedIncident?.id === row.incidentId
                       ? "bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-800"
                       : "hover:bg-slate-100/80 dark:hover:bg-slate-800/60"
                   }`}
@@ -254,24 +320,35 @@ export default function IncidentsPage() {
                     }
                   }}
                 >
-                  <TableCell className="px-2 py-3">{row.id}</TableCell>
                   <TableCell className="px-2 py-3">
-                    {format(new Date(row.timestamp), "yyyy-MM-dd HH:mm:ss")}
+                    {formatDisplayTimestamp(row.detectedAt)}
                   </TableCell>
-                  <TableCell className="px-2 py-3">{row.confidence}%</TableCell>
-                  <TableCell className="px-2 py-3">{row.distanceFt}ft</TableCell>
-                  <TableCell className="px-2 py-3">{row.model}</TableCell>
                   <TableCell className="px-2 py-3">
-                    <Badge className={`px-3 py-1 text-sm font-semibold ${INCIDENT_STATUS_BADGE_CLASSES[row.status]}`}>
-                      {row.status}
+                    <Badge className={`px-3 py-1 text-sm font-semibold uppercase ${getDecisionBadgeClasses(row.decision)}`}>
+                      {row.decision}
                     </Badge>
                   </TableCell>
+                  <TableCell className="px-2 py-3">
+                    <Badge
+                      className={`px-3 py-1 text-sm font-semibold uppercase ${getAlertLevelBadgeClasses(row.alertLevel)}`}
+                    >
+                      {row.alertLevel}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-2 py-3">{formatConfidencePercentage(row.fusedConfidence)}</TableCell>
                 </TableRow>
               ))}
-              {pagedRows.length === 0 ? (
+              {!isLoading && pagedRows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={6}>
+                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={4}>
                     No incidents found for current filters.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {isLoading ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={4}>
+                    Loading incidents...
                   </TableCell>
                 </TableRow>
               ) : null}

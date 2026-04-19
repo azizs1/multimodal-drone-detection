@@ -1,11 +1,9 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
 import { format } from "date-fns";
-import {
-  INCIDENT_STATUS_BADGE_CLASSES,
-  type IncidentDetailPanelData,
-} from "@/lib/incidents.mjs";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { type IncidentDetailPanelData } from "@/lib/incidents.mjs";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +18,21 @@ type IncidentDetailPanelProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+type MediaReferenceCardProps = {
+  label: string;
+  media: IncidentDetailPanelData["rgbMedia"];
+};
+
+const percentFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+
+const latencyFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 function formatIncidentTimestamp(value: string): string {
   const date = new Date(value);
 
@@ -28,6 +41,15 @@ function formatIncidentTimestamp(value: string): string {
   }
 
   return format(date, "yyyy-MM-dd HH:mm:ss");
+}
+
+function formatPercent(value: number): string {
+  const normalized = value <= 1 ? value * 100 : value;
+  return `${percentFormatter.format(normalized)}%`;
+}
+
+function formatLatency(value: number): string {
+  return `${latencyFormatter.format(value)} ms`;
 }
 
 function DetailBlock({
@@ -47,26 +69,97 @@ function DetailBlock({
   );
 }
 
+function MediaLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex w-fit items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+    >
+      {children}
+    </a>
+  );
+}
+
+function MediaReferenceCard({ label, media }: MediaReferenceCardProps) {
+  const hasFrame = Boolean(media.frameUrl);
+  const hasThumbnail = Boolean(media.thumbnailUrl);
+
+  return (
+    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-4 dark:border-slate-700 dark:bg-slate-950">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {label}
+      </p>
+      {hasFrame || hasThumbnail ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {media.frameUrl ? <MediaLink href={media.frameUrl}>Frame link</MediaLink> : null}
+          {media.thumbnailUrl ? (
+            <MediaLink href={media.thumbnailUrl}>Thumbnail link</MediaLink>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">No media available</p>
+      )}
+    </div>
+  );
+}
+
 export function IncidentDetailPanel({
   incident,
   open,
   onOpenChange,
 }: IncidentDetailPanelProps) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCopied(false);
+    }, 1500);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [copied]);
+
+  const handleCopyIncidentId = async () => {
+    if (!incident?.id) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(incident.id);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-0 right-0 left-auto h-screen max-w-[720px] translate-x-0 translate-y-0 rounded-none border-y-0 border-r-0 border-l border-slate-200 bg-slate-50 p-0 duration-300 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[720px] dark:border-slate-800 dark:bg-slate-950">
         <div className="flex h-full flex-col overflow-hidden">
           <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
-            <DialogHeader className="space-y-3 text-left">
-              <div className="flex flex-wrap items-center gap-3">
-                <DialogTitle className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                  Incident {incident?.id ?? "--"}
+            <DialogHeader className="space-y-2 text-left">
+              <div className="max-w-full space-y-2 pr-8">
+                <DialogTitle className="text-base font-medium tracking-normal text-slate-500 dark:text-slate-400">
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyIncidentId()}
+                    disabled={!incident?.id}
+                    className="inline-flex max-w-full items-center gap-2 rounded-md border border-slate-200 bg-slate-100 px-3 py-2 font-mono text-sm text-slate-600 transition-colors hover:bg-slate-200 disabled:cursor-default disabled:hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <span className="truncate">{incident?.id ?? "--"}</span>
+                    {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  </button>
                 </DialogTitle>
-                {incident ? (
-                  <Badge className={`px-3 py-1 text-sm font-semibold ${INCIDENT_STATUS_BADGE_CLASSES[incident.status]}`}>
-                    {incident.status}
-                  </Badge>
-                ) : null}
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Click to copy incident ID
+                </p>
               </div>
               <DialogDescription className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Review the fused detection summary, modality evidence, and media references for
@@ -84,7 +177,7 @@ export function IncidentDetailPanel({
                       Decision Summary
                     </p>
                     <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                      {incident ? `${incident.fusedConfidence}%` : "--"}
+                      {incident ? formatPercent(incident.fusedConfidence) : "--"}
                     </p>
                     <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                       Fused confidence
@@ -96,7 +189,7 @@ export function IncidentDetailPanel({
                     <DetailBlock label="Band" value={incident?.confidenceBand ?? "--"} />
                     <DetailBlock
                       label="Latency"
-                      value={incident ? `${incident.latencyMs} ms` : "--"}
+                      value={incident ? formatLatency(incident.latencyMs) : "--"}
                     />
                   </div>
                 </div>
@@ -121,7 +214,7 @@ export function IncidentDetailPanel({
                       RGB
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                      {incident ? `${incident.visualScore}%` : "--"}
+                      {incident ? formatPercent(incident.visualScore) : "--"}
                     </p>
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
@@ -129,7 +222,7 @@ export function IncidentDetailPanel({
                       Thermal
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                      {incident ? `${incident.thermalScore}%` : "--"}
+                      {incident ? formatPercent(incident.thermalScore) : "--"}
                     </p>
                   </div>
                 </div>
@@ -140,22 +233,14 @@ export function IncidentDetailPanel({
                   Media References
                 </p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-4 dark:border-slate-700 dark:bg-slate-950">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      RGB Media
-                    </p>
-                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                      {incident?.rgbMediaLabel ?? "RGB media reference will appear here."}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-4 dark:border-slate-700 dark:bg-slate-950">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Thermal Media
-                    </p>
-                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                      {incident?.thermalMediaLabel ?? "Thermal media reference will appear here."}
-                    </p>
-                  </div>
+                  <MediaReferenceCard
+                    label="RGB Media"
+                    media={incident?.rgbMedia ?? { frameUrl: null, thumbnailUrl: null }}
+                  />
+                  <MediaReferenceCard
+                    label="Thermal Media"
+                    media={incident?.thermalMedia ?? { frameUrl: null, thumbnailUrl: null }}
+                  />
                 </div>
               </section>
 
