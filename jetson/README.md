@@ -31,8 +31,6 @@ From repository root, run the following commands to build and run the Docker con
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
 sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
-
-http://localhost:9997/v3/paths/list
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
 ### Debugging Ingestion
