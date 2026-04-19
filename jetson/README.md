@@ -30,28 +30,22 @@ iface eth0 inet static
 From repository root, run the following commands to build and run the Docker container:
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
-sudo docker run --rm -it --network host --runtime nvidia --privileged --device /dev/video0:/dev/video0 --env-file .env -v /tmp/argus_socket:/tmp/argus_socket -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra -e NVIDIA_DRIVER_CAPABILITIES=all jetson-si-ml
-
-sudo docker run --rm -it --network host --runtime nvidia --privileged --device /dev/video0:/dev/video0 --env-file .env -v /tmp/argus_socket:/tmp/argus_socket -e NVIDIA_DRIVER_CAPABILITIES=all jetson-si-ml
-
 sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
 
 http://localhost:9997/v3/paths/list
 ```
-list formats: v4l2-ctl --device=/dev/video0 --list-formats-ext
-
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
+### Debugging Ingestion
+```
+sudo apt install v4l-utils
+```
+v4l2-ctl is useful when debugging device issues. Use `v4l2-ctl --list-devices` to identify connected devices, and once devices are identified, use `v4l2-ctl --device=/dev/video0 --list-formats-ext` to identify formats to use for GStreamer caps.
+
+The MediaMTX configuration uses both RTP and WebRTC, with the WebRTC having significantly lower latency. Access `http://localhost:9997/v3/paths/list` to see the list of streams and identify if there are any bytes coming through.
 ### Running Without Container
 If running without the container is desired, navigate to `multimodal-drone-detection/jetson/src` and run:
 ```
 python3 -m sensor_ingestion.ingest_gi
-```
-# Initialize venv
-A dedicated Jetson Docker container was not used due to container network passthrough issues and space issues on a 32GB limited SD card. To maintain dependency management, `uv` was used:
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv --python 3.10 --system-site-packages
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv sync --no-build-isolation
 ```
 # Low Space on Disk
 Especially during development when it is easier to work with full JetPack 6.1, space can be a concern. For this, another USB drive can be used (WARNING: THIS WILL COMPLETELY WIPE THE USB):

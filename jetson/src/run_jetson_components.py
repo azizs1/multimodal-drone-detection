@@ -1,50 +1,90 @@
 import subprocess
+import shutil
 import time
 import os
+import socket
 
-# clean up possible lingering zeromq sockets
-if os.path.exists("/tmp/frame_bus"):
-    os.remove("/tmp/frame_bus")
-
-procs = {
-    "ingestion": subprocess.Popen(["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]),
-    "fusion": subprocess.Popen(["uv", "run", "python3", "-m", "ml.fusion_service"]),
-    "inference": subprocess.Popen(["uv", "run", "python3", "-m", "ml.inference"]),
-    "mediamtx": subprocess.Popen(["./mediamtx"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-}
-
-def cleanup():
-    print("shutting down all components...")
-    for _, proc in procs.items():
+def cleanup(procs):
+    print("\nShutting down all components...")
+    for name in list(procs.keys()):
+        proc = procs[name]
         if proc.poll() is None:
+            print(f"Stopping {name}...")
             proc.terminate()
-    print("cleanup finished")
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                print(f"{name} forced kill.")
+                proc.kill()
 
-try:
-    while procs:
-        for name, proc in list(procs.items()):
-            ret = proc.poll()
+def wait_for_port(port, host='localhost', timeout=10):
+    start_time = time.time()
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return True
+        except (ConnectionRefusedError, OSError):
+            if time.time()-start_time > timeout:
+                return False
+            time.sleep(0.5)
 
-            # This is if the process is still running fine
-            if ret is None:
-                continue
+def main():
+    # clean up possible lingering zeromq sockets
+    if os.path.exists("/tmp/frame_bus"):
+        os.remove("/tmp/frame_bus")
 
-            print(f"{proc} exited. code: {ret}")
-            proc.wait()
+    gst_cache = os.path.expanduser("~/.cache/gstreamer-1.0")
+    if os.path.exists(gst_cache):
+        shutil.rmtree(gst_cache)
 
-            # We want to stop everything if ingestion dies, but if inference dies,
-            # keep going so we can at least continue streaming sensors.
-            # Fusion and inference can restart independently in future iterations.
-            if name in ["ingestion", "mediamtx"]:
-                procs.clear()
-                cleanup()
+    procs = {}
+
+    env = os.environ.copy()
+
+    procs["mediamtx"] = subprocess.Popen(["/app/mediamtx"])
+    print("Waiting for MediaMTX to accept connections on port 8554...")
+    if not wait_for_port(8554):
+        print("ERROR: MediaMTX failed to start")
+        cleanup(procs)
+        return
+
+    procs["ingestion"] = subprocess.Popen(["python3", "-m", "sensor_ingestion.ingest_gi"], env=env)
+    procs["fusion"] = subprocess.Popen(["python3", "-m", "ml.fusion_service"], env=env)
+    procs["inference"] = subprocess.Popen(["python3", "-m", "ml.inference"], env=env)
+
+    try:
+        while procs:
+            for name, proc in list(procs.items()):
+                ret = proc.poll()
+
+                # this is if the process is still running fine
+                if ret is None:
+                    continue
+
+                print(f"{proc} exited. code: {ret}")
+                proc.wait()
+
+                # we want to stop everything if ingestion dies, but if inference dies,
+                # keep going so we can at least continue streaming sensors.
+                # fusion and inference can restart independently in future iterations.
+                if name == "mediamtx":
+                    # MediaMTX dying is fatal
+                    procs.clear()
+                    cleanup(procs)
+                    break
+                elif name == "ingestion":
+                    # restart ingestion if it dies
+                    procs["ingestion"] = subprocess.Popen(["python3", "-m", "sensor_ingestion.ingest_gi"], env=env)
+                    continue
+                else:
+                    del procs[name]
+                    continue
+
+            if not procs:
                 break
-            else:
-                del procs[name]
-                continue
+            time.sleep(1)
+    except KeyboardInterrupt:
+        cleanup(procs)
 
-        if not procs:
-            break
-        time.sleep(1)
-except KeyboardInterrupt:
-    cleanup()
+if __name__ == "__main__":
+    main()
