@@ -1,45 +1,43 @@
 FROM bluenviron/mediamtx:latest AS mediamtx_source
-# https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_docker_containers.html
-# this is for JetPack 4.6.1, but NO DEEPSTREAM (switch later if needed)
-# FROM nvcr.io/nvidia/l4t-base:r32.7.1
-# TODO: Switch to the following once we have Orin nano:
-FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
-
+FROM nvcr.io/nvidia/l4t-jetpack:r36.2.0
 
 WORKDIR /app
 
 COPY --from=mediamtx_source /mediamtx ./mediamtx
-COPY mediamtx.yml ./mediamtx.yml
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONPATH=/app/src
 ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_DEPS=0
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 RUN apt-get update && apt-get install -y \
-    tzdata \
+    python3-pip \
     python3-gi \
     gir1.2-gstreamer-1.0 \
-    gir1.2-glib-2.0 \
-    gstreamer1.0-tools \
-    gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
+    gir1.2-gst-plugins-base-1.0 \
+    libgirepository1.0-dev \
     gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-ugly \
-    gstreamer1.0-libav \
-    v4l-utils \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir \
     uv \
-    ultralytics \
     fastapi \
     uvicorn \
     python-dotenv \
     pydantic \
-    numpy \
+    pyyaml \
+    ultralytics \
     pyzmq
 
+RUN pip3 install --no-cache-dir --extra-index-url https://jetson-ai-lab.dev torch torchvision
+RUN pip3 install --no-cache-dir numpy==1.26.4
+
 #COPY pyproject.toml uv.lock ./
+COPY mediamtx.yml ./mediamtx.yml
 COPY pyproject.toml ./
 COPY src/ ./src/
 
@@ -49,11 +47,5 @@ COPY src/ ./src/
 # 8889: MediaMTX API
 EXPOSE 8554 8888 8889
 
-# This is commented out for now for running on Jetson Nano
-# RUN uv sync --frozen --no-install torch
-
-#CMD ["uv", "run", "python3", "-m", "run_both"]
-# CMD ["uv", "run", "python3", "-m", "sensor_ingestion.ingest_gi"]
 ENV GST_DEBUG=3
-# CMD ["python3", "-m", "sensor_ingestion.ingest_gi"]
 CMD ["python3", "-u", "src/run_jetson_components.py"]

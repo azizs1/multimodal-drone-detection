@@ -30,8 +30,16 @@ iface eth0 inet static
 From repository root, run the following commands to build and run the Docker container:
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
-sudo docker run --rm -it --network host --runtime nvidia --env-file .env --privileged jetson-si-ml --device /dev/video0:/dev/video0
+sudo docker run --rm -it --network host --runtime nvidia --privileged --device /dev/video0:/dev/video0 --env-file .env -v /tmp/argus_socket:/tmp/argus_socket -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra -e NVIDIA_DRIVER_CAPABILITIES=all jetson-si-ml
+
+sudo docker run --rm -it --network host --runtime nvidia --privileged --device /dev/video0:/dev/video0 --env-file .env -v /tmp/argus_socket:/tmp/argus_socket -e NVIDIA_DRIVER_CAPABILITIES=all jetson-si-ml
+
+sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
+
+http://localhost:9997/v3/paths/list
 ```
+list formats: v4l2-ctl --device=/dev/video0 --list-formats-ext
+
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
 ### Running Without Container
 If running without the container is desired, navigate to `multimodal-drone-detection/jetson/src` and run:
