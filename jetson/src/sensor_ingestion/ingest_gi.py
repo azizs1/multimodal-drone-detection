@@ -15,6 +15,8 @@ import cv2
 import gi
 import zmq
 import time
+import json
+import threading
 import numpy as np
 from dotenv import load_dotenv
 
@@ -25,10 +27,13 @@ from gi.repository import GLib, Gst  # noqa: E402
 
 load_dotenv()
 
+send_lock = threading.Lock()
+
 # init zeromq
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
 socket.set(zmq.SNDHWM, 1) # keep only 1 frame in queue to avoid lag
+socket.setsockopt(zmq.LINGER, 0)
 socket.bind("ipc:///tmp/frames_bus")
 
 latest_rgb = None
@@ -251,15 +256,24 @@ def on_new_rgb_sample(appsink):
         # save_frame(frame, "rgb")
         frame_num += 1
 
-        payload = {
+        meta = {
             "modality": "rgb",
             "timestamp": time.time(),
-            "frame": frame
+            "width": width,
+            "height": height,
+            "channels": 3,
+            "dtype": "uint8",
         }
-        # handles the numpy array and dict automatically
-        socket.send_pyobj(payload)
+        with send_lock:
+            socket.send_multipart(
+                [
+                    b"rgb",
+                    json.dumps(meta).encode("utf-8"),
+                    frame.tobytes(),
+                ]
+            )
 
-        print("RGB frame received", flush=True)
+        # print("RGB frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY
         # MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!
@@ -290,15 +304,24 @@ def on_new_thermal_sample(appsink):
         # save_frame(frame, "thermal")
         frame_num += 1
 
-        payload = {
+        meta = {
             "modality": "thermal",
             "timestamp": time.time(),
-            "frame": frame
+            "width": width,
+            "height": height,
+            "channels": 3,
+            "dtype": "uint8",
         }
-        # handles the numpy array and dict automatically
-        socket.send_pyobj(payload)
+        with send_lock:
+            socket.send_multipart(
+                [
+                    b"thermal", # topic
+                    json.dumps(meta).encode("utf-8"),
+                    frame.tobytes(),
+                ]
+            )
 
-        print("Thermal frame received", flush=True)
+        # print("Thermal frame received", flush=True)
     finally:
         # NEED THIS IN THE FINALLY, OTHERWISE ITS GOING TO STAY
         # MAPPED AND BAD MEMORY ISSUES WILL HAPPEN!!

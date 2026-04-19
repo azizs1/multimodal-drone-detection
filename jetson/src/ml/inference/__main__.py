@@ -6,6 +6,8 @@ import json
 import os
 import time
 import zmq
+import cv2
+import numpy as np
 from pathlib import Path
 from urllib import error, request
 
@@ -94,7 +96,8 @@ def main() -> int:
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
     socket.connect("ipc:///tmp/frames_bus")
-    socket.setsockopt_string(zmq.SUBSCRIBE, "")
+    socket.setsockopt(zmq.SUBSCRIBE, b"rgb")
+    socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
     current_frames = {"rgb": None, "thermal": None}
 
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
@@ -109,18 +112,31 @@ def main() -> int:
 
     try:
         while True:
-            # blocking until we get frame data
-            frames = socket.recv_pyobj()
+            # multipart: [topic, meta_json, raw_bytes]
+            topic, meta_raw, frame_raw = socket.recv_multipart()
 
-            modality = frames["modality"]
-            current_frames[modality] = frames["frame"]
-            ts = frames["timestamp"]
-            
-            rgb_frame = frames["rgb"]
-            th_frame = frames["thermal"]
+            modality = topic.decode("utf-8")
+            meta = json.loads(meta_raw.decode("utf-8"))
 
-            if rgb_frame is not None and th_frame is not None:
-                _infer_and_send(rgb_model, thermal_model, rgb_frame, th_frame, fusion_endpoint)
+            frame = np.frombuffer(frame_raw, dtype=np.uint8)
+            frame = frame.reshape((meta["height"], meta["width"], meta["channels"]))
+
+            print(f"[{modality}] frame received: shape={frame.shape}")
+
+            current_frames[modality] = frame
+
+            if current_frames["rgb"] is not None and current_frames["thermal"] is not None:
+                print("both frames ready")
+
+                # preview = cv2.resize(current_frames["rgb"], (320, 240))
+                # cv2.imshow(f"inference_rgb", preview)
+                # cv2.waitKey(1)
+
+                # preview = cv2.resize(current_frames["thermal"], (320, 240))
+                # cv2.imshow(f"inference_thermal", preview)
+                # cv2.waitKey(1)
+
+                _infer_and_send(rgb_model, thermal_model, current_frames["rgb"], current_frames["thermal"], fusion_endpoint)
                 current_frames = {"rgb": None, "thermal": None}
 
     except KeyboardInterrupt:
