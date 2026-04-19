@@ -62,7 +62,34 @@ async function fetchApi<T>(path: string, searchParams?: URLSearchParams): Promis
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed (${response.status}): ${path}`);
+    let errorDetail = "";
+
+    try {
+      const errorBody = await response.json();
+      errorDetail =
+        typeof errorBody?.detail === "string"
+          ? errorBody.detail
+          : JSON.stringify(errorBody?.detail ?? errorBody);
+    } catch {
+      try {
+        errorDetail = await response.text();
+      } catch {
+        errorDetail = "";
+      }
+    }
+
+    const message = errorDetail
+      ? `Request failed (${response.status}): ${path} - ${errorDetail}`
+      : `Request failed (${response.status}): ${path}`;
+
+    console.error("Incidents API request failed", {
+      path,
+      status: response.status,
+      url: buildApiUrl(path, searchParams),
+      detail: errorDetail || null,
+    });
+
+    throw new Error(message);
   }
 
   return (await response.json()) as T;

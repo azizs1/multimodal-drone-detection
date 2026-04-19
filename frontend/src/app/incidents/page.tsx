@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   type IncidentDetailPanelData,
@@ -13,12 +14,13 @@ import { getIncidents, type IncidentResponse } from "@/lib/api/incidents";
 import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -26,7 +28,18 @@ const ALL_DECISIONS = ["all", "drone", "none"] as const;
 const ALL_ALERT_LEVELS = ["all", "low", "medium", "high"] as const;
 const PAGE_SIZE = 10;
 const DEFAULT_LIMIT = 1000;
-const RANGE_LIMIT = 10000;
+const RANGE_LIMIT = 1000;
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+
+type DateTimePickerProps = {
+  label: string;
+  value: Date | undefined;
+  onChange: (value: Date | undefined) => void;
+  onCommit: () => void;
+};
+
+type QuickRangeKey = "lastHour" | "today" | "last7Days";
 
 function formatDisplayTimestamp(value: string): string {
   const date = new Date(value);
@@ -36,6 +49,14 @@ function formatDisplayTimestamp(value: string): string {
   }
 
   return format(date, "yyyy-MM-dd HH:mm:ss");
+}
+
+function formatApiDateTime(value: Date | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return value.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 function formatConfidencePercentage(value: number): string {
@@ -61,38 +82,201 @@ function getAlertLevelBadgeClasses(alertLevel: IncidentTableRow["alertLevel"]): 
   return "border-transparent bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
 }
 
-function toDateTimeInputValue(value: Date | undefined): string {
+function formatPickerLabel(value: Date | undefined): string {
   if (!value) {
-    return "";
+    return "Select date and time";
   }
 
-  const offset = value.getTimezoneOffset();
-  const localDate = new Date(value.getTime() - offset * 60_000);
-  return localDate.toISOString().slice(0, 16);
+  return format(value, "yyyy/MM/dd HH:mm");
 }
 
-function parseDateTimeInputValue(value: string): Date | undefined {
-  if (!value) {
+function updateDatePart(current: Date | undefined, selectedDate: Date | undefined): Date | undefined {
+  if (!selectedDate) {
     return undefined;
   }
 
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  const next = new Date(selectedDate);
+  next.setSeconds(0, 0);
+
+  if (current) {
+    next.setHours(current.getHours(), current.getMinutes(), 0, 0);
+    return next;
+  }
+
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function updateTimePart(current: Date | undefined, part: "hour" | "minute", value: string): Date | undefined {
+  if (!current) {
+    return current;
+  }
+
+  const next = new Date(current);
+
+  if (part === "hour") {
+    next.setHours(Number(value));
+  } else {
+    next.setMinutes(Number(value));
+  }
+
+  next.setSeconds(0, 0);
+  return next;
+}
+
+function getRangeValidationMessage(start: Date | undefined, end: Date | undefined): string | null {
+  if (start && end && start > end) {
+    return "Start time must be earlier than end time.";
+  }
+
+  return null;
+}
+
+function getQuickRange(range: QuickRangeKey): { start: Date; end: Date } {
+  const now = new Date();
+
+  if (range === "lastHour") {
+    return {
+      start: new Date(now.getTime() - 60 * 60 * 1000),
+      end: now,
+    };
+  }
+
+  if (range === "today") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return {
+      start,
+      end: now,
+    };
+  }
+
+  return {
+    start: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+    end: now,
+  };
+}
+
+function DateTimePicker({ label, value, onChange, onCommit }: DateTimePickerProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+      {label}
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) {
+            onCommit();
+          }
+        }}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-1 h-auto w-full items-center justify-between border-slate-300 bg-slate-50 px-3 py-2 text-left font-normal text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-sm">{formatPickerLabel(value)}</span>
+            </span>
+            <CalendarIcon className="size-4 shrink-0 text-slate-500 dark:text-slate-400" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-fit border-slate-300 p-0 dark:border-slate-700" align="start">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{label}</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onChange(undefined);
+              }}
+              className="h-8 px-2 text-slate-600 hover:bg-transparent hover:text-slate-900 dark:text-slate-300 dark:hover:bg-transparent dark:hover:text-slate-100"
+            >
+              Clear
+            </Button>
+          </div>
+          <div className="w-fit">
+            <Calendar
+              mode="single"
+              selected={value}
+              onSelect={(selectedDate) => onChange(updateDatePart(value, selectedDate))}
+            />
+          </div>
+          <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="flex items-end gap-3">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Hour
+                <Select
+                  value={value ? String(value.getHours()).padStart(2, "0") : undefined}
+                  onValueChange={(selectedHour) => onChange(updateTimePart(value, "hour", selectedHour))}
+                  disabled={!value}
+                >
+                  <SelectTrigger className="mt-1 w-[96px] border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    <SelectValue placeholder="HH" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOUR_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Minute
+                <Select
+                  value={value ? String(value.getMinutes()).padStart(2, "0") : undefined}
+                  onValueChange={(selectedMinute) => onChange(updateTimePart(value, "minute", selectedMinute))}
+                  disabled={!value}
+                >
+                  <SelectTrigger className="mt-1 w-[96px] border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    <SelectValue placeholder="MM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MINUTE_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [decision, setDecision] = useState<(typeof ALL_DECISIONS)[number]>("all");
-  const [alertLevel, setAlertLevel] = useState<(typeof ALL_ALERT_LEVELS)[number]>("all");
+  const [draftStartDate, setDraftStartDate] = useState<Date | undefined>(undefined);
+  const [draftEndDate, setDraftEndDate] = useState<Date | undefined>(undefined);
+  const [draftDecision, setDraftDecision] = useState<(typeof ALL_DECISIONS)[number]>("all");
+  const [draftAlertLevel, setDraftAlertLevel] = useState<(typeof ALL_ALERT_LEVELS)[number]>("all");
+  const [appliedStartDate, setAppliedStartDate] = useState<Date | undefined>(undefined);
+  const [appliedEndDate, setAppliedEndDate] = useState<Date | undefined>(undefined);
+  const [appliedDecision, setAppliedDecision] = useState<(typeof ALL_DECISIONS)[number]>("all");
+  const [appliedAlertLevel, setAppliedAlertLevel] = useState<(typeof ALL_ALERT_LEVELS)[number]>("all");
+  const [activeQuickRange, setActiveQuickRange] = useState<QuickRangeKey | null>(null);
+  const [filterErrorMessage, setFilterErrorMessage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailPanelData | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const hasActiveFilters = Boolean(startDate || endDate || decision !== "all" || alertLevel !== "all");
-  const hasTimeRange = Boolean(startDate || endDate);
+  const hasActiveFilters = Boolean(
+    draftStartDate || draftEndDate || draftDecision !== "all" || draftAlertLevel !== "all",
+  );
+  const hasTimeRange = Boolean(appliedStartDate || appliedEndDate);
+  const rangeValidationMessage = getRangeValidationMessage(draftStartDate, draftEndDate);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,9 +288,9 @@ export default function IncidentsPage() {
       try {
         const response = await getIncidents({
           limit: hasTimeRange ? RANGE_LIMIT : DEFAULT_LIMIT,
-          decision: decision !== "all" ? decision : undefined,
-          fromTs: startDate?.toISOString(),
-          toTs: endDate?.toISOString(),
+          decision: appliedDecision !== "all" ? appliedDecision : undefined,
+          fromTs: formatApiDateTime(appliedStartDate),
+          toTs: formatApiDateTime(appliedEndDate),
         });
 
         if (!isMounted) {
@@ -132,7 +316,7 @@ export default function IncidentsPage() {
     return () => {
       isMounted = false;
     };
-  }, [decision, endDate, hasTimeRange, startDate]);
+  }, [appliedDecision, appliedEndDate, appliedStartDate, hasTimeRange]);
 
   const tableRows = useMemo(
     () => incidents.map((incident) => mapIncidentResponseToRow(incident)),
@@ -141,10 +325,10 @@ export default function IncidentsPage() {
 
   const filteredRows = useMemo(() => {
     return tableRows.filter((row) => {
-      const matchesAlertLevel = alertLevel === "all" || row.alertLevel === alertLevel;
+      const matchesAlertLevel = appliedAlertLevel === "all" || row.alertLevel === appliedAlertLevel;
       return matchesAlertLevel;
     });
-  }, [alertLevel, tableRows]);
+  }, [appliedAlertLevel, tableRows]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -167,6 +351,51 @@ export default function IncidentsPage() {
     setIsDetailOpen(true);
   };
 
+  const applyFilters = () => {
+    if (rangeValidationMessage) {
+      setFilterErrorMessage(rangeValidationMessage);
+      return;
+    }
+
+    setFilterErrorMessage(null);
+    setAppliedStartDate(draftStartDate);
+    setAppliedEndDate(draftEndDate);
+    setAppliedDecision(draftDecision);
+    setAppliedAlertLevel(draftAlertLevel);
+    setActiveQuickRange(null);
+    setCurrentPage(1);
+  };
+
+  const applyQuickRange = (range: QuickRangeKey) => {
+    const nextRange = getQuickRange(range);
+    setDraftStartDate(nextRange.start);
+    setDraftEndDate(nextRange.end);
+    setFilterErrorMessage(null);
+    setAppliedStartDate(nextRange.start);
+    setAppliedEndDate(nextRange.end);
+    setActiveQuickRange(range);
+    setCurrentPage(1);
+  };
+
+  const resetFilters = () => {
+    setDraftStartDate(undefined);
+    setDraftEndDate(undefined);
+    setDraftDecision("all");
+    setDraftAlertLevel("all");
+    setAppliedStartDate(undefined);
+    setAppliedEndDate(undefined);
+    setAppliedDecision("all");
+    setAppliedAlertLevel("all");
+    setActiveQuickRange(null);
+    setFilterErrorMessage(null);
+    setCurrentPage(1);
+  };
+
+  const getQuickRangeButtonClasses = (range: QuickRangeKey): string =>
+    activeQuickRange === range
+      ? "border-slate-900 bg-slate-900 text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900"
+      : "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700";
+
   return (
     <DashboardShell>
       <section className="space-y-4">
@@ -182,39 +411,74 @@ export default function IncidentsPage() {
         />
 
         <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Start
-              <Input
-                type="datetime-local"
-                value={toDateTimeInputValue(startDate)}
-                onChange={(event) => {
-                  setStartDate(parseDateTimeInputValue(event.target.value));
-                  setCurrentPage(1);
-                }}
-                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </label>
+          {filterErrorMessage ? (
+            <div className="mb-4 rounded-sm border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-200">
+              {filterErrorMessage}
+            </div>
+          ) : null}
 
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              End
-              <Input
-                type="datetime-local"
-                value={toDateTimeInputValue(endDate)}
-                onChange={(event) => {
-                  setEndDate(parseDateTimeInputValue(event.target.value));
-                  setCurrentPage(1);
-                }}
-                className="mt-1 border-slate-300 bg-slate-50 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </label>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Quick Ranges
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickRange("lastHour")}
+              className={getQuickRangeButtonClasses("lastHour")}
+            >
+              Last 1 Hour
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickRange("today")}
+              className={getQuickRangeButtonClasses("today")}
+            >
+              Today
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickRange("last7Days")}
+              className={getQuickRangeButtonClasses("last7Days")}
+            >
+              Last 7 Days
+            </Button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+            <DateTimePicker
+              label="Start"
+              value={draftStartDate}
+              onChange={(value) => {
+                setDraftStartDate(value);
+                setFilterErrorMessage(null);
+              }}
+              onCommit={applyFilters}
+            />
+
+            <DateTimePicker
+              label="End"
+              value={draftEndDate}
+              onChange={(value) => {
+                setDraftEndDate(value);
+                setFilterErrorMessage(null);
+              }}
+              onCommit={applyFilters}
+            />
 
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Decision
               <Select
-                value={decision}
+                value={draftDecision}
                 onValueChange={(value) => {
-                  setDecision(value as (typeof ALL_DECISIONS)[number]);
+                  const nextValue = value as (typeof ALL_DECISIONS)[number];
+                  setDraftDecision(nextValue);
+                  setAppliedDecision(nextValue);
                   setCurrentPage(1);
                 }}
               >
@@ -234,9 +498,11 @@ export default function IncidentsPage() {
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Alert Level
               <Select
-                value={alertLevel}
+                value={draftAlertLevel}
                 onValueChange={(value) => {
-                  setAlertLevel(value as (typeof ALL_ALERT_LEVELS)[number]);
+                  const nextValue = value as (typeof ALL_ALERT_LEVELS)[number];
+                  setDraftAlertLevel(nextValue);
+                  setAppliedAlertLevel(nextValue);
                   setCurrentPage(1);
                 }}
               >
@@ -259,13 +525,7 @@ export default function IncidentsPage() {
                 type="button"
                 variant="outline"
                 disabled={!hasActiveFilters}
-                onClick={() => {
-                  setStartDate(undefined);
-                  setEndDate(undefined);
-                  setDecision("all");
-                  setAlertLevel("all");
-                  setCurrentPage(1);
-                }}
+                onClick={resetFilters}
                 className="mt-1 w-full border-slate-300 bg-slate-100 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               >
                 Reset Filters
