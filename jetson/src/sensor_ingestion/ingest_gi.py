@@ -46,14 +46,6 @@ frame_dir = "saved_frames"
 os.makedirs(frame_dir, exist_ok=True)
 frame_num = 0
 
-
-def save_frame(frame, stream_type):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{frame_dir}/{stream_type}_frame_{frame_num}_{timestamp}.png"
-    cv2.imwrite(filename, frame)
-    print(f"Saved {stream_type} frame {frame_num} to {filename}")
-
-
 def link_check(first, second):
     if not first.link(second):
         raise RuntimeError(f"Failed to link {first.name} to {second.name}")
@@ -236,8 +228,6 @@ def build_gst_pipeline():
 
 # this function is what actually makes the rgb sample available to inference
 def on_new_rgb_sample(appsink):
-    global latest_rgb, frame_num
-
     sample = appsink.emit("pull-sample")
     buf = sample.get_buffer()
     caps = sample.get_caps()
@@ -252,9 +242,6 @@ def on_new_rgb_sample(appsink):
     try:
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))  # in BGR format now in np array
-        latest_rgb = frame
-        # save_frame(frame, "rgb")
-        frame_num += 1
 
         meta = {
             "modality": "rgb",
@@ -284,8 +271,6 @@ def on_new_rgb_sample(appsink):
 
 # this function is what actually makes the thermal sample available for inference
 def on_new_thermal_sample(appsink):
-    global latest_thermal, frame_num
-
     sample = appsink.emit("pull-sample")
     buf = sample.get_buffer()
     caps = sample.get_caps()
@@ -300,9 +285,6 @@ def on_new_thermal_sample(appsink):
     try:
         frame = np.frombuffer(map_info.data, dtype=np.uint8)
         frame = frame.reshape((height, width, 3))
-        latest_thermal = frame
-        # save_frame(frame, "thermal")
-        frame_num += 1
 
         meta = {
             "modality": "thermal",
