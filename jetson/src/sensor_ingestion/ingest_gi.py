@@ -173,6 +173,7 @@ def build_gst_pipeline():
     thermal_udp_sink.set_property("port", 5002)
     thermal_udp_sink.set_property("sync", False)
     thermal_udp_sink.set_property("async", False)
+    thermal_udp_sink.set_property("qos", False)
 
     # elements list
     elements = [
