@@ -59,7 +59,7 @@ services:
     container_name: gst-visual-simulator
     environment:
       - STREAM_NAME=visual
-      - VIDEO_FILE=drone_visual.mp4
+      - VIDEO_FILE=visible.mp4
     networks:
       - drone-network
     depends_on:
@@ -72,7 +72,7 @@ services:
     container_name: gst-thermal-simulator
     environment:
       - STREAM_NAME=thermal
-      - VIDEO_FILE=drone_thermal.mp4
+      - VIDEO_FILE=infrared.mp4
     networks:
       - drone-network
     depends_on:
