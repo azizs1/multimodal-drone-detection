@@ -12,20 +12,22 @@ Important behavior:
 import logging
 import os
 import time
+from pathlib import Path
 
 from ultralytics import YOLO
 
-from src import buffer
-from src.frame_annotator import annotate_frame
-from src.frame_publisher import build_publishers
+from . import buffer
+from .frame_annotator import annotate_frame
+from .frame_publisher import build_publishers
 
 logger = logging.getLogger(__name__)
 
 
 def load_models():
     """Load your ML models here."""
-    rgb_model = YOLO("models/visual_model.pt")
-    thermal_model = YOLO("models/thermal_model.pt")
+    simulator_root = Path(__file__).resolve().parent.parent
+    rgb_model = YOLO(str(simulator_root / "models" / "visual_model.pt"))
+    thermal_model = YOLO(str(simulator_root / "models" / "thermal_model.pt"))
     return rgb_model, thermal_model
 
 
@@ -50,14 +52,12 @@ def _extract_detections(results, frame_shape):
         confidence = float(detection.conf[0]) if detection.conf is not None else 0.0
         label = names.get(class_id, str(class_id)) if isinstance(names, dict) else str(class_id)
 
-        detections.append(
-            {
-                "bbox": (x1, y1, x2, y2),
-                "class_id": class_id,
-                "label": label,
-                "confidence": confidence,
-            }
-        )
+        detections.append({
+            "bbox": (x1, y1, x2, y2),
+            "class_id": class_id,
+            "label": label,
+            "confidence": confidence,
+        })
 
     return detections
 
@@ -121,7 +121,7 @@ def run_inference():
                 annotate_times.append(annot_duration)
 
                 if rgb_publisher is None or thermal_publisher is None:
-                    from src.video_ingestion import PLAYBACK_FPS
+                    from .video_ingestion import PLAYBACK_FPS
 
                     rgb_publisher, thermal_publisher = build_publishers(
                         rgb_shape=rgb_annotated.shape,

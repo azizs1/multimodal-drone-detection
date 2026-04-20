@@ -229,8 +229,8 @@ def main():
 
         # Give inference time to initialize
         time.sleep(0.5)
-    except ImportError:
-        print("Warning: inference.py not found, running ingestion only")
+    except ImportError as exc:
+        print(f"Warning: failed to import inference module ({exc}), running ingestion only")
 
     # Run ingestion in main thread
     start_ingestion()
