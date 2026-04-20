@@ -34,6 +34,7 @@ export type GetIncidentsParams = {
   decision?: IncidentDecision;
   fromTs?: string;
   toTs?: string;
+  signal?: AbortSignal;
 };
 
 function getApiBaseUrl(): string {
@@ -54,11 +55,16 @@ function buildApiUrl(path: string, searchParams?: URLSearchParams): string {
   return url.toString();
 }
 
-async function fetchApi<T>(path: string, searchParams?: URLSearchParams): Promise<T> {
+async function fetchApi<T>(
+  path: string,
+  searchParams?: URLSearchParams,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(buildApiUrl(path, searchParams), {
     method: "GET",
     headers: { Accept: "application/json" },
     cache: "no-store",
+    signal,
   });
 
   if (!response.ok) {
@@ -114,5 +120,5 @@ export async function getIncidents(params: GetIncidentsParams = {}): Promise<Inc
     searchParams.set("to_ts", params.toTs);
   }
 
-  return fetchApi<IncidentResponse[]>("/incidents", searchParams);
+  return fetchApi<IncidentResponse[]>("/incidents", searchParams, params.signal);
 }

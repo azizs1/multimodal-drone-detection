@@ -279,7 +279,7 @@ export default function IncidentsPage() {
   const rangeValidationMessage = getRangeValidationMessage(draftStartDate, draftEndDate);
 
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
 
     async function loadIncidents() {
       setIsLoading(true);
@@ -291,21 +291,18 @@ export default function IncidentsPage() {
           decision: appliedDecision !== "all" ? appliedDecision : undefined,
           fromTs: formatApiDateTime(appliedStartDate),
           toTs: formatApiDateTime(appliedEndDate),
+          signal: controller.signal,
         });
-
-        if (!isMounted) {
-          return;
-        }
 
         setIncidents(response);
       } catch (error) {
-        if (!isMounted) {
+        if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
         setErrorMessage(error instanceof Error ? error.message : "Failed to load incidents.");
       } finally {
-        if (isMounted) {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -314,7 +311,7 @@ export default function IncidentsPage() {
     void loadIncidents();
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
   }, [appliedDecision, appliedEndDate, appliedStartDate, hasTimeRange]);
 

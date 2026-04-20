@@ -16,13 +16,13 @@ test("mapIncidentResponseToRow returns the API-backed incident table fields", ()
     confidence_band: "high",
     alert_level: "high",
     is_confirmed: true,
-    fused_confidence: 94,
+    fused_confidence: 0.94,
     stream_name: "fusion",
     primary_frame_url: "https://example.com/frame.jpg",
     primary_thumbnail_url: "https://example.com/thumb.jpg",
     per_modality_scores: {
-      rgb: 92,
-      thermal: 89,
+      rgb: 0.92,
+      thermal: 0.89,
     },
     thresholds: {
       drone: 0.85,
@@ -62,7 +62,7 @@ test("mapIncidentResponseToRow returns the API-backed incident table fields", ()
     detectedAt: "2026-02-19T14:32:07Z",
     decision: "drone",
     alertLevel: "high",
-    fusedConfidence: 94,
+    fusedConfidence: 0.94,
   });
 });
 
@@ -77,13 +77,13 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
     confidence_band: "high",
     alert_level: "high",
     is_confirmed: true,
-    fused_confidence: 94,
+    fused_confidence: 0.94,
     stream_name: "fusion",
     primary_frame_url: "https://example.com/frame.jpg",
     primary_thumbnail_url: "https://example.com/thumb.jpg",
     per_modality_scores: {
-      rgb: 92,
-      thermal: 89,
+      rgb: 0.92,
+      thermal: 0.89,
     },
     thresholds: {
       drone: 0.85,
@@ -121,15 +121,15 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
   assert.deepEqual(detail, {
     id: "INC-014",
     timestamp: "2026-02-19T14:32:07Z",
-    fusedConfidence: 94,
+    fusedConfidence: 0.94,
     confidenceBand: "High",
     decision: "Drone",
     status: "Confirmed",
     alertLevel: "High",
     gatingReason: "Fusion threshold exceeded.",
     latencyMs: 86,
-    visualScore: 92,
-    thermalScore: 89,
+    visualScore: 0.92,
+    thermalScore: 0.89,
     rgbMedia: {
       frameUrl: "https://example.com/rgb.jpg",
       thumbnailUrl: null,
