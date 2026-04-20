@@ -46,7 +46,8 @@ class AvStreamPublisher:
 
         self._container = None
         self._stream = None
-        self._writer_init_failed = False
+        self._next_retry_time: float = 0.0
+        self._retry_delay: float = 1.0
 
         self.published_frames = 0
         self.dropped_frames = 0
@@ -59,7 +60,7 @@ class AvStreamPublisher:
         if self._container is not None and self._stream is not None:
             return
 
-        if self._writer_init_failed:
+        if time.time() < self._next_retry_time:
             return
 
         try:
@@ -90,10 +91,13 @@ class AvStreamPublisher:
                     f"vbv-bufsize={os.getenv('SIM_X264_BUFSIZE', '2000')}"
                 ),
             }
+            self._retry_delay = 1.0  # reset backoff on success
         except Exception as exc:
-            self._writer_init_failed = True
+            self._next_retry_time = time.time() + self._retry_delay
+            self._retry_delay = min(self._retry_delay * 2, 30.0)
             print(
                 f"[{self.name}] failed to initialize PyAV RTSP writer for {self.stream_url}: {exc}"
+                f" (retrying in {self._retry_delay:.0f}s)"
             )
             self._close_writer()
 
