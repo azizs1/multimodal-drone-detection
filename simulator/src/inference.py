@@ -52,12 +52,14 @@ def _extract_detections(results, frame_shape):
         confidence = float(detection.conf[0]) if detection.conf is not None else 0.0
         label = names.get(class_id, str(class_id)) if isinstance(names, dict) else str(class_id)
 
-        detections.append({
-            "bbox": (x1, y1, x2, y2),
-            "class_id": class_id,
-            "label": label,
-            "confidence": confidence,
-        })
+        detections.append(
+            {
+                "bbox": (x1, y1, x2, y2),
+                "class_id": class_id,
+                "label": label,
+                "confidence": confidence,
+            }
+        )
 
     return detections
 
