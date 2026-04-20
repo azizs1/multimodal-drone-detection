@@ -31,11 +31,19 @@ def train(args):
     datasets = [
         {
             "data": data_dir / "zenodo_visual_no_augmentation/data.yaml",
-            "name": "visual_no_augmentation_baseline",
+            "name": "zenodo_visual_baseline",
         },
         {
             "data": data_dir / "zenodo_thermal_no_augmentation/data.yaml",
-            "name": "thermal_no_augmentation_baseline",
+            "name": "zenodo_thermal_baseline",
+        },
+        {
+            "data": data_dir / "anti_uav_visual_no_augmentation/data.yaml",
+            "name": "anti_uav_visual_baseline"
+        },
+        {
+            "data": data_dir / "anti_uav_thermal_no_augmentation/data.yaml",
+            "name": "anti_uav_thermal_baseline"
         }
     ]
 
