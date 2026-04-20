@@ -300,8 +300,13 @@ def main() -> int:
                 # cv2.imshow(f"inference_thermal", preview)
                 # cv2.waitKey(1)
 
-                _infer_and_send(rgb_model, thermal_model, current_frames["rgb"],
-                                current_frames["thermal"], fusion_endpoint)
+                _infer_and_send(
+                    rgb_model,
+                    thermal_model,
+                    current_frames["rgb"],
+                    current_frames["thermal"],
+                    fusion_endpoint,
+                )
                 current_frames = {"rgb": None, "thermal": None}
 
     except KeyboardInterrupt:

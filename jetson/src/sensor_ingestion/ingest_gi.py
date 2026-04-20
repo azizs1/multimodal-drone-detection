@@ -30,7 +30,7 @@ send_lock = threading.Lock()
 # init zeromq
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
-socket.set(zmq.SNDHWM, 1) # keep only 1 frame in queue to avoid lag
+socket.set(zmq.SNDHWM, 1)  # keep only 1 frame in queue to avoid lag
 socket.setsockopt(zmq.LINGER, 0)
 socket.bind("ipc:///tmp/frames_bus")
 
@@ -43,6 +43,7 @@ BACKEND_PORT = int(os.getenv("BACKEND_PORT", 3000))
 frame_dir = "saved_frames"
 os.makedirs(frame_dir, exist_ok=True)
 frame_num = 0
+
 
 def link_check(first, second):
     if not first.link(second):
@@ -57,6 +58,7 @@ def link_tee(tee, element):
         raise RuntimeError("Failed to get pads for tee link")
     if tee_pad.link(sink_pad) != Gst.PadLinkReturn.OK:
         raise RuntimeError(f"Failed to link tee {tee.name} to {element.name}")
+
 
 def build_gst_pipeline():
     Gst.init(None)
@@ -83,8 +85,9 @@ def build_gst_pipeline():
 
     # force raw RGB at 1280x720, we already did fps caps
     rgb_scale_caps = Gst.ElementFactory.make("capsfilter", "rgb_scale_caps")
-    rgb_scale_caps.set_property("caps",
-                                Gst.Caps.from_string("video/x-raw,width=1280,height=720,format=RGB"))
+    rgb_scale_caps.set_property(
+        "caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,format=RGB")
+    )
 
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
@@ -117,7 +120,7 @@ def build_gst_pipeline():
 
     # mpeg-ts mux instead of rtp payloader
     rgb_ts_mux = Gst.ElementFactory.make("mpegtsmux", "rgb_ts_mux")
-    rgb_ts_mux.set_property("alignment", 7) # to help with mediamtx latency
+    rgb_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
 
     rgb_udp_sink = Gst.ElementFactory.make("udpsink", "rgb_udp_sink")
     rgb_udp_sink.set_property("host", "127.0.0.1")
@@ -132,8 +135,9 @@ def build_gst_pipeline():
     thermal_src.set_property("is-live", True)
 
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps",
-                              Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1"))
+    thermal_caps.set_property(
+        "caps", Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1")
+    )
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
@@ -166,7 +170,7 @@ def build_gst_pipeline():
 
     # NEW: MPEG-TS mux instead of RTP payloader
     thermal_ts_mux = Gst.ElementFactory.make("mpegtsmux", "thermal_ts_mux")
-    thermal_ts_mux.set_property("alignment", 7) # to help with mediamtx latency
+    thermal_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
 
     thermal_udp_sink = Gst.ElementFactory.make("udpsink", "thermal_udp_sink")
     thermal_udp_sink.set_property("host", "127.0.0.1")
@@ -177,12 +181,33 @@ def build_gst_pipeline():
 
     # elements list
     elements = [
-        rgb_src, rgb_caps, rgb_jpegdec, rgb_scale, rgb_scale_caps, rgb_tee,
-        rgb_inf_queue, rgb_inf_convert, rgb_inf_bgr_caps, rgb_appsink,
-        rgb_rtp_queue, rgb_rtp_convert, rgb_encoder, rgb_ts_mux, rgb_udp_sink,
-        thermal_src, thermal_caps, thermal_tee,
-        thermal_inf_queue, thermal_inf_convert, thermal_inf_bgr_caps, thermal_appsink,
-        thermal_rtp_queue, thermal_rtp_convert, thermal_encoder, thermal_ts_mux, thermal_udp_sink
+        rgb_src,
+        rgb_caps,
+        rgb_jpegdec,
+        rgb_scale,
+        rgb_scale_caps,
+        rgb_tee,
+        rgb_inf_queue,
+        rgb_inf_convert,
+        rgb_inf_bgr_caps,
+        rgb_appsink,
+        rgb_rtp_queue,
+        rgb_rtp_convert,
+        rgb_encoder,
+        rgb_ts_mux,
+        rgb_udp_sink,
+        thermal_src,
+        thermal_caps,
+        thermal_tee,
+        thermal_inf_queue,
+        thermal_inf_convert,
+        thermal_inf_bgr_caps,
+        thermal_appsink,
+        thermal_rtp_queue,
+        thermal_rtp_convert,
+        thermal_encoder,
+        thermal_ts_mux,
+        thermal_udp_sink,
     ]
 
     for e in elements:
@@ -228,6 +253,7 @@ def build_gst_pipeline():
     thermal_ts_mux.link(thermal_udp_sink)
 
     return pipeline, rgb_appsink, thermal_appsink
+
 
 # this function is what actually makes the rgb sample available to inference
 def on_new_rgb_sample(appsink):
@@ -300,7 +326,7 @@ def on_new_thermal_sample(appsink):
         with send_lock:
             socket.send_multipart(
                 [
-                    b"thermal", # topic
+                    b"thermal",  # topic
                     json.dumps(meta).encode("utf-8"),
                     frame.tobytes(),
                 ]

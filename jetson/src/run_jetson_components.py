@@ -18,16 +18,18 @@ def cleanup(procs):
                 print(f"{name} forced kill.")
                 proc.kill()
 
-def wait_for_port(port, host='localhost', timeout=10):
+
+def wait_for_port(port, host="localhost", timeout=10):
     start_time = time.time()
     while True:
         try:
             with socket.create_connection((host, port), timeout=1):
                 return True
         except (ConnectionRefusedError, OSError):
-            if time.time()-start_time > timeout:
+            if time.time() - start_time > timeout:
                 return False
             time.sleep(0.5)
+
 
 def main():
     # clean up possible lingering zeromq sockets
@@ -75,9 +77,9 @@ def main():
                     break
                 elif name == "ingestion":
                     # restart ingestion if it dies
-                    procs["ingestion"] = subprocess.Popen(["python3", "-m",
-                                                           "sensor_ingestion.ingest_gi"],
-                                                           env=env)
+                    procs["ingestion"] = subprocess.Popen(
+                        ["python3", "-m", "sensor_ingestion.ingest_gi"], env=env
+                    )
                     continue
                 else:
                     del procs[name]
@@ -88,6 +90,7 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         cleanup(procs)
+
 
 if __name__ == "__main__":
     main()
