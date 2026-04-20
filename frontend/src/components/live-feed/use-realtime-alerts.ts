@@ -15,9 +15,10 @@ export type RealtimeAlertConnectionState =
   | "error";
 
 export type UseRealtimeAlertsResult = {
-  activeAlertEvent: RealtimeAlertEvent | null;
+  alerts: RealtimeAlertEvent[];
   connectionState: RealtimeAlertConnectionState;
-  dismissAlert: () => void;
+  dismissAlert: (incidentId: string) => void;
+  dismissAllAlerts: () => void;
 };
 
 function isIncomingRealtimeAlertPayload(value: unknown): value is IncomingRealtimeAlertPayload {
@@ -40,7 +41,7 @@ function isIncomingRealtimeAlertPayload(value: unknown): value is IncomingRealti
 }
 
 export function useRealtimeAlerts(): UseRealtimeAlertsResult {
-  const [activeAlertEvent, setActiveAlertEvent] = useState<RealtimeAlertEvent | null>(null);
+  const [alerts, setAlerts] = useState<RealtimeAlertEvent[]>([]);
   const [connectionState, setConnectionState] = useState<RealtimeAlertConnectionState>("connecting");
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,7 +92,18 @@ export function useRealtimeAlerts(): UseRealtimeAlertsResult {
             return;
           }
 
-          setActiveAlertEvent(normalizeRealtimeAlertEvent(payload));
+          const nextAlert = normalizeRealtimeAlertEvent(payload);
+          if (nextAlert.decision !== "drone") {
+            return;
+          }
+
+          setAlerts((currentAlerts) => {
+            if (currentAlerts.some((queuedAlert) => queuedAlert.incidentId === nextAlert.incidentId)) {
+              return currentAlerts;
+            }
+
+            return [nextAlert, ...currentAlerts].slice(0, 10);
+          });
         } catch {
           setConnectionState("error");
         }
@@ -131,8 +143,13 @@ export function useRealtimeAlerts(): UseRealtimeAlertsResult {
   // live subscriptions across components.
 
   return {
-    activeAlertEvent,
+    alerts,
     connectionState,
-    dismissAlert: () => setActiveAlertEvent(null),
+    dismissAlert: (incidentId: string) => {
+      setAlerts((currentAlerts) =>
+        currentAlerts.filter((queuedAlert) => queuedAlert.incidentId !== incidentId),
+      );
+    },
+    dismissAllAlerts: () => setAlerts([]),
   };
 }
