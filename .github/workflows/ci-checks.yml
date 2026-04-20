@@ -25,10 +25,10 @@ jobs:
                   enable-cache: true
 
             - name: Run ruff check
-              run: uvx run ruff check .
+              run: uvx ruff check .
 
             - name: Run ruff format check
-              run: uvx run ruff format --check .
+              run: uvx ruff format --check .
 
     test:
         name: Test with Pytest
