@@ -1,3 +1,3 @@
-from app.repositories.detection_repository import DetectionRepository
+from app.repositories.incident_repository import IncidentRepository
 
-__all__ = ["DetectionRepository"]
+__all__ = ["IncidentRepository"]

@@ -27,7 +27,7 @@ iface eth0 inet static
     netmask 255.255.255.0
 ```
 ### Docker Deployment
-From repository root, run the following commands to build and run the Docker container:
+From repository root, run the following commands to build and run Jetson services:
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
 sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml

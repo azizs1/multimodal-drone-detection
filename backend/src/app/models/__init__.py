@@ -1,3 +1,3 @@
-from app.models.detection import Detection
+from app.models.incident import Incident
 
-__all__ = ["Detection"]
+__all__ = ["Incident"]

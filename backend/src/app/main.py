@@ -3,20 +3,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import detections, health, streams
+from app.api.routers import alert, health, incidents, streams
 from app.database.database import Base, engine
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     # Create database tables on startup
     Base.metadata.create_all(bind=engine)
     yield
 
 
 app = FastAPI(
-    title="Drone Detection API",
-    description="API for drone detection and tracking",
+    title="Drone Incident Management API",
+    description="API for drone incident ingestion, querying, and real-time alerting",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -32,7 +32,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
-app.include_router(detections.router)
+app.include_router(alert.router)
+app.include_router(incidents.router)
 app.include_router(streams.router)
 
 

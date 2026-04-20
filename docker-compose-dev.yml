@@ -37,6 +37,20 @@ services:
     command: /mediamtx.yml
     restart: always
 
+  # RustFS Object Storage
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rustfs-server
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Console
+    volumes:
+      - ./storage:/data
+    networks:
+      - drone-network
+    command: /data
+    restart: always
+
   # GStreamer RTSP Simulator (loops video)
   drone-visual-streaming:
     build:
@@ -45,7 +59,7 @@ services:
     container_name: gst-visual-simulator
     environment:
       - STREAM_NAME=visual
-      - VIDEO_FILE=drone_visual.mp4
+      - VIDEO_FILE=visible.mp4
     networks:
       - drone-network
     depends_on:
@@ -58,7 +72,7 @@ services:
     container_name: gst-thermal-simulator
     environment:
       - STREAM_NAME=thermal
-      - VIDEO_FILE=drone_thermal.mp4
+      - VIDEO_FILE=infrared.mp4
     networks:
       - drone-network
     depends_on:
@@ -85,6 +99,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: always
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - drone-network
+    depends_on:
+      - backend
     restart: always
 
 networks:

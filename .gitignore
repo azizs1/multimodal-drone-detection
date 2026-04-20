@@ -1,3 +1,4 @@
+#python
 __pycache__/
 .env/
 .venv/
@@ -7,3 +8,12 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 *.pyc
+
+#rustfs
+.rustfs.sys/
+
+#IDE
+.vscode/*
+
+#Datasets
+offline_ml/datasets/*
