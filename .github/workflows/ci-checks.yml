@@ -49,8 +49,8 @@ jobs:
                   enable-cache: true
 
             - name: Install dependencies
-              run: uv sync --package multimodal-drone-detection-backend
+              run: uv sync --package multimodal-drone-detection-backend --no-workspace
 
             - name: Run tests
               working-directory: backend
-              run: uv run pytest -v
+              run: uv run --package multimodal-drone-detection-backend pytest -v
