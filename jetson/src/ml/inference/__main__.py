@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 import os
 import time
-import zmq
-import cv2
-import numpy as np
 from contextlib import suppress
 from pathlib import Path
 from queue import Empty, Full, Queue
 from threading import Event, Thread
 from urllib import error, request
+
+import numpy as np
+import zmq
 
 from .adapters import adapt_yolo_results
 
@@ -300,7 +300,8 @@ def main() -> int:
                 # cv2.imshow(f"inference_thermal", preview)
                 # cv2.waitKey(1)
 
-                _infer_and_send(rgb_model, thermal_model, current_frames["rgb"], current_frames["thermal"], fusion_endpoint)
+                _infer_and_send(rgb_model, thermal_model, current_frames["rgb"],
+                                current_frames["thermal"], fusion_endpoint)
                 current_frames = {"rgb": None, "thermal": None}
 
     except KeyboardInterrupt:

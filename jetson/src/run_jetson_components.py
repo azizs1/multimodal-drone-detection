@@ -1,8 +1,9 @@
-import subprocess
-import shutil
-import time
 import os
+import shutil
 import socket
+import subprocess
+import time
+
 
 def cleanup(procs):
     print("\nShutting down all components...")
@@ -74,7 +75,9 @@ def main():
                     break
                 elif name == "ingestion":
                     # restart ingestion if it dies
-                    procs["ingestion"] = subprocess.Popen(["python3", "-m", "sensor_ingestion.ingest_gi"], env=env)
+                    procs["ingestion"] = subprocess.Popen(["python3", "-m",
+                                                           "sensor_ingestion.ingest_gi"],
+                                                           env=env)
                     continue
                 else:
                     del procs[name]

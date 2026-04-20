@@ -8,16 +8,14 @@
 # https://discourse.gstreamer.org/t/appsinks-new-sample-callback-function-is-never-triggered-as-the-data-flow-is-stuck/661/2
 # https://forums.developer.nvidia.com/t/appsink-element-in-python-deepstream-pipeline/311528
 
-import os
-from datetime import datetime
-
-import cv2
-import gi
-import zmq
-import time
 import json
+import os
 import threading
+import time
+
+import gi
 import numpy as np
+import zmq
 from dotenv import load_dotenv
 
 gi.require_version("GLib", "2.0")
@@ -71,10 +69,12 @@ def build_gst_pipeline():
     # rgb_src.set_property("is-live", True)
 
     rgb_src = Gst.ElementFactory.make("v4l2src", "rgb_src")
-    rgb_src.set_property("device", "/dev/video0") # double-check with v4l2-ctl that this is the right device for rgb
+    # double-check with v4l2-ctl that this is the right device for rgb
+    rgb_src.set_property("device", "/dev/video0")
 
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
-    rgb_caps.set_property("caps", Gst.Caps.from_string("image/jpeg,framerate=30/1")) # not specifying dimensions, we do that in scale_caps
+    # not specifying dimensions, we do that in scale_caps
+    rgb_caps.set_property("caps", Gst.Caps.from_string("image/jpeg,framerate=30/1"))
 
     # decode mjpeg to raw video
     rgb_jpegdec = Gst.ElementFactory.make("jpegdec", "rgb_jpegdec")
@@ -83,7 +83,8 @@ def build_gst_pipeline():
 
     # force raw RGB at 1280x720, we already did fps caps
     rgb_scale_caps = Gst.ElementFactory.make("capsfilter", "rgb_scale_caps")
-    rgb_scale_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,format=RGB"))
+    rgb_scale_caps.set_property("caps",
+                                Gst.Caps.from_string("video/x-raw,width=1280,height=720,format=RGB"))
 
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
 
@@ -104,7 +105,8 @@ def build_gst_pipeline():
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
     rgb_rtp_convert = Gst.ElementFactory.make("videoconvert", "rgb_rtp_convert")
 
-    rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder") # using sw encoder since orin nano doesnt have hw encoding
+    # using sw encoder since orin nano doesnt have hw encoding
+    rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder")
     rgb_encoder.set_property("tune", "zerolatency")
     rgb_encoder.set_property("bitrate", 4000)
     rgb_encoder.set_property("speed-preset", "ultrafast")
@@ -130,7 +132,8 @@ def build_gst_pipeline():
     thermal_src.set_property("is-live", True)
 
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
-    thermal_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1"))
+    thermal_caps.set_property("caps",
+                              Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1"))
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
