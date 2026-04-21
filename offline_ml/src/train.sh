@@ -6,7 +6,7 @@
 
 #General node to run on and time allocated.
 #SBATCH --partition=a100_normal_q
-#SBATCH --time=1:00:00
+#SBATCH --time=6:00:00
 
 #Specific compute resources.
 #SBATCH --nodes=1
@@ -30,6 +30,8 @@ cp /projects/muataz/datasets/*.zip $TMPDIR #UPDATE PROJECT NAME HERE IF NECESSAR
 cd $TMPDIR
 unzip zenodo_visual_no_augmentation.zip
 unzip zenodo_thermal_no_augmentation.zip
+unzip anti_uav_thermal_no_augmentation.zip
+unzip anti_uav_visual_no_augmentation.zip
 
 # Run the train.py script with the local data (UPDATE PID HERE).
 cd ~/multimodal-drone-detection
@@ -39,5 +41,7 @@ python offline_ml/src/train.py \
     --epochs 50
 
 # Add the updated weights to the weights directory to be committed.
-cp /scratch/eymauger26/runs/thermal_no_augmentation_baseline/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_no_augmentation_best.pt
-cp /scratch/eymauger26/runs/visual_no_augmentation_baseline/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_no_augmentation_best.pt
+cp /scratch/eymauger26/runs/zenodo_visual_baseline/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/zenodo_visual_best.pt
+cp /scratch/eymauger26/runs/zenodo_thermal_baseline/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/zenodo_thermal_best.pt
+cp /scratch/eymauger26/runs/anti_uav_visual_baseline/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/anti_uav_visual_best.pt
+cp /scratch/eymauger26/runs/anti_uav_thermal_baseline/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/anti_uav_thermal_best.pt

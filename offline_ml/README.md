@@ -48,26 +48,31 @@ For basic checking and fixing of linting errors.
 ruff check --fix
 ```
 
+
 # Datasets
 
-There are two main datasets that will be used for this project. The datasets are below:
+The following datasets are used for this project. All datasets should be stored in the `datasets/` directory at the same level with the directory names listed below.
 
-- [Zenodo Visual Drone Detection Dataset - Non-Augemented](https://zenodo.org/records/15632958)
-- [Zenodo Thermal Drone Detection Dataset - Non-Augemented](https://zenodo.org/records/15633051)
+## 1. Zenodo Datasets
 
-All datasets should be stored in the datasets/ directory and should all be at the same level. Keep the original directory structure for each of the datasets for now.
+- [Zenodo Visual Drone Detection Dataset - Non-Augmented](https://zenodo.org/records/15632958) — `zenodo_visual_no_augmentation`
+- [Zenodo Thermal Drone Detection Dataset - Non-Augmented](https://zenodo.org/records/15633051) — `zenodo_thermal_no_augmentation`
 
-The names of the datasets have been renamed as follows:
- - zenodo_visual_no_augmentation
- - zenodo_thermal_no_augmentation
+## 2. Anti-UAV Dataset
 
-These will have to be the names renamed in the datasets directory to use any associated notebooks or code.
+- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) — Paired RGB and thermal infrared video sequences of drones in the wild. Download and place the raw dataset at `datasets/anti_uav`. Run the preprocessing script (see Preprocessing section) to generate the processed datasets:
+  - `anti_uav_visual_no_augmentation`
+  - `anti_uav_thermal_no_augmentation`
+
 
 # Initial Data Analysis
 
-The data_extraction Jupyter Notebook has initial data analysis on each of the Zenodo datasets, and can be reviewed in VS code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, in addition to having the datasets downloaded, however example outputs are preserved.
+The `data_exploration` Jupyter Notebook has initial data analysis on each dataset and can be reviewed in VS Code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, in addition to having the datasets downloaded. Example outputs are preserved in the notebook.
+
 
 # Preprocessing
+
+All preprocessing scripts should be run from the `offline_ml/` directory.
 
 ## 1. Zenodo Thermal Dataset
 
@@ -79,26 +84,64 @@ python src/preprocessing_zenodo.py
 
 This script moves all images with empty label files to a temporary directory and then deletes it, leaving only fully labeled images in the dataset.
 
-Note: Run this script from the `offline_ml/` directory before training.
+## 2. Anti-UAV Dataset
+
+The Anti-UAV dataset consists of paired infrared and visible video sequences with JSON annotations. The preprocessing script extracts frames from each video, converts bounding box annotations from pixel coordinates to YOLO format, and outputs two processed datasets — one thermal and one visual — matching the zenodo directory structure.
+
+Key preprocessing decisions:
+- Frames are sampled at every 10th frame to avoid near-duplicate frames while preserving drone motion diversity
+- All frames where the drone is not present (exist=0 in JSON) are kept regardless of sample rate as hard negative examples
+- Infrared sequences are output to `anti_uav_thermal_no_augmentation`, visible to `anti_uav_visual_no_augmentation`
+- The Anti-UAV `val` split is renamed to `valid` to match zenodo structure
+
+Run the preprocessing script:
+```bash
+python src/preprocessing_anti_uav.py
+```
+
+Note: Visual has significantly more negative frames (~37%) than thermal (~11%). This could be due to the fact that humans were not able to identify drones when looking at the pictures to label them. This is expected behavior and reflects real-world sensor differences, showing the importance of thermal imagery at night.
+
 
 # Initial Model Training
 
-While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLO26, so I conducted an initial benchmark training session on the two different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
-
-<!-- To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
-```bash
-cd ~/multimodal-drone-detection
-python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
-mv yolov8n.pt offline_ml/weights/
-``` -->
-
-<!-- Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt. -->
+While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLO, so I conducted an initial benchmark training session on the two different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
 
 In order to keep all code in the repository and limit the use of external tools, the train.ipynb notebook was converted into train.py, and training is now conducted on the VT ARC Cluster. Instructions below serve as a walkthrough to getting this resource set up. To run train.py locally to test it works, you can run this bash command below, however, CPU training would be too time intensive to train each of these models locally. Make sure this command is ran in the offline_ml/src directory.
 
 ```bash
 python train.py --data ../datasets --epochs 1
 ```
+
+# Model Robustness
+
+To improve model robustness beyond the initial Zenodo baselines, additional datasets have been integrated to address key gaps identified during data analysis:
+
+- **Limited drone diversity** — only 3 drone types in Zenodo
+- **No hard negatives** — model had never seen images without drones
+- **Limited range** — most Zenodo drones are within 100m
+- **No nighttime data**
+
+## Datasets Added
+
+**Anti-UAV** — 296,901 frames of paired RGB and thermal drone footage across 320 sequences. Provides small bounding boxes (long range drones), nighttime footage, and hard negative examples. Preprocessed using `src/preprocessing_anti_uav.py`.
+
+## Planned Datasets
+
+The following datasets are pending access approval:
+- **WOSDETC Drone-vs-Bird** — ground camera video, drone and bird annotations, email request to wosdetc@googlegroups.com
+- **LRDDv2** — long range drone detection up to 1km, access request at research.coe.drexel.edu/ece/imaple/lrddv2
+- **FBD-SV-2024** — flying bird surveillance video, available at github.com/Ziwei89/FBD-SV-2024_github
+- **Halmstad Multi-Sensor** — drone/bird/plane/helicopter, available at github.com/DroneDetectionThesis/Drone-detection-dataset (requires MATLAB for annotation extraction)
+
+## Training Strategy
+
+Each dataset is trained independently first to establish baselines before combining. This allows direct comparison of what each dataset contributes to model performance. Training is configured in `src/train.py` with the following baselines:
+
+- `zenodo_visual_baseline`
+- `zenodo_thermal_baseline`
+- `anti_uav_visual_baseline`
+- `anti_uav_thermal_baseline`
+
 
 # ARC Cluster Setup
 
@@ -178,7 +221,7 @@ exit
 
 ## 5. Migrate Data to ARC Cluster
 
-NOTE: If you are already a member of the team, skip this step, the datasets are already in our shared projects/muataz folder.
+NOTE: If you are already a member of the team, skip this step, the datasets are already in our shared projects/muataz/datasets folder.
 
 For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets are stored as zip files and during training they are unzipped locally for better performance. These datasets were stored into a project folder provided by our instructor:
 
@@ -188,6 +231,12 @@ mkdir datasets
 cd datasets
 wget "https://zenodo.org/records/15632958/files/Visual%20drone%20detection.v2i.yolov11_no_augmentation.zip?download=1" -O zenodo_visual_no_augmentation.zip
 wget "https://zenodo.org/records/15633051/files/Thermal_drone_detection.v1i.yolov11_no_augmentation.zip?download=1" -O zenodo_thermal_no_augmentation.zip
+```
+
+For the Anti-UAV datasets, preprocess them locally first and then upload the processed zip files to the projects folder:
+```bash
+zip -r anti_uav_thermal_no_augmentation.zip datasets/anti_uav_thermal_no_augmentation
+zip -r anti_uav_visual_no_augmentation.zip datasets/anti_uav_visual_no_augmentation
 ```
 
 ## 6. Creating and Submitting a SLURM Job
@@ -247,19 +296,19 @@ find /scratch/<PID>/runs -name "best.pt"
 
 The slurm script automatically saves these weights into the weights directory and can then be commited to git or removed.
 
-# Improving Model Robustness
+<!-- 
 
-The following datasets will be used to improve model robustness:
-
-- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) (Scroll down to Anti-UAV300 Google Drive link and download from there)
-- [WOSDETC](https://github.com/wosdetc/challenge) (Send an email to wosdetc@googlegroups.com to request access and sign a data usage agreement)
-- [FBD-SV-2024](https://github.com/Ziwei89/FBD-SV-2024_github) ()
-- [LRDDv2](https://research.coe.drexel.edu/ece/imaple/lrddv2/) (Fill out the google form to gain access)
-- [Drone-Detection](https://github.com/DroneDetectionThesis/Drone-detection-dataset/blob/master/Data/Video_IR/IR_AIRPLANE_001_LABELS.mat) ()
-
-The names of the datasets have been renamed as follows:
- - 
-
+#NOTES
 
 Fix yolo26n problem and make it modularizable if I want to to look at other models to use
-Go through all files in tabs above and make sure what is mentioned makes sense with current trajectory.
+
+To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
+```bash
+cd ~/multimodal-drone-detection
+python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
+mv yolov8n.pt offline_ml/weights/
+```
+
+Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt.
+
+-->

@@ -27,7 +27,7 @@ def train(args):
     project_dir = Path(args.project).resolve()
 
     # Save specific datasets that should all be trained with YOLOv8.
-    # These can be changed in the future, but the train.py code will have to be modified.
+    #Add datasets to be trained.
     datasets = [
         {
             "data": data_dir / "zenodo_visual_no_augmentation/data.yaml",
