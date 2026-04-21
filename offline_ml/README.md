@@ -223,20 +223,12 @@ exit
 
 NOTE: If you are already a member of the team, skip this step, the datasets are already in our shared projects/muataz/datasets folder.
 
-For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets are stored as zip files and during training they are unzipped locally for better performance. These datasets were stored into a project folder provided by our instructor:
-
+For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets are stored as zip files and during training they are unzipped locally for better performance. These datasets were stored into a project folder provided by our instructor. To get the datasets onto ARC, preprocess them locally first from the `datasets/` dir and then upload the processed zip files to the projects folder:
 ```bash
-cd /projects/<project_name>
-mkdir datasets
-cd datasets
-wget "https://zenodo.org/records/15632958/files/Visual%20drone%20detection.v2i.yolov11_no_augmentation.zip?download=1" -O zenodo_visual_no_augmentation.zip
-wget "https://zenodo.org/records/15633051/files/Thermal_drone_detection.v1i.yolov11_no_augmentation.zip?download=1" -O zenodo_thermal_no_augmentation.zip
-```
-
-For the Anti-UAV datasets, preprocess them locally first and then upload the processed zip files to the projects folder:
-```bash
-zip -r anti_uav_thermal_no_augmentation.zip datasets/anti_uav_thermal_no_augmentation
-zip -r anti_uav_visual_no_augmentation.zip datasets/anti_uav_visual_no_augmentation
+zip -r zenodo_thermal_no_augmentation.zip zenodo_thermal_no_augmentation
+zip -r zenodo_visual_no_augmentation.zip zenodo_visual_no_augmentation
+zip -r anti_uav_thermal_no_augmentation.zip anti_uav_thermal_no_augmentation
+zip -r anti_uav_visual_no_augmentation.zip anti_uav_visual_no_augmentation
 ```
 
 ## 6. Creating and Submitting a SLURM Job

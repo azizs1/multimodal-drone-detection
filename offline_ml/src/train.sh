@@ -6,7 +6,7 @@
 
 #General node to run on and time allocated.
 #SBATCH --partition=a100_normal_q
-#SBATCH --time=6:00:00
+#SBATCH --time=10:00:00
 
 #Specific compute resources.
 #SBATCH --nodes=1
