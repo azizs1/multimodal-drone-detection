@@ -13,13 +13,11 @@ from frame_pair_transport import DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
 
 from .adapters import adapt_yolo_results
 from .frame_publisher import build_publishers
-from .zmq_bridge import run_one_zmq_inference
+from .zmq_bridge import run_ipc_zmq_loop, run_one_zmq_inference
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
 DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
-DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
-DEFAULT_THERMAL_VIDEO_PATH = REPO_ROOT / "simulator/videos/infrared.mp4"
 DEFAULT_FUSION_ENDPOINT = "http://fusion:8050/fusion/ingest"
 DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT = DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
 DEFAULT_FRAME_PAIR_TOLERANCE_MS = 100.0
@@ -163,31 +161,6 @@ def _infer_and_send(
         _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
 
 
-def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
-    try:
-        import cv2
-    except ImportError as exc:  # pragma: no cover - runtime dependency
-        raise RuntimeError("opencv-python is required for video-frame inference mode.") from exc
-
-    rgb_cap = cv2.VideoCapture(str(rgb_video_path))
-    thermal_cap = cv2.VideoCapture(str(thermal_video_path))
-    if not rgb_cap.isOpened():
-        raise FileNotFoundError(f"RGB video not found or unreadable: {rgb_video_path}")
-    if not thermal_cap.isOpened():
-        raise FileNotFoundError(f"Thermal video not found or unreadable: {thermal_video_path}")
-
-    try:
-        while True:
-            ok_rgb, rgb_frame = rgb_cap.read()
-            ok_thermal, thermal_frame = thermal_cap.read()
-            if not ok_rgb or not ok_thermal:
-                break
-            yield rgb_frame, thermal_frame
-    finally:
-        rgb_cap.release()
-        thermal_cap.release()
-
-
 def main() -> int:
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     pair_tolerance_ms = float(
@@ -198,14 +171,12 @@ def main() -> int:
         os.getenv("INFERENCE_THERMAL_MODEL_CONF", str(DEFAULT_THERMAL_MODEL_CONF))
     )
     connect_endpoint = os.getenv("ZMQ_FRAME_CONNECT_ENDPOINT", DEFAULT_ZMQ_FRAME_CONNECT_ENDPOINT)
-    source_mode = os.getenv("INFERENCE_SOURCE", "idle").lower()
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
     print(f"frame pair tolerance (ms): {pair_tolerance_ms}")
     print(f"rgb model conf threshold: {rgb_model_conf}")
     print(f"thermal model conf threshold: {thermal_model_conf}")
     print(f"zmq frame connect endpoint: {connect_endpoint}")
-    print(f"inference source mode: {source_mode}")
 
     rgb_model, thermal_model = _load_models()
     print("loaded RGB and thermal models")
@@ -249,50 +220,29 @@ def main() -> int:
         )
 
     try:
-        if source_mode == "videos":
-            rgb_video_path = Path(os.getenv("RGB_VIDEO_PATH", str(DEFAULT_RGB_VIDEO_PATH)))
-            thermal_video_path = Path(
-                os.getenv("THERMAL_VIDEO_PATH", str(DEFAULT_THERMAL_VIDEO_PATH))
+        if connect_endpoint.startswith("ipc://"):
+            print(f"ZMQ mode: IPC per-frame (ingest_gi) endpoint={connect_endpoint}")
+            run_ipc_zmq_loop(
+                _infer_with_optional_publish,
+                rgb_model=rgb_model,
+                thermal_model=thermal_model,
+                fusion_endpoint=fusion_endpoint,
+                connect_endpoint=connect_endpoint,
             )
-            max_frames = int(os.getenv("MAX_FRAMES", "0"))
-            print(f"rgb video path: {rgb_video_path}")
-            print(f"thermal video path: {thermal_video_path}")
-            if max_frames > 0:
-                print(f"max frames: {max_frames}")
-            frame_count = 0
-            for rgb_frame, thermal_frame in _iter_video_frames(rgb_video_path, thermal_video_path):
-                frame_count += 1
-                _infer_and_send(
-                    rgb_model=rgb_model,
-                    thermal_model=thermal_model,
-                    rgb_frame=rgb_frame,
-                    thermal_frame=thermal_frame,
-                    fusion_endpoint=fusion_endpoint,
-                    pair_tolerance_ms=pair_tolerance_ms,
-                    frame_index=frame_count,
-                    rgb_model_conf=rgb_model_conf,
-                    thermal_model_conf=thermal_model_conf,
-                    publishers=publishers,
-                )
-                if max_frames > 0 and frame_count >= max_frames:
-                    break
-            print(f"video inference finished, processed {frame_count} frame pairs")
-            return 0
-
-        print("waiting for frame source integration (sensor ingestion -> inference bridge)")
-
-        while True:
-            try:
-                run_one_zmq_inference(
-                    _infer_with_optional_publish,
-                    rgb_model=rgb_model,
-                    thermal_model=thermal_model,
-                    fusion_endpoint=fusion_endpoint,
-                    connect_endpoint=connect_endpoint,
-                )
-            except Exception as exc:  # pragma: no cover - runtime resilience
-                print(f"inference loop error: {exc}")
-                time.sleep(0.25)
+        else:
+            print(f"ZMQ mode: TCP frame-pair (simulator) endpoint={connect_endpoint}")
+            while True:
+                try:
+                    run_one_zmq_inference(
+                        _infer_with_optional_publish,
+                        rgb_model=rgb_model,
+                        thermal_model=thermal_model,
+                        fusion_endpoint=fusion_endpoint,
+                        connect_endpoint=connect_endpoint,
+                    )
+                except Exception as exc:  # pragma: no cover - runtime resilience
+                    print(f"inference loop error: {exc}")
+                    time.sleep(0.25)
     finally:
         if publishers is not None:
             publishers[0].stop()

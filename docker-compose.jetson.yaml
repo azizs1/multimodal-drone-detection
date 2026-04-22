@@ -21,6 +21,13 @@ services:
     environment:
       - FUSION_HOST=0.0.0.0
       - FUSION_PORT=8050
+      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
+      - RUSTFS_ENDPOINT=http://127.0.0.1:9000
+      - RUSTFS_PUBLIC_BASE_URL=http://127.0.0.1:9000
+      - RUSTFS_BUCKET=drone-detection
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+      - RUSTFS_SKIP_BOOTSTRAP=true
     command: uv run python3 -m ml.fusion_service
     restart: unless-stopped
 
@@ -30,28 +37,13 @@ services:
     network_mode: host
     runtime: nvidia
     privileged: true
+    volumes:
+      - ./offline_ml/weights:/app/offline_ml/weights:ro
     environment:
-      - INFERENCE_SOURCE=idle
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
-      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
+      - ZMQ_FRAME_CONNECT_ENDPOINT=ipc:///tmp/frames_bus
+      - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
+      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
     command: uv run python3 -m ml.inference
     restart: unless-stopped
 
-  jetson-inference-videos:
-    profiles: ["videos"]
-    build: ./jetson
-    container_name: jetson-inference-videos
-    network_mode: host
-    runtime: nvidia
-    privileged: true
-    volumes:
-      - ./simulator/videos:/app/simulator/videos:ro
-    environment:
-      - INFERENCE_SOURCE=videos
-      - MAX_FRAMES=0
-      - RGB_VIDEO_PATH=/app/simulator/videos/drone_visual.mp4
-      - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
-      - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
-      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
-    command: uv run python3 -m ml.inference
-    restart: unless-stopped
