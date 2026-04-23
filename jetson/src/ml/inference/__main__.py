@@ -11,6 +11,9 @@ from queue import Empty, Full, Queue
 from threading import Event, Thread
 from urllib import error, request
 
+import numpy as np
+import zmq
+
 from .adapters import adapt_yolo_results
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -204,6 +207,13 @@ def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
 
 
 def main() -> int:
+    context = zmq.Context()
+    socket = context.socket(zmq.SUB)
+    socket.connect("ipc:///tmp/frames_bus")
+    socket.setsockopt(zmq.SUBSCRIBE, b"rgb")
+    socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
+    current_frames = {"rgb": None, "thermal": None}
+
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     backend_incident_endpoint = os.getenv(
         "BACKEND_INCIDENT_ENDPOINT", DEFAULT_BACKEND_INCIDENT_ENDPOINT
@@ -266,19 +276,39 @@ def main() -> int:
         print("waiting for frame source integration (sensor ingestion -> inference bridge)")
 
         while True:
-            # TODO(Sprint 2): Replace with real frame pull from sensor ingestion.
-            # Once frames are wired in, call:
-            # _infer_and_send(
-            #     rgb_model,
-            #     thermal_model,
-            #     rgb_frame,
-            #     thermal_frame,
-            #     fusion_endpoint,
-            #     backend_publisher,
-            #     pair_tolerance_ms,
-            #     frame_index,
-            # )
-            time.sleep(5)
+            # multipart: [topic, meta_json, raw_bytes]
+            topic, meta_raw, frame_raw = socket.recv_multipart()
+
+            modality = topic.decode("utf-8")
+            meta = json.loads(meta_raw.decode("utf-8"))
+
+            frame = np.frombuffer(frame_raw, dtype=np.uint8)
+            frame = frame.reshape((meta["height"], meta["width"], meta["channels"]))
+
+            print(f"[{modality}] frame received: shape={frame.shape}")
+
+            current_frames[modality] = frame
+
+            if current_frames["rgb"] is not None and current_frames["thermal"] is not None:
+                print("both frames ready")
+
+                # preview = cv2.resize(current_frames["rgb"], (320, 240))
+                # cv2.imshow(f"inference_rgb", preview)
+                # cv2.waitKey(1)
+
+                # preview = cv2.resize(current_frames["thermal"], (320, 240))
+                # cv2.imshow(f"inference_thermal", preview)
+                # cv2.waitKey(1)
+
+                _infer_and_send(
+                    rgb_model,
+                    thermal_model,
+                    current_frames["rgb"],
+                    current_frames["thermal"],
+                    fusion_endpoint,
+                )
+                current_frames = {"rgb": None, "thermal": None}
+
     except KeyboardInterrupt:
         print("ml.inference stopped")
         return 0

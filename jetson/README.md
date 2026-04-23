@@ -29,30 +29,68 @@ iface eth0 inet static
 ### Docker Deployment
 From repository root, run the following commands to build and run Jetson services:
 ```bash
-docker compose -f docker-compose.jetson.yaml build
-
-# Run all Jetson services (sensor ingestion + fusion + inference)
-docker compose -f docker-compose.jetson.yaml up -d
-
-# Or run only fusion + inference
-docker compose -f docker-compose.jetson.yaml up -d jetson-fusion jetson-inference
-
-# Video-demo mode (uses simulator/videos as inference source)
-docker compose -f docker-compose.jetson.yaml --profile videos up -d jetson-fusion jetson-inference-videos
+docker build -t jetson-si-ml -f jetson/Dockerfile jetson
+sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
 >Inference services mount `offline_ml/weights` into the container and read:
 >`/app/offline_ml/weights/visual_no_augmentation_best.pt` and
 >`/app/offline_ml/weights/thermal_no_augmentation_best.pt`.
 
-Useful logs:
-```bash
-docker compose -f docker-compose.jetson.yaml logs -f jetson-fusion
-docker compose -f docker-compose.jetson.yaml logs -f jetson-inference
-docker compose -f docker-compose.jetson.yaml logs -f jetson-sensor-ingestion
+### Debugging Ingestion
+```
+sudo apt install v4l-utils
+```
+v4l2-ctl is useful when debugging device issues. Use `v4l2-ctl --list-devices` to identify connected devices, and once devices are identified, use `v4l2-ctl --device=/dev/video0 --list-formats-ext` to identify formats to use for GStreamer caps.
+
+In order to see the RTSP stream, install `ffmpeg`:
+```
+sudo apt install ffmpeg
+ffplay rtsp://localhost:8554/visual
+```
+while the WebRTC stream can be accessed by opening a browser and going to `http://localhost:9998/visual/`.
+
+The MediaMTX configuration uses both RTP and WebRTC, with the WebRTC having significantly lower latency. Access `http://localhost:9997/v3/paths/list` to see the list of streams and identify if there are any bytes coming through.
+
+In order to debug on the inference side `jetson/src/ml/inference/__main__.py` has some commented out cv2.imshow calls that open windows to "see" what the inference module is receiving. Use the following when running the container:
+```
+xhost +local:root
+
+sudo docker run --rm -it --runtime nvidia --network host --privileged --env DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
 ```
 ### Running Without Container
 If running without the container is desired, navigate to `multimodal-drone-detection/jetson/src` and run:
 ```
 python3 -m sensor_ingestion.ingest_gi
+```
+# Low Space on Disk
+Especially during development when it is easier to work with full JetPack 6.1, space can be a concern. For this, another USB drive can be used (WARNING: THIS WILL COMPLETELY WIPE THE USB):
+```bash
+# find USB device name (probs /dev/sda1)
+lsblk
+# format to ext4
+sudo mkfs.ext4 /dev/sda1
+# create mount point and mount it
+sudo mkdir -p /mnt/usb
+sudo mount /dev/sda1 /mnt/usb
+# set write permissions
+sudo chown jetson:jetson /mnt/usb
+```
+Clone the repo here. Now Docker should be configured to use this USB drive:
+```bash
+sudo systemctl stop docker
+sudo mkdir -p /mnt/usb_storage/docker-data
+```
+Now we must edit `/etc/docker/daemon.json` and add to the file:
+```json
+"data-root": "/mnt/usb_storage/docker-data"
+```
+
+
+ and initialize the virtual environment. When creating this virtual environment, it will still try to download packages on the initial SD card, so we need to create a temp cache on the USB drive:
+```bash
+mkdir -p /mnt/usb_storage/.uv_cache
+export UV_CACHE_DIR="/mnt/usb_storage/.uv_cache"
+# optional, but add to bashrc for future sessions. remember to source in current one
+echo 'export UV_CACHE_DIR="/mnt/usb_storage/.uv_cache"' >> ~/.bashrc
 ```
