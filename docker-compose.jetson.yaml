@@ -13,22 +13,32 @@ services:
     restart: unless-stopped
 
   jetson-fusion:
-    build: ./jetson
+    build:
+      context: ./jetson
+      dockerfile: Dockerfile.jp61.inference_fusion
     container_name: jetson-fusion
     network_mode: host
-    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        count: all
+        capabilities: [gpu]
     privileged: true
     environment:
       - FUSION_HOST=0.0.0.0
       - FUSION_PORT=8050
-    command: uv run python3 -m ml.fusion_service
+    command: python3 -m ml.fusion_service
     restart: unless-stopped
 
   jetson-inference:
-    build: ./jetson
+    build:
+      context: ./jetson
+      dockerfile: Dockerfile.jp61.inference_fusion
     container_name: jetson-inference
     network_mode: host
-    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        count: all
+        capabilities: [gpu]
     privileged: true
     volumes:
       - ./offline_ml/weights:/app/offline_ml/weights:ro
@@ -38,15 +48,20 @@ services:
       - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
       - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
-    command: uv run python3 -m ml.inference
+    command: python3 -m ml.inference
     restart: unless-stopped
 
   jetson-inference-videos:
     profiles: ["videos"]
-    build: ./jetson
+    build:
+      context: ./jetson
+      dockerfile: Dockerfile.jp61.inference_fusion
     container_name: jetson-inference-videos
     network_mode: host
-    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        count: all
+        capabilities: [gpu]
     privileged: true
     volumes:
       - ./offline_ml/weights:/app/offline_ml/weights:ro
@@ -60,5 +75,5 @@ services:
       - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
       - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
-    command: uv run python3 -m ml.inference
+    command: python3 -m ml.inference
     restart: unless-stopped

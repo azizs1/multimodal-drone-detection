@@ -1,0 +1,38 @@
+# JetPack 6.x on Jetson uses iGPU-tagged PyTorch images (l4t-pytorch is no longer updated).
+# Override at build-time if needed:
+#   docker build --build-arg PYTORCH_IGPU_IMAGE=nvcr.io/nvidia/pytorch:<tag>-py3-igpu ...
+ARG PYTORCH_IGPU_IMAGE=nvcr.io/nvidia/pytorch:24.09-py3-igpu
+FROM ${PYTORCH_IGPU_IMAGE}
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Keep deps focused on fusion/inference runtime.
+RUN python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install --no-cache-dir \
+    "aioprocessing>=2.0.0" \
+    "fastapi>=0.110.0" \
+    "httpx>=0.27.0" \
+    "numpy>=1.26.0" \
+    "pydantic>=2.7.0" \
+    "python-dotenv>=1.1.1" \
+    "torchsummary>=1.5.1" \
+    "ultralytics>=8.0.0" \
+    "uvicorn[standard]>=0.30.0"
+
+# Fail-fast check so incompatible tags are caught during build.
+RUN python3 -c "import torch; print('torch:', torch.__version__)"
+
+COPY src ./src
+
+# Default command for this image is fusion service.
+CMD ["python3", "-m", "ml.fusion_service"]
