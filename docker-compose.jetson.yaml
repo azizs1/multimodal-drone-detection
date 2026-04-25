@@ -43,7 +43,7 @@ services:
     volumes:
       - ./offline_ml/weights:/app/offline_ml/weights:ro
     environment:
-      - INFERENCE_SOURCE=idle
+      - INFERENCE_SOURCE=stream
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
       - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest

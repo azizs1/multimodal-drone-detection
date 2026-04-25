@@ -1,36 +1,39 @@
-# JetPack 6.x on Jetson uses iGPU-tagged PyTorch images (l4t-pytorch is no longer updated).
-# Override at build-time if needed:
-#   docker build --build-arg PYTORCH_IGPU_IMAGE=nvcr.io/nvidia/pytorch:<tag>-py3-igpu ...
-ARG PYTORCH_IGPU_IMAGE=nvcr.io/nvidia/pytorch:24.09-py3-igpu
-FROM ${PYTORCH_IGPU_IMAGE}
+# Keep base aligned with the Dockerfile already verified on the real Jetson device.
+ARG L4T_BASE_IMAGE=nvcr.io/nvidia/l4t-jetpack:r36.2.0
+FROM ${L4T_BASE_IMAGE}
 
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PYTHONPATH=/app/src \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src
+    PIP_NO_DEPS=0 \
+    PIP_BREAK_SYSTEM_PACKAGES=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    python3-pip \
+    python3-opencv \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-# Keep deps focused on fusion/inference runtime.
-RUN python3 -m pip install --upgrade pip setuptools wheel && \
-    python3 -m pip install --no-cache-dir \
+# Match the same torch source pattern used by the verified Jetson Dockerfile.
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir --extra-index-url https://jetson-ai-lab.dev torch torchvision && \
+    pip3 install --no-cache-dir numpy==1.26.4 && \
+    pip3 install --no-cache-dir \
     "aioprocessing>=2.0.0" \
     "fastapi>=0.110.0" \
     "httpx>=0.27.0" \
-    "numpy>=1.26.0" \
     "pydantic>=2.7.0" \
+    "pyzmq>=25.0.0" \
     "python-dotenv>=1.1.1" \
     "torchsummary>=1.5.1" \
     "ultralytics>=8.0.0" \
-    "uvicorn[standard]>=0.30.0"
+    "uvicorn[standard]>=0.30.0" \
+    "uv>=0.8.0"
 
 # Fail-fast check so incompatible tags are caught during build.
-RUN python3 -c "import torch; print('torch:', torch.__version__)"
+RUN python3 -c "import torch; import cv2; import zmq; print('torch:', torch.__version__)"
 
 COPY src ./src
 

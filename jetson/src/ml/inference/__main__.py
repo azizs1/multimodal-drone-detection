@@ -138,23 +138,18 @@ def _infer_and_send(
     thermal_frame,
     fusion_endpoint: str,
     backend_publisher: BackendIncidentPublisher | None,
-    pair_tolerance_ms: float,
     frame_index: int,
+    pair_id: str,
+    pair_timestamp: float,
+    sync_ok: bool,
+    rgb_capture_ts: float | None = None,
+    thermal_capture_ts: float | None = None,
 ) -> None:
-    rgb_ts = time.time()
-    rgb_result = rgb_model(rgb_frame, verbose=False)[0]
-    thermal_ts = time.time()
-    thermal_result = thermal_model(thermal_frame, verbose=False)[0]
+    rgb_ts = rgb_capture_ts if rgb_capture_ts is not None else pair_timestamp
+    thermal_ts = thermal_capture_ts if thermal_capture_ts is not None else pair_timestamp
 
-    if not _within_pair_tolerance(
-        rgb_ts=rgb_ts, thermal_ts=thermal_ts, tolerance_ms=pair_tolerance_ms
-    ):
-        print(
-            "skipping unpaired frame: "
-            f"rgb_ts={rgb_ts:.6f} thermal_ts={thermal_ts:.6f} "
-            f"tolerance_ms={pair_tolerance_ms}"
-        )
-        return
+    rgb_result = rgb_model(rgb_frame, verbose=False)[0]
+    thermal_result = thermal_model(thermal_frame, verbose=False)[0]
 
     rgb_predictions = adapt_yolo_results(
         modality="rgb",
@@ -173,6 +168,9 @@ def _infer_and_send(
     frame_id = f"frame-{frame_index:06d}"
     for pred in rgb_predictions + thermal_predictions:
         pred.meta["frame_id"] = frame_id
+        pred.meta["pair_id"] = pair_id
+        pred.meta["pair_timestamp"] = f"{pair_timestamp:.6f}"
+        pred.meta["sync_ok"] = "true" if sync_ok else "false"
 
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
     if payload:
@@ -212,7 +210,7 @@ def main() -> int:
     socket.connect("ipc:///tmp/frames_bus")
     socket.setsockopt(zmq.SUBSCRIBE, b"rgb")
     socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
-    current_frames = {"rgb": None, "thermal": None}
+    current_frames: dict[str, dict[str, object] | None] = {"rgb": None, "thermal": None}
 
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     backend_incident_endpoint = os.getenv(
@@ -224,7 +222,7 @@ def main() -> int:
     pair_tolerance_ms = float(
         os.getenv("FRAME_PAIR_TOLERANCE_MS", str(DEFAULT_FRAME_PAIR_TOLERANCE_MS))
     )
-    source_mode = os.getenv("INFERENCE_SOURCE", "idle").lower()
+    source_mode = os.getenv("INFERENCE_SOURCE", "stream").lower()
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
     print(f"backend incidents endpoint: {backend_incident_endpoint}")
@@ -258,6 +256,7 @@ def main() -> int:
             frame_count = 0
             for rgb_frame, thermal_frame in _iter_video_frames(rgb_video_path, thermal_video_path):
                 frame_count += 1
+                pair_timestamp = time.time()
                 _infer_and_send(
                     rgb_model=rgb_model,
                     thermal_model=thermal_model,
@@ -265,8 +264,10 @@ def main() -> int:
                     thermal_frame=thermal_frame,
                     fusion_endpoint=fusion_endpoint,
                     backend_publisher=backend_publisher,
-                    pair_tolerance_ms=pair_tolerance_ms,
                     frame_index=frame_count,
+                    pair_id=f"pair-{frame_count:06d}",
+                    pair_timestamp=pair_timestamp,
+                    sync_ok=True,
                 )
                 if max_frames > 0 and frame_count >= max_frames:
                     break
@@ -274,6 +275,7 @@ def main() -> int:
             return 0
 
         print("waiting for frame source integration (sensor ingestion -> inference bridge)")
+        frame_index = 0
 
         while True:
             # multipart: [topic, meta_json, raw_bytes]
@@ -287,7 +289,8 @@ def main() -> int:
 
             print(f"[{modality}] frame received: shape={frame.shape}")
 
-            current_frames[modality] = frame
+            capture_ts = float(meta.get("timestamp", time.time()))
+            current_frames[modality] = {"frame": frame, "timestamp": capture_ts}
 
             if current_frames["rgb"] is not None and current_frames["thermal"] is not None:
                 print("both frames ready")
@@ -300,12 +303,42 @@ def main() -> int:
                 # cv2.imshow(f"inference_thermal", preview)
                 # cv2.waitKey(1)
 
+                rgb_frame = current_frames["rgb"]["frame"]
+                thermal_frame = current_frames["thermal"]["frame"]
+                rgb_ts = float(current_frames["rgb"]["timestamp"])
+                thermal_ts = float(current_frames["thermal"]["timestamp"])
+
+                frame_index += 1
+                pair_id = f"pair-{frame_index:06d}"
+                pair_timestamp = max(rgb_ts, thermal_ts)
+                sync_ok = _within_pair_tolerance(
+                    rgb_ts=rgb_ts,
+                    thermal_ts=thermal_ts,
+                    tolerance_ms=pair_tolerance_ms,
+                )
+
+                if not sync_ok:
+                    print(
+                        "skipping unpaired frame from sensor timestamps: "
+                        f"pair_id={pair_id} rgb_ts={rgb_ts:.6f} "
+                        f"thermal_ts={thermal_ts:.6f} tolerance_ms={pair_tolerance_ms}"
+                    )
+                    current_frames = {"rgb": None, "thermal": None}
+                    continue
+
                 _infer_and_send(
-                    rgb_model,
-                    thermal_model,
-                    current_frames["rgb"],
-                    current_frames["thermal"],
-                    fusion_endpoint,
+                    rgb_model=rgb_model,
+                    thermal_model=thermal_model,
+                    rgb_frame=rgb_frame,
+                    thermal_frame=thermal_frame,
+                    fusion_endpoint=fusion_endpoint,
+                    backend_publisher=backend_publisher,
+                    frame_index=frame_index,
+                    pair_id=pair_id,
+                    pair_timestamp=pair_timestamp,
+                    sync_ok=sync_ok,
+                    rgb_capture_ts=rgb_ts,
+                    thermal_capture_ts=thermal_ts,
                 )
                 current_frames = {"rgb": None, "thermal": None}
 
