@@ -209,7 +209,7 @@ def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
 def main() -> int:
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
-    socket.connect("ipc:///tmp/frames_bus")
+    socket.connect("ipc:///tmp/frame_bus")
     socket.setsockopt(zmq.SUBSCRIBE, b"rgb")
     socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
     current_frames = {"rgb": None, "thermal": None}

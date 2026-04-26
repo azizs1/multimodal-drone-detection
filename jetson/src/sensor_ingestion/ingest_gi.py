@@ -32,7 +32,7 @@ context = zmq.Context()
 socket = context.socket(zmq.PUB)
 socket.set(zmq.SNDHWM, 1)  # keep only 1 frame in queue to avoid lag
 socket.setsockopt(zmq.LINGER, 0)
-socket.bind("ipc:///tmp/frames_bus")
+socket.bind("ipc:///tmp/frame_bus")
 
 latest_rgb = None
 latest_thermal = None
