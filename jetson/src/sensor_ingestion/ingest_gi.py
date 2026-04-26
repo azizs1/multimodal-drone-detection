@@ -37,9 +37,6 @@ socket.bind("ipc:///tmp/frame_bus")
 latest_rgb = None
 latest_thermal = None
 
-BACKEND_IP = os.getenv("BACKEND_IP", "192.168.50.1")
-BACKEND_PORT = int(os.getenv("BACKEND_PORT", 3000))
-
 frame_dir = "saved_frames"
 os.makedirs(frame_dir, exist_ok=True)
 frame_num = 0
@@ -104,7 +101,7 @@ def build_gst_pipeline():
     rgb_appsink.set_property("max-buffers", 1)
     rgb_appsink.set_property("drop", True)
 
-    # rgb to backend (live stream)
+    # rgb to webrtc (live stream)
     rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
     rgb_rtp_convert = Gst.ElementFactory.make("videoconvert", "rgb_rtp_convert")
 
@@ -154,7 +151,7 @@ def build_gst_pipeline():
     thermal_appsink.set_property("max-buffers", 1)
     thermal_appsink.set_property("drop", True)
 
-    # thermal to backend (live stream)
+    # thermal to webrtc (live stream)
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     thermal_rtp_convert = Gst.ElementFactory.make("videoconvert", "thermal_rtp_convert")
 
@@ -168,7 +165,7 @@ def build_gst_pipeline():
     thermal_encoder.set_property("byte-stream", True)
     thermal_encoder.set_property("aud", True)
 
-    # NEW: MPEG-TS mux instead of RTP payloader
+    # mpeg-ts mux instead of rtp payloader
     thermal_ts_mux = Gst.ElementFactory.make("mpegtsmux", "thermal_ts_mux")
     thermal_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
 
@@ -228,7 +225,7 @@ def build_gst_pipeline():
     rgb_inf_convert.link(rgb_inf_bgr_caps)
     rgb_inf_bgr_caps.link(rgb_appsink)
 
-    # rgb to backend
+    # rgb to webrtc
     rgb_tee.link(rgb_rtp_queue)
     rgb_rtp_queue.link(rgb_rtp_convert)
     rgb_rtp_convert.link(rgb_encoder)
@@ -245,7 +242,7 @@ def build_gst_pipeline():
     thermal_inf_convert.link(thermal_inf_bgr_caps)
     thermal_inf_bgr_caps.link(thermal_appsink)
 
-    # thermal to backend
+    # thermal to webrtc
     thermal_tee.link(thermal_rtp_queue)
     thermal_rtp_queue.link(thermal_rtp_convert)
     thermal_rtp_convert.link(thermal_encoder)

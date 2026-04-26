@@ -14,13 +14,6 @@ webrtcICEServers:
   - stun:stun.l.google.com:19302
 webrtcLocalUDPAddress: :8189
 
-# rtsp stream, higher latency
-# rtsp://localhost:8554/visual
-# rtsp://localhost:8554/thermal
-rtsp: yes
-protocols: [tcp]
-rtspAddress: :8554
-
 # this is to access api for debugging
 # http://localhost:9997/v3/paths/list
 api: yes
