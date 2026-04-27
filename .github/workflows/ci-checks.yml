@@ -24,14 +24,11 @@ jobs:
               with:
                   enable-cache: true
 
-            - name: Install dependencies
-              run: uv sync --all-extras --dev
-
             - name: Run ruff check
-              run: uv run ruff check .
+              run: uvx ruff check .
 
             - name: Run ruff format check
-              run: uv run ruff format --check .
+              run: uvx ruff format --check .
 
     test:
         name: Test with Pytest
@@ -52,8 +49,11 @@ jobs:
                   enable-cache: true
 
             - name: Install dependencies
-              run: uv sync
+              run: |
+                cd backend
+                uv pip install --system . pytest
+                pytest
 
             - name: Run tests
               working-directory: backend
-              run: uv run pytest -v
+              run: pytest src/tests
