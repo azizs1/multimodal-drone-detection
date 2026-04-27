@@ -4,26 +4,35 @@ from __future__ import annotations
 
 from frame_pair_transport import decode_frame_pair
 
+_tcp_context = None
+_tcp_socket = None
+_tcp_endpoint: str | None = None
+
 
 def _recv_zmq_frame_pair(connect_endpoint: str):
+    global _tcp_context, _tcp_socket, _tcp_endpoint
+
     try:
         import zmq
     except ImportError as exc:  # pragma: no cover - runtime dependency
         raise RuntimeError("pyzmq is required for jetson ZeroMQ inference mode.") from exc
 
-    context = zmq.Context()
-    sub_socket = context.socket(zmq.SUB)
-    sub_socket.setsockopt(zmq.LINGER, 0)
-    sub_socket.setsockopt_string(zmq.SUBSCRIBE, "frame-pair")
-    sub_socket.connect(connect_endpoint)
+    if _tcp_context is None:
+        _tcp_context = zmq.Context.instance()
 
-    try:
-        parts = sub_socket.recv_multipart()
-        metadata, rgb_frame, thermal_frame = decode_frame_pair(parts)
-        return metadata, rgb_frame, thermal_frame
-    finally:
-        sub_socket.close()
-        context.term()
+    if _tcp_socket is None or _tcp_endpoint != connect_endpoint:
+        if _tcp_socket is not None:
+            _tcp_socket.close()
+        sock = _tcp_context.socket(zmq.SUB)
+        sock.setsockopt(zmq.LINGER, 0)
+        sock.setsockopt_string(zmq.SUBSCRIBE, "frame-pair")
+        sock.connect(connect_endpoint)
+        _tcp_socket = sock
+        _tcp_endpoint = connect_endpoint
+
+    parts = _tcp_socket.recv_multipart()
+    metadata, rgb_frame, thermal_frame = decode_frame_pair(parts)
+    return metadata, rgb_frame, thermal_frame
 
 
 def run_one_zmq_inference(

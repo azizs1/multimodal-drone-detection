@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import queue
 import threading
+import time
 from contextlib import suppress
 
 
@@ -24,12 +25,13 @@ class AvStreamPublisher:
 
         self._container = None
         self._stream = None
-        self._writer_init_failed = False
+        self._next_retry_after: float = 0.0
+        self._retry_delay: float = 1.0
 
     def _open_writer(self):
         if self._container is not None and self._stream is not None:
             return
-        if self._writer_init_failed:
+        if time.time() < self._next_retry_after:
             return
 
         try:
@@ -91,9 +93,14 @@ class AvStreamPublisher:
                     f"vbv-bufsize={bufsize}"
                 ),
             }
-        except Exception:
-            self._writer_init_failed = True
+        except Exception as exc:
+            print(
+                f"RTSP writer init failed for {self.name}, "
+                f"retrying in {self._retry_delay:.0f}s: {exc}"
+            )
             self._close_writer()
+            self._next_retry_after = time.time() + self._retry_delay
+            self._retry_delay = min(self._retry_delay * 2, 30.0)
 
     def _close_writer(self):
         if self._container is not None:

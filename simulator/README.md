@@ -15,10 +15,10 @@ Key behavior:
 
 ## Run Locally
 
-From repository root:
+From the `simulator/` directory:
 
 ```bash
-uv run python3 -m simulator.src.video_ingestion
+cd simulator && uv run python3 -m src.video_ingestion
 ```
 
 This starts ingestion in the foreground and publishes frame pairs over ZeroMQ.
@@ -72,6 +72,7 @@ Rule of thumb:
 simulator/
 ├── src/
 │   ├── __init__.py
+│   ├── frame_pair_transport.py
 │   └── video_ingestion.py
 ├── videos/
 │   ├── drone_visual.mp4

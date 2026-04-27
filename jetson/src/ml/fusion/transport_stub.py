@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import threading
 import time
 from typing import Any
 from urllib import error, request
@@ -45,7 +46,7 @@ def build_router(fusion_engine: FusionEngine) -> Any:
         fused = fusion_engine.fuse(predictions)
         if fused:
             _attach_media_urls_from_predictions(fused=fused, predictions=predictions)
-            _post_to_backend_incidents(fused)
+            threading.Thread(target=_post_to_backend_incidents, args=(fused,), daemon=True).start()
         return fused
 
     return router

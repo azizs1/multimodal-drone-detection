@@ -125,38 +125,27 @@ uv run pytest
 ## How to Use
 
 ### Simulator
-The simulator still loops drone video footage for RTSP output, and it now also publishes synchronized RGB/thermal frame pairs over **ZeroMQ** for Jetson inference.
-
-- **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** (`libx264`, `ultrafast` preset) for software-based RTSP streaming. Works on any development machine without special hardware.
-- **Production (`docker-compose.jetson.yaml`):** Uses **GStreamer** with hardware-accelerated encoding on the **Jetson Nano**.
+The `stream-simulator` service reads paired RGB and thermal video files and publishes synchronized frame pairs over **ZeroMQ**. The Jetson inference service consumes those frames, runs detection, and publishes annotated RTSP streams to MediaMTX.
 
 **Directory:** `simulator/`
 
-The Docker Compose dev file launches **two simulator containers** — one per stream:
+The Docker Compose dev file launches a single `stream-simulator` container:
 
-| Container               | Stream Name | Video File          | RTSP URL                       |
-| ----------------------- | ----------- | ------------------- | ------------------------------ |
-| `gst-visual-simulator`  | `visual`    | `drone_visual.mp4`  | `rtsp://mediamtx:8554/visual`  |
-| `gst-thermal-simulator` | `thermal`   | `drone_thermal.mp4` | `rtsp://mediamtx:8554/thermal` |
-
-Both containers use the same Dockerfile; behavior is controlled by the `STREAM_NAME` and `VIDEO_FILE` environment variables.
-
-For Jetson inference integration, the simulator publishes frame pairs on `tcp://*:5560` by default.
+| Container          | Role                                        | Output                     |
+| ------------------ | ------------------------------------------- | -------------------------- |
+| `stream-simulator` | Publishes ZeroMQ frame pairs from video     | `tcp://*:5560` (ZMQ PUB)  |
+| `ml-inference`     | Runs YOLO detection + streams RTSP output   | `rtsp://mediamtx:8554/...` |
 
 **Configuration:**
 - Video files: Place `.mp4` files in `simulator/videos/`
 - Default videos: `drone_visual.mp4`, `drone_thermal.mp4`
+- Bind endpoint: `ZMQ_FRAME_BIND_ENDPOINT=tcp://*:5560`
 
 **Standalone Build:**
 ```bash
 cd simulator
 docker build -t drone-simulator .
-
-# Stream visual feed
-docker run --network host -e STREAM_NAME=visual -e VIDEO_FILE=drone_visual.mp4 drone-simulator
-
-# Stream thermal feed
-docker run --network host -e STREAM_NAME=thermal -e VIDEO_FILE=drone_thermal.mp4 drone-simulator
+docker run --network host drone-simulator
 ```
 
 ### MediaMTX (Streaming Server)

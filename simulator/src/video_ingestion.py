@@ -6,7 +6,8 @@ import time
 from pathlib import Path
 
 import cv2
-from frame_pair_transport import DEFAULT_FRAME_PUB_BIND_ENDPOINT, encode_frame_pair
+
+from .frame_pair_transport import DEFAULT_FRAME_PUB_BIND_ENDPOINT, encode_frame_pair
 
 logger = logging.getLogger(__name__)
 
