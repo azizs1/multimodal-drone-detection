@@ -3,19 +3,18 @@ name = "multimodal-drone-detection-si-ml"
 version = "0.1.0"
 description = "Sensor ingestion and ML pipeline for multimodal drone detection"
 readme = "README.md"
-requires-python = ">=3.10,<3.13" # Jetpack 6.1 uses 3.10
+requires-python = ">=3.10,<3.11" # Jetpack 6.1 uses 3.10
 
 dependencies = [
     "aioprocessing>=2.0.0",
     "fastapi>=0.110.0",
     "httpx>=0.27.0",
     "pydantic>=2.7.0",
+    "torchsummary>=1.5.1",
+    "ultralytics>=8.0.0",
     "uvicorn[standard]>=0.30.0",
     "pyzmq>=25.0.0",
-    # Jetson-only ML runtime deps (avoid cross-platform uv resolution failures).
-    "torchsummary>=1.5.1; sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "ultralytics>=8.0.0; sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "torch==2.5.0a0+872d972e41.nv24.8; sys_platform == 'linux' and platform_machine == 'aarch64' and python_version >= '3.10' and python_version < '3.11'",
+    "torch==2.5.0a0+872d972e41.nv24.8"
 ]
 
 [project.optional-dependencies]

@@ -33,8 +33,8 @@ def wait_for_port(port, host="localhost", timeout=10):
 
 def main():
     # clean up possible lingering zeromq sockets
-    if os.path.exists("/tmp/frames_bus"):
-        os.remove("/tmp/frames_bus")
+    if os.path.exists("/tmp/frame_bus"):
+        os.remove("/tmp/frame_bus")
 
     gst_cache = os.path.expanduser("~/.cache/gstreamer-1.0")
     if os.path.exists(gst_cache):

@@ -33,10 +33,6 @@ docker build -t jetson-si-ml -f jetson/Dockerfile jetson
 sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
->Inference services mount `offline_ml/weights` into the container and read:
->`/app/offline_ml/weights/visual_no_augmentation_best.pt` and
->`/app/offline_ml/weights/thermal_no_augmentation_best.pt`.
-
 ### Debugging Ingestion
 ```
 sudo apt install v4l-utils
