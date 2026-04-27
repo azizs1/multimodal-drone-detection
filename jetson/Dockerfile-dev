@@ -30,7 +30,7 @@ ENV PYTHONPATH=/app/src
 ENV UV_SKIP_WHEEL_FILENAME_CHECK=1
 
 # Keep dependency sync deterministic for dev container builds.
-RUN uv sync --python 3.10 --no-dev --extra sensor
+RUN uv sync --python 3.10 --no-dev --extra sensor --extra jetson
 
 # Default command is inference; compose can override for fusion.
 CMD ["uv", "run", "python3", "-m", "ml.inference"]

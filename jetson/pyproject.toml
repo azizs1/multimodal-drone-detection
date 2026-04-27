@@ -17,15 +17,12 @@ dependencies = [
     "numpy>=1.24.0",
     "torchsummary>=1.5.1",
     "ultralytics>=8.0.0",
-    # Jetson (Linux aarch64): NVIDIA JetPack-specific wheel
-    "torch==2.5.0a0+872d972e41.nv24.8 ; sys_platform == 'linux' and platform_machine == 'aarch64'",
     # macOS Apple Silicon: standard PyPI wheel (includes MPS acceleration)
     "torch>=2.0.0,<2.6.0 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
     # Linux x86_64 and Windows: CPU-only wheel
     "torch>=2.0.0,<2.6.0 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "torch>=2.0.0,<2.6.0 ; sys_platform == 'win32' and platform_machine == 'AMD64'",
-    # torchvision — Jetson pins to the version shipped with JetPack; others get a recent build
-    "torchvision==0.11.3 ; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    # torchvision — use recent builds for local/dev environments
     "torchvision>=0.17.0 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "torchvision>=0.17.0 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "torchvision>=0.17.0 ; sys_platform == 'win32' and platform_machine == 'AMD64'",
@@ -33,12 +30,17 @@ dependencies = [
 
 [project.optional-dependencies]
 sensor = ["python-dotenv>=1.1.1"]
+jetson = [
+    # Jetson (Linux aarch64): NVIDIA JetPack wheels
+    "torch @ https://developer.download.nvidia.com/compute/redist/jp/v61/pytorch/torch-2.5.0a0+872d972e41.nv24.08.17622132-cp310-cp310-linux_aarch64.whl ; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "torchvision==0.11.3 ; sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
 
 [tool.uv]
 managed = true
 package = false
 required-environments = [
-    "sys_platform == 'linux' and platform_machine == 'aarch64'",  # Jetson (JetPack 6.1)
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",  # Linux ARM64
     "sys_platform == 'darwin' and platform_machine == 'arm64'",   # macOS Apple Silicon
     "sys_platform == 'linux' and platform_machine == 'x86_64'",   # Linux x86_64
     "sys_platform == 'win32' and platform_machine == 'AMD64'",    # Windows x86_64
@@ -46,18 +48,16 @@ required-environments = [
 
 [tool.uv.sources]
 torch = [
-    # Jetson: NVIDIA JetPack wheel (wheel filename has build suffix that differs from metadata version)
-    { url = "https://developer.download.nvidia.com/compute/redist/jp/v61/pytorch/torch-2.5.0a0+872d972e41.nv24.08.17622132-cp310-cp310-linux_aarch64.whl", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
     # Linux x86_64: CPU-only wheel from PyTorch index
     { url = "https://download.pytorch.org/whl/cpu/torch-2.5.1%2Bcpu-cp310-cp310-linux_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
     # Windows: CPU-only wheel from PyTorch index
     { url = "https://download.pytorch.org/whl/cpu/torch-2.5.1%2Bcpu-cp310-cp310-win_amd64.whl", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'" },
-    # macOS Apple Silicon: no explicit source → resolved from PyPI
+    # macOS arm64: no explicit source → resolved from PyPI
 ]
 torchvision = [
     # Linux x86_64: CPU-only wheel from PyTorch index
     { url = "https://download.pytorch.org/whl/cpu/torchvision-0.20.1%2Bcpu-cp310-cp310-linux_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
     # Windows: CPU-only wheel from PyTorch index
     { url = "https://download.pytorch.org/whl/cpu/torchvision-0.20.1%2Bcpu-cp310-cp310-win_amd64.whl", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'" },
-    # Jetson aarch64 and macOS arm64: resolved from PyPI
+    # macOS arm64: resolved from PyPI
 ]
