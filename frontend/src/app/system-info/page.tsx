@@ -125,7 +125,7 @@ export default function SystemInfoPage() {
             <div>
               <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">System Info</h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                Read-only view of backend-managed detection configuration. Detection parameters are controlled by the fusion service, not by dashboard users.
+                Read-only reference for backend-controlled detection defaults and live system status. Detection parameters are controlled by the fusion service, not by dashboard users.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -214,8 +214,8 @@ export default function SystemInfoPage() {
               </thead>
               <tbody>
                 {(streams.length > 0 ? streams : [
-                  { name: "visual", description: "RGB video stream", hls_url: "Backend metadata unavailable", status: "inactive" },
-                  { name: "thermal", description: "Thermal video stream", hls_url: "Backend metadata unavailable", status: "inactive" },
+                  { name: "visual", description: "RGB video stream", rtsp_url: "Backend metadata unavailable", hls_url: "Backend metadata unavailable", status: "inactive" },
+                  { name: "thermal", description: "Thermal video stream", rtsp_url: "Backend metadata unavailable", hls_url: "Backend metadata unavailable", status: "inactive" },
                 ]).map((stream) => (
                   <tr key={stream.name} className="border-b border-slate-200/80 dark:border-slate-800">
                     <td className="px-3 py-3 font-semibold text-slate-800 dark:text-slate-100">{stream.name}</td>
