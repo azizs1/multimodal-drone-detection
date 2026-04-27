@@ -33,8 +33,8 @@ def wait_for_port(port, host="localhost", timeout=10):
 
 def main():
     # clean up possible lingering zeromq sockets
-    if os.path.exists("/tmp/frame_bus"):
-        os.remove("/tmp/frame_bus")
+    if os.path.exists("/tmp/frames_bus"):
+        os.remove("/tmp/frames_bus")
 
     gst_cache = os.path.expanduser("~/.cache/gstreamer-1.0")
     if os.path.exists(gst_cache):
@@ -43,6 +43,10 @@ def main():
     procs = {}
 
     env = os.environ.copy()
+    source_mode = env.get("INFERENCE_SOURCE", "stream").lower()
+    run_ingestion = source_mode != "videos"
+    print(f"run mode: {source_mode}")
+    print(f"ingestion enabled: {run_ingestion}")
 
     procs["mediamtx"] = subprocess.Popen(["/app/mediamtx"])
     print("Waiting for MediaMTX to accept connections on port 8554...")
@@ -51,7 +55,8 @@ def main():
         cleanup(procs)
         return
 
-    procs["ingestion"] = subprocess.Popen(["python3", "-m", "sensor_ingestion.ingest_gi"], env=env)
+    if run_ingestion:
+        procs["ingestion"] = subprocess.Popen(["python3", "-m", "sensor_ingestion.ingest_gi"], env=env)
     procs["fusion"] = subprocess.Popen(["python3", "-m", "ml.fusion_service"], env=env)
     procs["inference"] = subprocess.Popen(["python3", "-m", "ml.inference"], env=env)
 
@@ -75,7 +80,7 @@ def main():
                     procs.clear()
                     cleanup(procs)
                     break
-                elif name == "ingestion":
+                elif name == "ingestion" and run_ingestion:
                     # restart ingestion if it dies
                     procs["ingestion"] = subprocess.Popen(
                         ["python3", "-m", "sensor_ingestion.ingest_gi"], env=env

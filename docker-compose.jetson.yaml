@@ -1,79 +1,25 @@
 services:
-  jetson-sensor-ingestion:
+  jetson-core:
     build: ./jetson
-    container_name: jetson-sensor-ingestion
+    container_name: jetson-core
     network_mode: host
     runtime: nvidia
     privileged: true
     environment:
       - DISPLAY=${DISPLAY}
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
-    command: uv run python3 -m sensor_ingestion.ingest_gi
-    restart: unless-stopped
-
-  jetson-fusion:
-    build:
-      context: ./jetson
-      dockerfile: Dockerfile.jp61.inference_fusion
-    container_name: jetson-fusion
-    network_mode: host
-    gpus:
-      - driver: nvidia
-        count: all
-        capabilities: [gpu]
-    privileged: true
-    environment:
-      - FUSION_HOST=0.0.0.0
-      - FUSION_PORT=8050
-    command: python3 -m ml.fusion_service
-    restart: unless-stopped
-
-  jetson-inference:
-    build:
-      context: ./jetson
-      dockerfile: Dockerfile.jp61.inference_fusion
-    container_name: jetson-inference
-    network_mode: host
-    gpus:
-      - driver: nvidia
-        count: all
-        capabilities: [gpu]
-    privileged: true
-    volumes:
-      - ./offline_ml/weights:/app/offline_ml/weights:ro
-    environment:
-      - INFERENCE_SOURCE=stream
-      - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
-      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
-      - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
-      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
-    command: python3 -m ml.inference
-    restart: unless-stopped
-
-  jetson-inference-videos:
-    profiles: ["videos"]
-    build:
-      context: ./jetson
-      dockerfile: Dockerfile.jp61.inference_fusion
-    container_name: jetson-inference-videos
-    network_mode: host
-    gpus:
-      - driver: nvidia
-        count: all
-        capabilities: [gpu]
-    privileged: true
-    volumes:
-      - ./offline_ml/weights:/app/offline_ml/weights:ro
-      - ./simulator/videos:/app/simulator/videos:ro
-    environment:
-      - INFERENCE_SOURCE=videos
-      - MAX_FRAMES=0
+      - INFERENCE_SOURCE=${INFERENCE_SOURCE:-stream}
+      - MAX_FRAMES=${MAX_FRAMES:-0}
       - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
       - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
       - RGB_VIDEO_PATH=/app/simulator/videos/drone_visual.mp4
       - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
       - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
-    command: python3 -m ml.inference
+      - FUSION_HOST=0.0.0.0
+      - FUSION_PORT=8050
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./offline_ml/weights:/app/offline_ml/weights:ro
+      - ./simulator/videos:/app/simulator/videos:ro
+    command: python3 -u src/run_jetson_components.py
     restart: unless-stopped
