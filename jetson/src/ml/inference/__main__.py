@@ -9,9 +9,8 @@ import time
 from pathlib import Path
 from urllib import error, request
 
-from frame_pair_transport import DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
-import numpy as np
 import zmq
+from frame_pair_transport import DEFAULT_FRAME_SUB_CONNECT_ENDPOINT
 
 from .adapters import adapt_yolo_results
 from .frame_publisher import build_publishers
@@ -169,8 +168,6 @@ def main() -> int:
     socket.connect("ipc:///tmp/frame_bus")
     socket.setsockopt(zmq.SUBSCRIBE, b"rgb")
     socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
-    current_frames = {"rgb": None, "thermal": None}
-
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     pair_tolerance_ms = float(
         os.getenv("FRAME_PAIR_TOLERANCE_MS", str(DEFAULT_FRAME_PAIR_TOLERANCE_MS))

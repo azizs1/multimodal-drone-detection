@@ -1,5 +1,5 @@
 # Development Dockerfile for Jetson services used by docker-compose-dev.
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -25,8 +25,12 @@ COPY jetson/pyproject.toml ./pyproject.toml
 COPY jetson/src ./src
 ENV PYTHONPATH=/app/src
 
+# NVIDIA JetPack torch wheel has a version string in metadata (nv24.8) that
+# doesn't match the filename (nv24.08.17622132); skip the filename check.
+ENV UV_SKIP_WHEEL_FILENAME_CHECK=1
+
 # Keep dependency sync deterministic for dev container builds.
-RUN uv sync --python 3.11 --no-dev --extra sensor
+RUN uv sync --python 3.10 --no-dev --extra sensor
 
 # Default command is inference; compose can override for fusion.
 CMD ["uv", "run", "python3", "-m", "ml.inference"]
