@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from app.database.schemas import (
     ConfidenceBand,
@@ -10,7 +10,7 @@ from app.database.schemas import (
 
 
 def aggregate_fused_decision(payload: FusedDecisionIngest) -> IncidentCreate:
-    detected_at = datetime.fromtimestamp(payload.timestamp, tz=UTC)
+    detected_at = datetime.fromtimestamp(payload.timestamp, tz=timezone.utc)
     primary_frame_url, primary_thumbnail_url = _pick_primary_media_url(payload.media)
     alert_level = _derive_alert_level(payload.fused_confidence, payload.thresholds)
     is_confirmed = payload.decision == "drone" and payload.has_drone

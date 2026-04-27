@@ -42,8 +42,8 @@ docker compose -f docker-compose-dev.yml logs -f stream-simulator mediamtx
 ### Ingestion
 
 ```bash
-RGB_VIDEO_PATH=videos/drone_visual.mp4
-THERMAL_VIDEO_PATH=videos/drone_thermal.mp4
+RGB_VIDEO_PATH=videos/visable.mp4
+THERMAL_VIDEO_PATH=videos/infrared.mp4
 PLAYBACK_FPS=20
 LOOP_VIDEO=true
 RGB_WIDTH=1280

@@ -10,3 +10,6 @@ members = ["jetson", "backend", "simulator"]
 
 [dependency-groups]
 dev = ["pytest-cov>=7.0.0", "ruff>=0.15.1"]
+
+[tool.ruff]
+target-version = "py310"

@@ -12,8 +12,8 @@ from .frame_pair_transport import DEFAULT_FRAME_PUB_BIND_ENDPOINT, encode_frame_
 logger = logging.getLogger(__name__)
 
 # Default video paths - can be overridden by environment variables
-DEFAULT_RGB_VIDEO = "videos/drone_visual.mp4"
-DEFAULT_THERMAL_VIDEO = "videos/drone_thermal.mp4"
+DEFAULT_RGB_VIDEO = "videos/visible.mp4"
+DEFAULT_THERMAL_VIDEO = "videos/infrared.mp4"
 
 RGB_VIDEO_PATH = os.getenv("RGB_VIDEO_PATH", DEFAULT_RGB_VIDEO)
 THERMAL_VIDEO_PATH = os.getenv("THERMAL_VIDEO_PATH", DEFAULT_THERMAL_VIDEO)
