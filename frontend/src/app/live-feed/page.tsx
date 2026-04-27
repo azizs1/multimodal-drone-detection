@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { HlsVideoPlayer } from "@/components/live-feed/hls-video-player";
 import {
@@ -135,6 +136,61 @@ function RecentIncidentsTable({
   );
 }
 
+function StackedAlerts({
+  alerts,
+  onDismiss,
+  onDismissAll,
+}: {
+  alerts: NonNullable<ReturnType<typeof mapRealtimeAlertToBannerData>>[];
+  onDismiss: (alertId: string) => void;
+  onDismissAll: () => void;
+}) {
+  const visibleAlerts = alerts.slice(0, 3);
+  const hiddenAlertCount = Math.max(alerts.length - visibleAlerts.length, 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-0">
+        {visibleAlerts.map((alert, index) => {
+          const isTopAlert = index === 0;
+
+          return (
+            <AlertBanner
+              key={alert.id}
+              alert={alert}
+              onDismiss={() => onDismiss(alert.id)}
+              action={
+                isTopAlert && alerts.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={onDismissAll}
+                    className="inline-flex items-center gap-1 rounded-md border border-black/10 bg-white/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors hover:bg-white/70 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                    Clear all
+                  </button>
+                ) : null
+              }
+              className={
+                index === 0
+                  ? "relative z-30"
+                  : index === 1
+                    ? "-mt-[4.5rem] relative z-20"
+                    : "-mt-20 relative z-10"
+              }
+            />
+          );
+        })}
+      </div>
+      {hiddenAlertCount > 0 ? (
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          +{hiddenAlertCount} more alert{hiddenAlertCount === 1 ? "" : "s"} queued
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[] }) {
   const statusClasses: Record<DashboardSystemStatus, string> = {
     Connected: "bg-emerald-500",
@@ -199,22 +255,26 @@ function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[]
 
 export default function LiveFeedPage() {
   const { visualStream, thermalStream, isLoading, errorMessage, refresh } = useLiveStreams();
-  const { activeAlertEvent, dismissAlert } = useRealtimeAlerts();
+  const { alerts: realtimeAlerts, dismissAlert, dismissAllAlerts } = useRealtimeAlerts();
   const { summary, recentIncidents, services } = useDashboardDetectionState({
     visualStream,
     thermalStream,
   });
 
-  const visibleAlert = activeAlertEvent
-    ? mapRealtimeAlertToBannerData(activeAlertEvent)
-    : null;
+  const visibleAlerts = realtimeAlerts
+    .map(mapRealtimeAlertToBannerData)
+    .filter((alert): alert is NonNullable<typeof alert> => alert !== null);
 
   return (
     <DashboardShell>
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-4">
-          {visibleAlert ? (
-            <AlertBanner alert={visibleAlert} onDismiss={dismissAlert} />
+          {visibleAlerts.length > 0 ? (
+            <StackedAlerts
+              alerts={visibleAlerts}
+              onDismiss={dismissAlert}
+              onDismissAll={dismissAllAlerts}
+            />
           ) : null}
 
           {errorMessage ? (

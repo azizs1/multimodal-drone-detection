@@ -29,32 +29,96 @@ export type IncidentResponse = {
   updated_at: string;
 };
 
+export type GetIncidentsParams = {
+  limit?: number;
+  decision?: IncidentDecision;
+  fromTs?: string;
+  toTs?: string;
+  signal?: AbortSignal;
+};
+
 function getApiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 }
 
-function buildApiUrl(path: string): string {
+function buildApiUrl(path: string, searchParams?: URLSearchParams): string {
   const normalizedBase = getApiBaseUrl().endsWith("/")
     ? getApiBaseUrl()
     : `${getApiBaseUrl()}/`;
   const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-  return new URL(normalizedPath, normalizedBase).toString();
+  const url = new URL(normalizedPath, normalizedBase);
+
+  if (searchParams) {
+    url.search = searchParams.toString();
+  }
+
+  return url.toString();
 }
 
-async function fetchApi<T>(path: string): Promise<T> {
-  const response = await fetch(buildApiUrl(path), {
+async function fetchApi<T>(
+  path: string,
+  searchParams?: URLSearchParams,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(buildApiUrl(path, searchParams), {
     method: "GET",
     headers: { Accept: "application/json" },
     cache: "no-store",
+    signal,
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed (${response.status}): ${path}`);
+    let errorDetail = "";
+
+    try {
+      const errorBody = await response.json();
+      errorDetail =
+        typeof errorBody?.detail === "string"
+          ? errorBody.detail
+          : JSON.stringify(errorBody?.detail ?? errorBody);
+    } catch {
+      try {
+        errorDetail = await response.text();
+      } catch {
+        errorDetail = "";
+      }
+    }
+
+    const message = errorDetail
+      ? `Request failed (${response.status}): ${path} - ${errorDetail}`
+      : `Request failed (${response.status}): ${path}`;
+
+    console.error("Incidents API request failed", {
+      path,
+      status: response.status,
+      url: buildApiUrl(path, searchParams),
+      detail: errorDetail || null,
+    });
+
+    throw new Error(message);
   }
 
   return (await response.json()) as T;
 }
 
-export async function getIncidents(): Promise<IncidentResponse[]> {
-  return fetchApi<IncidentResponse[]>("/incidents");
+export async function getIncidents(params: GetIncidentsParams = {}): Promise<IncidentResponse[]> {
+  const searchParams = new URLSearchParams();
+
+  if (typeof params.limit === "number") {
+    searchParams.set("limit", String(params.limit));
+  }
+
+  if (params.decision) {
+    searchParams.set("decision", params.decision);
+  }
+
+  if (params.fromTs) {
+    searchParams.set("from_ts", params.fromTs);
+  }
+
+  if (params.toTs) {
+    searchParams.set("to_ts", params.toTs);
+  }
+
+  return fetchApi<IncidentResponse[]>("/incidents", searchParams, params.signal);
 }

@@ -26,8 +26,8 @@ COPY simulator /app/simulator
 RUN cd simulator && uv sync --frozen --no-dev
 
 # Environment variables for video paths and settings
-ENV RGB_VIDEO_PATH=videos/drone_visual.mp4
-ENV THERMAL_VIDEO_PATH=videos/drone_thermal.mp4
+ENV RGB_VIDEO_PATH=videos/visible.mp4
+ENV THERMAL_VIDEO_PATH=videos/infrared.mp4
 ENV PLAYBACK_FPS=30
 ENV LOOP_VIDEO=true
 ENV RGB_WIDTH=1280

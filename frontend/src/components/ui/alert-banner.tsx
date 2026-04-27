@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Bell, Info, X } from "lucide-react";
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { type AlertBannerData } from "@/lib/alerts";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ type AlertBannerProps = {
   onDismiss?: () => void;
   action?: ReactNode;
   className?: string;
+  style?: CSSProperties;
 };
 
 const SEVERITY_STYLES: Record<AlertBannerData["severity"], string> = {
@@ -48,11 +49,12 @@ function formatAlertTimestamp(value: string) {
   }).format(date);
 }
 
-export function AlertBanner({ alert, onDismiss, action, className }: AlertBannerProps) {
+export function AlertBanner({ alert, onDismiss, action, className, style }: AlertBannerProps) {
   return (
     <section
       role="alert"
       aria-live="polite"
+      style={style}
       className={cn(
         "relative overflow-hidden rounded-sm border shadow-sm transition-colors",
         SEVERITY_STYLES[alert.severity],

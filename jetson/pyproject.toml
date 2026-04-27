@@ -3,7 +3,7 @@ name = "multimodal-drone-detection-si-ml"
 version = "0.1.0"
 description = "Sensor ingestion and ML pipeline for multimodal drone detection"
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.11" # Jetpack 6.1 uses 3.10
 
 dependencies = [
     "av>=12.0.0",
@@ -11,20 +11,22 @@ dependencies = [
     "boto3>=1.35.0",
     "fastapi>=0.110.0",
     "httpx>=0.27.0",
-    "numpy>=1.26.0",
     "pydantic>=2.7.0",
-    "torch>=2.1.0,<2.11.0",
     "torchsummary>=1.5.1",
     "ultralytics>=8.0.0",
     "uvicorn[standard]>=0.30.0",
-    "pyzmq>=26.0.0",
+    "pyzmq>=25.0.0",
+    "torch==2.5.0a0+872d972e41.nv24.8"
 ]
 
 [project.optional-dependencies]
 sensor = [
-    "opencv-python>=4.11.0.86",
-    "python-dotenv>=1.1.1",
-    # On Jetson/aarch64, `gi` is provided by OS packages (python3-gi + GStreamer libs).
-    # On non-Jetson Linux, install PyGObject to satisfy the `gi` import in ingest_gi.py.
-    "PyGObject>=3.48.0; platform_system == 'Linux' and platform_machine != 'aarch64'",
+    "python-dotenv>=1.1.1"
 ]
+
+[tool.uv]
+managed = true
+package = false
+
+[tool.uv.sources]
+torch = { url = "https://developer.download.nvidia.com/compute/redist/jp/v61/pytorch/torch-2.5.0a0+872d972e41.nv24.08.17622132-cp310-cp310-linux_aarch64.whl" }
