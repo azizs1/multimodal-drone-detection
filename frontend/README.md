@@ -28,14 +28,14 @@ Open: `http://localhost:3000`
 ## Available Routes
 - `/live-feed`
 - `/incidents`
-- `/settings`
+- `/system-info`
 
 ## Current Scope
 - Dashboard navigation shell
 - Live Feed HLS playback for RGB/Thermal streams
 - Live Feed stream metadata + retry states
 - Incidents static table, filters, and pagination
-- Settings static form controls
+- System Info read-only backend configuration/status page
 
 ## Live Feed Local Run Flow
 ### Prerequisites

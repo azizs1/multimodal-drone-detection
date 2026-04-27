@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Moon, Settings, Sun } from "lucide-react";
+import { Info, Moon, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTheme } from "@/components/theme-provider";
 
@@ -62,15 +62,15 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </button>
 
             <Link
-              href="/settings"
-              aria-label="Settings"
+              href="/system-info"
+              aria-label="System Info"
               className={`inline-flex w-10 items-center justify-end pt-5 pb-4 transition-colors sm:pt-6 sm:pb-5 ${
-                pathname === "/settings"
+                pathname === "/system-info"
                   ? "text-cyan-400"
                   : "text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
               }`}
             >
-              <Settings className="size-5" />
+              <Info className="size-5" />
             </Link>
           </div>
         </nav>
