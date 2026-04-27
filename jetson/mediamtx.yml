@@ -21,14 +21,12 @@ apiAddress: :9997
 
 paths:
   visual:
-    # gstreamer sends H264 RTP over UDP to port 5000
-    # pt 96
-    source: udp://:5000
+    # inference publisher sends H264 MPEG-TS over UDP to port 6000
+    source: udp://:6000
     sourceOnDemand: no
-    # MediaMTX auto-detects RTP payload type (96)
+    # MediaMTX auto-detects the stream format.
 
   thermal:
-    # gstreamer sends H264 RTP over UDP to port 5002
-    # pt 97
-    source: udp://:5002
+    # inference publisher sends H264 MPEG-TS over UDP to port 6002
+    source: udp://:6002
     sourceOnDemand: no

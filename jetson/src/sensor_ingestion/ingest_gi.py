@@ -60,6 +60,12 @@ def link_tee(tee, element):
 def build_gst_pipeline():
     Gst.init(None)
     pipeline = Gst.Pipeline.new("rgb-thermal-pipeline")
+    raw_stream_enabled = os.getenv("INGESTION_RAW_STREAM_ENABLED", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    print(f"sensor_ingestion raw stream enabled: {raw_stream_enabled}")
 
     # uncomment this portion and comment out until just before rgb_tee to use the test source
     # will need to update links and elements list accordingly
@@ -101,30 +107,36 @@ def build_gst_pipeline():
     rgb_appsink.set_property("max-buffers", 1)
     rgb_appsink.set_property("drop", True)
 
-    # rgb to webrtc (live stream)
-    rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
-    rgb_rtp_convert = Gst.ElementFactory.make("videoconvert", "rgb_rtp_convert")
+    rgb_rtp_queue = None
+    rgb_rtp_convert = None
+    rgb_encoder = None
+    rgb_ts_mux = None
+    rgb_udp_sink = None
+    if raw_stream_enabled:
+        # rgb to webrtc (live stream)
+        rgb_rtp_queue = Gst.ElementFactory.make("queue", "rgb_rtp_queue")
+        rgb_rtp_convert = Gst.ElementFactory.make("videoconvert", "rgb_rtp_convert")
 
-    # using sw encoder since orin nano doesnt have hw encoding
-    rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder")
-    rgb_encoder.set_property("tune", "zerolatency")
-    rgb_encoder.set_property("bitrate", 4000)
-    rgb_encoder.set_property("speed-preset", "ultrafast")
-    rgb_encoder.set_property("key-int-max", 30)
-    rgb_encoder.set_property("insert-vui", True)
-    rgb_encoder.set_property("byte-stream", True)
-    rgb_encoder.set_property("aud", True)
+        # using sw encoder since orin nano doesnt have hw encoding
+        rgb_encoder = Gst.ElementFactory.make("x264enc", "rgb_encoder")
+        rgb_encoder.set_property("tune", "zerolatency")
+        rgb_encoder.set_property("bitrate", 4000)
+        rgb_encoder.set_property("speed-preset", "ultrafast")
+        rgb_encoder.set_property("key-int-max", 30)
+        rgb_encoder.set_property("insert-vui", True)
+        rgb_encoder.set_property("byte-stream", True)
+        rgb_encoder.set_property("aud", True)
 
-    # mpeg-ts mux instead of rtp payloader
-    rgb_ts_mux = Gst.ElementFactory.make("mpegtsmux", "rgb_ts_mux")
-    rgb_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
+        # mpeg-ts mux instead of rtp payloader
+        rgb_ts_mux = Gst.ElementFactory.make("mpegtsmux", "rgb_ts_mux")
+        rgb_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
 
-    rgb_udp_sink = Gst.ElementFactory.make("udpsink", "rgb_udp_sink")
-    rgb_udp_sink.set_property("host", "127.0.0.1")
-    rgb_udp_sink.set_property("port", 5000)
-    rgb_udp_sink.set_property("sync", False)
-    rgb_udp_sink.set_property("async", False)
-    rgb_udp_sink.set_property("qos", False)
+        rgb_udp_sink = Gst.ElementFactory.make("udpsink", "rgb_udp_sink")
+        rgb_udp_sink.set_property("host", "127.0.0.1")
+        rgb_udp_sink.set_property("port", 5000)
+        rgb_udp_sink.set_property("sync", False)
+        rgb_udp_sink.set_property("async", False)
+        rgb_udp_sink.set_property("qos", False)
 
     # thermal source (currently test)
     thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
@@ -151,30 +163,36 @@ def build_gst_pipeline():
     thermal_appsink.set_property("max-buffers", 1)
     thermal_appsink.set_property("drop", True)
 
-    # thermal to webrtc (live stream)
-    thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
-    thermal_rtp_convert = Gst.ElementFactory.make("videoconvert", "thermal_rtp_convert")
+    thermal_rtp_queue = None
+    thermal_rtp_convert = None
+    thermal_encoder = None
+    thermal_ts_mux = None
+    thermal_udp_sink = None
+    if raw_stream_enabled:
+        # thermal to webrtc (live stream)
+        thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
+        thermal_rtp_convert = Gst.ElementFactory.make("videoconvert", "thermal_rtp_convert")
 
-    # same as before, we use sw encoder
-    thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder")
-    thermal_encoder.set_property("tune", "zerolatency")
-    thermal_encoder.set_property("bitrate", 2000)
-    thermal_encoder.set_property("speed-preset", "ultrafast")
-    thermal_encoder.set_property("key-int-max", 30)
-    thermal_encoder.set_property("insert-vui", True)
-    thermal_encoder.set_property("byte-stream", True)
-    thermal_encoder.set_property("aud", True)
+        # same as before, we use sw encoder
+        thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder")
+        thermal_encoder.set_property("tune", "zerolatency")
+        thermal_encoder.set_property("bitrate", 2000)
+        thermal_encoder.set_property("speed-preset", "ultrafast")
+        thermal_encoder.set_property("key-int-max", 30)
+        thermal_encoder.set_property("insert-vui", True)
+        thermal_encoder.set_property("byte-stream", True)
+        thermal_encoder.set_property("aud", True)
 
-    # mpeg-ts mux instead of rtp payloader
-    thermal_ts_mux = Gst.ElementFactory.make("mpegtsmux", "thermal_ts_mux")
-    thermal_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
+        # mpeg-ts mux instead of rtp payloader
+        thermal_ts_mux = Gst.ElementFactory.make("mpegtsmux", "thermal_ts_mux")
+        thermal_ts_mux.set_property("alignment", 7)  # to help with mediamtx latency
 
-    thermal_udp_sink = Gst.ElementFactory.make("udpsink", "thermal_udp_sink")
-    thermal_udp_sink.set_property("host", "127.0.0.1")
-    thermal_udp_sink.set_property("port", 5002)
-    thermal_udp_sink.set_property("sync", False)
-    thermal_udp_sink.set_property("async", False)
-    thermal_udp_sink.set_property("qos", False)
+        thermal_udp_sink = Gst.ElementFactory.make("udpsink", "thermal_udp_sink")
+        thermal_udp_sink.set_property("host", "127.0.0.1")
+        thermal_udp_sink.set_property("port", 5002)
+        thermal_udp_sink.set_property("sync", False)
+        thermal_udp_sink.set_property("async", False)
+        thermal_udp_sink.set_property("qos", False)
 
     # elements list
     elements = [
@@ -188,11 +206,6 @@ def build_gst_pipeline():
         rgb_inf_convert,
         rgb_inf_bgr_caps,
         rgb_appsink,
-        rgb_rtp_queue,
-        rgb_rtp_convert,
-        rgb_encoder,
-        rgb_ts_mux,
-        rgb_udp_sink,
         thermal_src,
         thermal_caps,
         thermal_tee,
@@ -200,12 +213,22 @@ def build_gst_pipeline():
         thermal_inf_convert,
         thermal_inf_bgr_caps,
         thermal_appsink,
-        thermal_rtp_queue,
-        thermal_rtp_convert,
-        thermal_encoder,
-        thermal_ts_mux,
-        thermal_udp_sink,
     ]
+    if raw_stream_enabled:
+        elements.extend(
+            [
+                rgb_rtp_queue,
+                rgb_rtp_convert,
+                rgb_encoder,
+                rgb_ts_mux,
+                rgb_udp_sink,
+                thermal_rtp_queue,
+                thermal_rtp_convert,
+                thermal_encoder,
+                thermal_ts_mux,
+                thermal_udp_sink,
+            ]
+        )
 
     for e in elements:
         if e is None:
@@ -225,12 +248,13 @@ def build_gst_pipeline():
     rgb_inf_convert.link(rgb_inf_bgr_caps)
     rgb_inf_bgr_caps.link(rgb_appsink)
 
-    # rgb to webrtc
-    rgb_tee.link(rgb_rtp_queue)
-    rgb_rtp_queue.link(rgb_rtp_convert)
-    rgb_rtp_convert.link(rgb_encoder)
-    rgb_encoder.link(rgb_ts_mux)
-    rgb_ts_mux.link(rgb_udp_sink)
+    if raw_stream_enabled:
+        # rgb to webrtc
+        rgb_tee.link(rgb_rtp_queue)
+        rgb_rtp_queue.link(rgb_rtp_convert)
+        rgb_rtp_convert.link(rgb_encoder)
+        rgb_encoder.link(rgb_ts_mux)
+        rgb_ts_mux.link(rgb_udp_sink)
 
     # thermal links
     thermal_src.link(thermal_caps)
@@ -242,12 +266,13 @@ def build_gst_pipeline():
     thermal_inf_convert.link(thermal_inf_bgr_caps)
     thermal_inf_bgr_caps.link(thermal_appsink)
 
-    # thermal to webrtc
-    thermal_tee.link(thermal_rtp_queue)
-    thermal_rtp_queue.link(thermal_rtp_convert)
-    thermal_rtp_convert.link(thermal_encoder)
-    thermal_encoder.link(thermal_ts_mux)
-    thermal_ts_mux.link(thermal_udp_sink)
+    if raw_stream_enabled:
+        # thermal to webrtc
+        thermal_tee.link(thermal_rtp_queue)
+        thermal_rtp_queue.link(thermal_rtp_convert)
+        thermal_rtp_convert.link(thermal_encoder)
+        thermal_encoder.link(thermal_ts_mux)
+        thermal_ts_mux.link(thermal_udp_sink)
 
     return pipeline, rgb_appsink, thermal_appsink
 

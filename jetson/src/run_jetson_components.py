@@ -45,6 +45,13 @@ def main():
     env = os.environ.copy()
     source_mode = env.get("INFERENCE_SOURCE", "stream").lower()
     run_ingestion = source_mode != "videos"
+    component_cmd: dict[str, list[str]] = {
+        "fusion": ["python3", "-m", "ml.fusion_service"],
+        "inference": ["python3", "-m", "ml.inference"],
+    }
+    if run_ingestion:
+        component_cmd["ingestion"] = ["python3", "-m", "sensor_ingestion.ingest_gi"]
+
     print(f"run mode: {source_mode}")
     print(f"ingestion enabled: {run_ingestion}")
 
@@ -55,10 +62,8 @@ def main():
         cleanup(procs)
         return
 
-    if run_ingestion:
-        procs["ingestion"] = subprocess.Popen(["python3", "-m", "sensor_ingestion.ingest_gi"], env=env)
-    procs["fusion"] = subprocess.Popen(["python3", "-m", "ml.fusion_service"], env=env)
-    procs["inference"] = subprocess.Popen(["python3", "-m", "ml.inference"], env=env)
+    for name, cmd in component_cmd.items():
+        procs[name] = subprocess.Popen(cmd, env=env)
 
     try:
         while procs:
@@ -72,19 +77,14 @@ def main():
                 print(f"{proc} exited. code: {ret}")
                 proc.wait()
 
-                # we want to stop everything if ingestion dies, but if inference dies,
-                # keep going so we can at least continue streaming sensors.
-                # fusion and inference can restart independently in future iterations.
                 if name == "mediamtx":
                     # MediaMTX dying is fatal
                     procs.clear()
                     cleanup(procs)
                     break
-                elif name == "ingestion" and run_ingestion:
-                    # restart ingestion if it dies
-                    procs["ingestion"] = subprocess.Popen(
-                        ["python3", "-m", "sensor_ingestion.ingest_gi"], env=env
-                    )
+                elif name in component_cmd:
+                    # restart ingestion/fusion/inference on failure
+                    procs[name] = subprocess.Popen(component_cmd[name], env=env)
                     continue
                 else:
                     del procs[name]

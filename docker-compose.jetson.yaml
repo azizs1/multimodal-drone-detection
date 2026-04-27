@@ -17,6 +17,10 @@ services:
       - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
       - FUSION_HOST=0.0.0.0
       - FUSION_PORT=8050
+      - INGESTION_RAW_STREAM_ENABLED=false
+      - INFERENCE_VISUAL_UDP_PORT=6000
+      - INFERENCE_THERMAL_UDP_PORT=6002
+      - INFERENCE_STREAM_FPS=20
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ./offline_ml/weights:/app/offline_ml/weights:ro
