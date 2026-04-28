@@ -55,19 +55,27 @@ The following datasets are used for this project. All datasets should be stored 
 
 ## 1. Zenodo Datasets
 
-- [Zenodo Visual Drone Detection Dataset - Non-Augmented](https://zenodo.org/records/15632958) — `zenodo_visual_no_augmentation`
-- [Zenodo Thermal Drone Detection Dataset - Non-Augmented](https://zenodo.org/records/15633051) — `zenodo_thermal_no_augmentation`
+- [Zenodo Visual Drone Detection Dataset - Non-Augmented](https://zenodo.org/records/15632958):
+  - `zenodo_visual_no_augmentation`
+- [Zenodo Thermal Drone Detection Dataset - Non-Augmented](https://zenodo.org/records/15633051): 
+  - `zenodo_thermal_no_augmentation`
 
 ## 2. Anti-UAV Dataset
 
-- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) — Paired RGB and thermal infrared video sequences of drones in the wild. Download and place the raw dataset at `datasets/anti_uav`. Run the preprocessing script (see Preprocessing section) to generate the processed datasets:
+- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) - Paired RGB and thermal videos of drones in various environments and conditions. Scroll down on the Anti-UAV README until you can click on a Google Drive link for the "Anti-UAV300" dataset. Download and place the raw dataset at `datasets/anti_uav`. Run the preprocessing script (see Preprocessing section) to generate the processed datasets:
   - `anti_uav_visual_no_augmentation`
   - `anti_uav_thermal_no_augmentation`
+
+## 3. Halmstad Dataset
+
+- [Halmstad Multi Sensor](https://github.com/DroneDetectionThesis/Drone-detection-dataset/tree/master/Data) - RGB and thermal videos with a mix of drones, planes, helicopters, and birds. Download and place the raw dataset at `datasets/halmstad_multi_sensor`. See the preprocessing section for more information on how to preprocess this dataset:
+  - `halmstad_visual_no_augmentation`
+  - `halmstad_thermal_no_augmentation`
 
 
 # Initial Data Analysis
 
-The `data_exploration` Jupyter Notebook has initial data analysis on each dataset and can be reviewed in VS Code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, in addition to having the datasets downloaded. Example outputs are preserved in the notebook.
+The `data_exploration` Jupyter Notebook has initial data analysis on each dataset and can be reviewed in VS Code or through the jupyter notebook bash command. Make sure you are in the ml_env conda environment to use the notebook effectively, in addition to having the datasets downloaded and preprocessed. Example outputs are preserved in the notebook.
 
 
 # Preprocessing
@@ -76,7 +84,7 @@ All preprocessing scripts should be run from the `offline_ml/` directory.
 
 ## 1. Zenodo Thermal Dataset
 
-The thermal dataset contained ~18% of images with empty label files across train, valid, and test splits. These images and their empty label files are removed from the dataset by running:
+The thermal dataset was missing labels (drone was present, label was not) on about 18% of its images. These missing labels were present across all splits, and them along with the images were removed from the dataset by running:
 
 ```bash
 python src/preprocessing_zenodo.py
@@ -86,66 +94,131 @@ This script moves all images with empty label files to a temporary directory and
 
 ## 2. Anti-UAV Dataset
 
-The Anti-UAV dataset consists of paired infrared and visible video sequences with JSON annotations. The preprocessing script extracts frames from each video, converts bounding box annotations from pixel coordinates to YOLO format, and outputs two processed datasets — one thermal and one visual — matching the zenodo directory structure.
+The Anti-UAV dataset consists of paired thermal and visual videos with JSON annotations. The preprocessing script extracts frames from each video, converts bounding box annotations from pixel coordinates to YOLO format, and outputs a thermal and visual dataset matching the Zenodo dataset directory structure.
 
 Key preprocessing decisions:
-- Frames are sampled at every 10th frame to avoid near-duplicate frames while preserving drone motion diversity
-- All frames where the drone is not present (exist=0 in JSON) are kept regardless of sample rate as hard negative examples
-- Infrared sequences are output to `anti_uav_thermal_no_augmentation`, visible to `anti_uav_visual_no_augmentation`
-- The Anti-UAV `val` split is renamed to `valid` to match zenodo structure
+- Frames are sampled at every 10th frame to avoid duplicate frames while preserving drone motion
+- Negative frames (exist=0 in JSON) are sampled at the same rate as positive frames to avoid over-representing plain sky backgrounds
+- Thermal frames are outputted to `anti_uav_thermal_no_augmentation`, visual to `anti_uav_visual_no_augmentation`
+- The Anti-UAV `val` split is renamed to `valid` to match Zenodo structure
+
+Note: Anti-UAV visual frames contain a reticle and chinese text watermark that cannot be removed. This is consistent across all visual frames, and the reticle doesn't move in relation to the drone, so it isn't expected to significantly impact training.
 
 Run the preprocessing script:
 ```bash
 python src/preprocessing_anti_uav.py
 ```
 
-Note: Visual has significantly more negative frames (~37%) than thermal (~11%). This could be due to the fact that humans were not able to identify drones when looking at the pictures to label them. This is expected behavior and reflects real-world sensor differences, showing the importance of thermal imagery at night.
+## 3. Halmstad Multi-Sensor Dataset
+
+This dataset features RGB and thermal videos of drones, planes, helicopters, and birds. There is plently of data in this dataset, and the negative samples are crucial for the model, but the labels were encoded in `.mat` files. These files are read directly in Python using the `mcos-decoder` library, requiring no MATLAB installation.
+
+Key preprocessing decisions:
+- Splits are assigned by unique video sequence rather than individual frames. This will ensure that if a specific frame of a drone, bird, airplane, or helicopter appears in one split a similar frame won't appear in the others.
+- All frames containing non-drone objects (birds, planes, helicopters) are assigned empty YOLO label files so the model focuses solely on detecting drones, using these as hard negative examples.
+- Frames are sampled at every 10th frame to avoid duplicate frames while preserving drone motion
+
+These commands will clone the repository and remove git tracking from it. Make sure to rename the folder to halmstad_multi_sensor for the other scripts.
+
+```bash
+cd offline_ml/datasets
+git clone https://github.com/DroneDetectionThesis/Drone-detection-dataset.git
+cd Drone_detection-dataset
+rm -rf .git
+```
+
+Then, run the preprocessing script:
+```bash
+python src/preprocessing_halmstad.py
+```
 
 
 # Initial Model Training
 
-While there are some preprocessing steps that could be taken, the data is already in a state that can be accepted by YOLO, so I conducted an initial benchmark training session on the two different Zenodo sets. Initial model training and evaluation is done in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
+Initial model training and evaluation were conducted first on the zenodo datasets without preprocessing in the train.ipynb notebook, and was ran in Google Colab for free access to their T4 GPU. Model outputs are featured in this notebook as an example, but to replicate this output, you can download the notebook and follow instructions there.
 
-In order to keep all code in the repository and limit the use of external tools, the train.ipynb notebook was converted into train.py, and training is now conducted on the VT ARC Cluster. Instructions below serve as a walkthrough to getting this resource set up. To run train.py locally to test it works, you can run this bash command below, however, CPU training would be too time intensive to train each of these models locally. Make sure this command is ran in the offline_ml/src directory.
+In order to keep all code in the repository and limit the use of external tools, the train.ipynb notebook was converted into train.py, and training is now conducted on the VT ARC Cluster. See the ARC Cluster Setup section for a walkthrough on getting this resource set up. To run train.py locally to test it works, you can run this bash command below, however, keep in mind that CPU training would be too time intensive to train each of these models fully. Make sure this command is ran from the `offline_ml/` directory.
 
 ```bash
-python train.py --data ../datasets --epochs 1
+python src/train.py --data datasets --epochs 1
 ```
+
 
 # Model Robustness
 
 To improve model robustness beyond the initial Zenodo baselines, additional datasets have been integrated to address key gaps identified during data analysis:
 
-- **Limited drone diversity** — only 3 drone types in Zenodo
-- **No hard negatives** — model had never seen images without drones
-- **Limited range** — most Zenodo drones are within 100m
-- **No nighttime data**
+Key Gaps in Zenodo Data:
+- Limited Drone Diversity
+- No Hard Negatives
+- Limited Range
+- No Nighttime Data
 
 ## Datasets Added
 
-**Anti-UAV** — 296,901 frames of paired RGB and thermal drone footage across 320 sequences. Provides small bounding boxes (long range drones), nighttime footage, and hard negative examples. Preprocessed using `src/preprocessing_anti_uav.py`.
+- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) - 296,901 frames of paired RGB and thermal drone footage across 320 videos. Provides small bounding boxes (long range drones), nighttime footage, and a few examples of images without drones present (negatives).
+- [Halmstad Multi-Sensor](https://github.com/DroneDetectionThesis/Drone-detection-dataset/tree/master/Data) - Specifically integrated to provide a robust negative sample set. It includes annotated frames of birds, airplanes, and helicopters, which are critical for reducing false positives.
+
+## Updated Dataset Summary
+
+| Dataset | Visual Images | Thermal Images | Notes |
+|---------|--------------|----------------|-------|
+| Zenodo | 2,145 | 1,760 | Close range, suburban/campus/foiliage backgrounds, no negatives |
+| Anti-UAV | 29,727 | 29,727 | Long range, nighttime, ~5.6% visual / ~1.2% thermal negatives |
+| Halmstad | 8,928 | 11,570 | ~60% negatives (birds/planes/helicopters), mostly clear sky backgrounds |
+| **Total** | **40,800** | **43,057** | | 12242
 
 ## Planned Datasets
 
-The following datasets are pending access approval:
-- **WOSDETC Drone-vs-Bird** — ground camera video, drone and bird annotations, email request to wosdetc@googlegroups.com
-- **LRDDv2** — long range drone detection up to 1km, access request at research.coe.drexel.edu/ece/imaple/lrddv2
-- **FBD-SV-2024** — flying bird surveillance video, available at github.com/Ziwei89/FBD-SV-2024_github
-- **Halmstad Multi-Sensor** — drone/bird/plane/helicopter, available at github.com/DroneDetectionThesis/Drone-detection-dataset (requires MATLAB for annotation extraction)
+The following datasets could be added with future work and prior approval, but are only sets with RGB data:
+- [WOSDETC Drone-vs-Bird](https://github.com/wosdetc/challenge) - This dataset includes ground camera videos with both drone and bird annotations. To get access to this data, send an email request to wosdetc@googlegroups.com. You will then be asked to sign and return a data usage agreement.
+- [LRDDv2](research.coe.drexel.edu/ece/imaple/lrddv2) - This dataset includes videos of drones from up to 1km away, providing more training data for the model to train on drones from further away. To get access to this data, fill out the google form on their website.
+- [FBD-SV-2024](https://github.com/Ziwei89/FBD-SV-2024_github/blob/master/README.md) - This dataset specifically includes labeled birds in images with heavy noise. No prior approval is needed for this dataset.
 
 ## Training Strategy
 
-Each dataset is trained independently first to establish baselines before combining. This allows direct comparison of what each dataset contributes to model performance. Training is configured in `src/train.py` with the following baselines:
-
+Each dataset is trained independently first to establish baselines before combining. This allows a direct comparison of what each dataset contributes to model performance. Training is configured in `src/train.py` with the following baselines:
 - `zenodo_visual_baseline`
 - `zenodo_thermal_baseline`
 - `anti_uav_visual_baseline`
 - `anti_uav_thermal_baseline`
+- `halmstad_visual_baseline`
+- `halmstad_thermal_baseline`
+
+## Initial Results
+
+<!-- TODO: Add initial independent results -->
+
+## Model Fine Tuning
+
+<!-- TODO: Add fine tuning here -->
+
+<!-- TODO: Combine datasets together:
+
+Key considerations for combined training:
+- Zenodo (~1.5% of total data) should be overweighted relative to its size as it is the closest match to the deployment scenario
+- Halmstad's high negative ratio (~54%) will significantly increase combined dataset negative rates - monitor for the model becoming overly conservative
+- Anti-UAV visual contains a reticle watermark consistent across all frames
+
+-->
+
+<!-- TODO: Fix yolo26n problem to make the different types of models modularizable:
+
+To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
+```bash
+cd ~/multimodal-drone-detection
+python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
+mv yolov8n.pt offline_ml/weights/
+```
+
+Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt.
+
+-->
 
 
 # ARC Cluster Setup
 
-To be able to run python scripts connected to the rest of the repository but still ran on GPUs, we utilized the GPU power of the Virginia Tech ARC Cluster. The following instructions note how to get started, however, it should be noted that to get started with the ARC Cluster an instructor must create an account to give you access. The following setup is based on our instructor giving us Instructional Allocation to the ARC Cluster.
+To be able to run python scripts connected to the rest of the repository but ran on GPUs, we utilized the GPU power of the Virginia Tech Advanced Research and Computing (ARC) Cluster. The following instructions note how to get started, however, it should be noted that to get the full use out of the VT ARC Cluster an instructor must create an account to give you access. The following setup is based on our instructor giving us Instructional Allocation to the ARC Cluster.
 
 ## 1. Setting up VPN
 
@@ -159,7 +232,7 @@ Once the instructor has given you access, the first step is to ssh into one of t
 ssh <your_PID>@tinkercliffs2.arc.vt.edu
 ```
 
-There are multiple different resources (such as tinkercliffs1 or falcon1, but tinkercliffs had the GPU resources that would work the best for our project). The SSH config file selection should already be created for you and be in your Users directory, so select this one. If this works, you will be asked to enter your Virginia Tech password and then will have to authenticate using DUO mobile on your phone or other device.
+There are multiple different resources such as tinkercliffs1 or falcon1, but tinkercliffs had the GPU resources that would work the best for our project. The SSH config file selection should already be created for you and be in your Users directory, so select this one. If this works, you will be asked to enter your Virginia Tech password and then will have to authenticate using DUO mobile on your phone or other device.
 
 This [tutorial](https://video.vt.edu/media/Connect+to+ARC+Systems+with+VSCode/1_5q3mxyi0) provides more in-depth instructions.
 
@@ -177,14 +250,16 @@ This should provide all of the same code that it provides on your local machine,
 
 To set up an environment on the ARC cluster, you have to set it up on the compute node that you want to run the training code on. The following commands allow for quick environment setup. This environment only needs to be created once in the partition that you will use, and then will be able to be activated during other training jobs on the same partition.
 
-First, get your account id you need to run jobs on the ARC cluster, this id will be useful when running jobs later. There will potentially be multiple account ids that show up, including "personal". Use the one that doesn't say "personal", mine is "lnn"
+First, get your account id you need to run jobs on the ARC cluster, this id will be useful when running jobs later. There will potentially be multiple account ids that show up, including "personal". Use the one that doesn't say "personal", mine is "lnn".
+
 ```bash
 sacctmgr show associations user=$USER format=account
 ```
 
 Then, start an interactive job on the compute node that training will take place on:
+
 ```bash
-interact --partition=a100_normal_q --nodes=1 --ntasks-per-node=4 --gres=gpu:1 --account=<account_id>
+interact --partition=h200_normal_q --nodes=1 --ntasks-per-node=4 --gres=gpu:1 --account=<account_id>
 ```
 
 If you see text like similar to the text below, then it mean you are successfully on a compute node and can continue:
@@ -198,23 +273,27 @@ If you see text like similar to the text below, then it mean you are successfull
 *srun: job 4843586 has been allocated resources*
 *[eymauger26@tc-dgx008 multimodal-drone-detection]$*
 
-Load Miniforge onto the compute node:
+Next, load Miniforge onto the compute node:
+
 ```bash
 module load Miniforge3
 ```
 
 Make sure you are in the multimodal-drone-detection directory (root directory of the repo) and then run the command below:
+
 ```bash
 conda env create -p ~/envs/ml_env -f offline_ml/environment.yml
 ```
 
-It will take quite a while to load the environment onto the node. Once it is good to go, activate it.
+It will take quite a while to load the environment onto the node. Once it is good to go, activate it:
+
 ```bash
 source activate /home/<PID>/envs/ml_env
 python offline_ml/src/train.py --data offline_ml/datasets --epochs 1
 ```
 
-The compute node may be slow, so as long as that second command runs the environment should be good to go. Exit out of the interactive node.
+The compute node may be slow, so as long as that second command runs the environment should be good to go. Exit out of the interactive node:
+
 ```bash
 exit
 ```
@@ -223,12 +302,15 @@ exit
 
 NOTE: If you are already a member of the team, skip this step, the datasets are already in our shared projects/muataz/datasets folder.
 
-For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets are stored as zip files and during training they are unzipped locally for better performance. These datasets were stored into a project folder provided by our instructor. To get the datasets onto ARC, preprocess them locally first from the `datasets/` dir and then upload the processed zip files to the projects folder:
+For documentation purposes, this is how I got the datasets into our shared folder on the ARC cluster. These datasets are stored as zip files and during training they are unzipped locally for faster training speeds. These datasets were stored into a project folder provided by our instructor. To get the datasets onto ARC, preprocess them locally first from the `datasets/` dir and then upload the processed zip files to the projects folder:
+
 ```bash
 zip -r zenodo_thermal_no_augmentation.zip zenodo_thermal_no_augmentation
 zip -r zenodo_visual_no_augmentation.zip zenodo_visual_no_augmentation
 zip -r anti_uav_thermal_no_augmentation.zip anti_uav_thermal_no_augmentation
 zip -r anti_uav_visual_no_augmentation.zip anti_uav_visual_no_augmentation
+zip -r halmstad_thermal_no_augmentation.zip halmstad_thermal_no_augmentation
+zip -r halmstad_visual_no_augmentation.zip halmstad_visual_no_augmentation
 ```
 
 ## 6. Creating and Submitting a SLURM Job
@@ -236,37 +318,42 @@ zip -r anti_uav_visual_no_augmentation.zip anti_uav_visual_no_augmentation
 Now, to run code on the ARC cluster, you have to create jobs using a bash script. The following section outlines how to set this up.
 
 First, create a scratch directory to store your training outputs:
+
 ```bash
 mkdir -p /scratch/<PID>
 ```
 
 Next, you have to update the script to add in your own credentials so that it works. The SLURM job script is located at `offline_ml/src/train.sh`. Before submitting, make sure to update the following in the script:
-- `--account=<account_id>` — your account ID from step 4
-- `--output` and `--error` paths — replace `eymauger26` with your PID
-- `source activate` path — replace `eymauger26` with your PID
-- `/projects/muataz/datasets` — update if the project folder name changes
+- `--account=<account_id>` - Your account ID from step 4
+- `--output` and `--error` paths - Replace `eymauger26` with your PID
+- `source activate` path - Replace `eymauger26` with your PID
+- `/projects/muataz/datasets` - Update if the project folder name changes
 
 Once you are ready, make sure you are located in the root directory of the repo and run this bash command to submit the job:
+
 ```bash
 sbatch offline_ml/src/train.sh
 ```
 
 To monitor that the job is running, run this command below:
+
 ```bash
 squeue -u $USER
 ```
 
-The status column will show the status of the job. These are the common values and what they mean.
-- `PD` — job is pending/waiting for resources
-- `R` — job is running
-- `CG` — job is completing
+The status column will show the status of the job. These are the common values and what they mean:
+- `PD` - job is pending/waiting for resources
+- `R` - job is running
+- `CG` - job is completing
 
 To cancel a job that you didn't mean to queue, you can run this command below.
+
 ```bash
 scancel <jobid>
 ```
 
 Training logs are saved to `/scratch/<PID>/logs` as `.out` and `.err` files. The `.out` file contains the training progress output and the `.err` file contains any errors. To check the output logs, run this command below:
+
 ```bash
 cat /scratch/<PID>/logs/mdd_offline_ml_training.<jobid>.out
 ```
@@ -287,20 +374,3 @@ find /scratch/<PID>/runs -name "best.pt"
 ```
 
 The slurm script automatically saves these weights into the weights directory and can then be commited to git or removed.
-
-<!-- 
-
-#NOTES
-
-Fix yolo26n problem and make it modularizable if I want to to look at other models to use
-
-To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
-```bash
-cd ~/multimodal-drone-detection
-python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
-mv yolov8n.pt offline_ml/weights/
-```
-
-Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt.
-
--->

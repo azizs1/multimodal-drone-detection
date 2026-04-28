@@ -21,3 +21,4 @@ dependencies:
     - "numpy<2"
     - ruff
     - uv
+    - mcos-decoder

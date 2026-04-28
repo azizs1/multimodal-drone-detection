@@ -27,7 +27,7 @@ def train(args):
     project_dir = Path(args.project).resolve()
 
     # Save specific datasets that should all be trained with YOLOv8.
-    #Add datasets to be trained.
+    #ADD ADDITIONAL DATASETS HERE.
     datasets = [
         {
             "data": data_dir / "zenodo_visual_no_augmentation/data.yaml",
@@ -44,6 +44,14 @@ def train(args):
         {
             "data": data_dir / "anti_uav_thermal_no_augmentation/data.yaml",
             "name": "anti_uav_thermal_baseline"
+        },
+                {
+            "data": data_dir / "halmstad_visual_no_augmentation/data.yaml",
+            "name": "halmstad_visual_baseline"
+        },
+        {
+            "data": data_dir / "halmstad_thermal_no_augmentation/data.yaml",
+            "name": "halmstad_thermal_baseline"
         }
     ]
 
