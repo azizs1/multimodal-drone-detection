@@ -166,7 +166,7 @@ Key Gaps in Zenodo Data:
 | Zenodo | 2,145 | 1,760 | Close range, suburban/campus/foiliage backgrounds, no negatives |
 | Anti-UAV | 29,727 | 29,727 | Long range, nighttime, ~5.6% visual / ~1.2% thermal negatives |
 | Halmstad | 8,928 | 11,570 | ~60% negatives (birds/planes/helicopters), mostly clear sky backgrounds |
-| **Total** | **40,800** | **43,057** | | 12242
+| **Total** | **40,800** | **43,057** | |
 
 ## Planned Datasets
 
