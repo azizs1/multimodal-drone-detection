@@ -177,7 +177,11 @@ The following datasets could be added with future work and prior approval, but a
 
 ## Training Strategy
 
-Each dataset is trained independently first to establish baselines before combining. This allows a direct comparison of what each dataset contributes to model performance. Training is configured in `src/train.py` with the following baselines:
+Training is structured in two phases. First, each dataset is trained independently to establish baselines and understand what each dataset contributes individually. Second, datasets are combined in various configurations to improve generalization across deployment scenarios. All training is configured in `src/train.py` for individual baselines and `src/train_combined.py` for combined experiments.
+
+### Individual Baselines
+
+Each dataset is trained independently using `src/train.py`:
 - `zenodo_visual_baseline`
 - `zenodo_thermal_baseline`
 - `anti_uav_visual_baseline`
@@ -185,9 +189,71 @@ Each dataset is trained independently first to establish baselines before combin
 - `halmstad_visual_baseline`
 - `halmstad_thermal_baseline`
 
-## Initial Results
+### Combined Dataset Training
 
-<!-- TODO: Add initial independent results -->
+Based on individual baseline results showing poor cross-dataset generalization, datasets are combined in various configurations called *experiments* using `src/train_combined.py`. Both unweighted and weighted experiments are tested, where weighting oversamples smaller datasets to prevent larger datasets from dominating training:
+
+Visual Experiments:
+- `visual_zenodo_antiuav`
+- `visual_zenodo_halmstad`
+- `visual_antiuav_halmstad`
+- `visual_all`
+- `visual_all_weighted` (zenodo oversampled 14x and halmstad 3x relative to anti_uav)
+
+Thermal Experiments:
+- `thermal_zenodo_antiuav`
+- `thermal_zenodo_halmstad`
+- `thermal_antiuav_halmstad`
+- `thermal_all`
+- `thermal_all_weighted` — (zenodo oversampled 17x and halmstad 3x relative to anti_uav)
+
+## Results
+
+### Individual Baseline Results
+
+Each model is evaluated on its own test set (diagonal) and on the other datasets' test sets to measure generalization. Evaluation is run using `src/cross_evaluation.py`.
+
+The results show strong performance when evaluated on the same dataset. However, models did very poorly when evaluated on other datasets, showing lackluster cross-dataset generalization. Overall, this is expected due to the differences between datasets. After all, if two initial datasets performed well on this task, it might mean that they are too similar and don't bring anything new to the training space. The results show that thermal models generalize slightly better than visual ones, possibly due to less variation in color signature, making the thermal modality a solid replacement to regular RGB/visual cameras. The results lead to the conclusion that combined training will be necessary in order to improve model performance, in addition to proving that the initial model lacked robustness for a problem where the data that the model will be deployed on isn't provided.
+
+#### Individual Results for Visual Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo | **0.914** | **0.889** | **0.891** | 0.0448 | 0.0697 | 0.175 | 0.0657 | 0.41 | 0.105 |
+| Anti-UAV | 0.126 | 0.162 | 0.359 | **0.924** | **0.878** | **0.969** | 0.0418 | 0.137 | 0.159 |
+| Halmstad | 0.0299 | 0.0509 | 0.367 | 8.77e-07 | 0.000876 | 0.000143 | **0.718** | **0.754** | **0.74** |
+
+#### Individual Results for Thermal Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo | **0.994** | **0.978** | **0.994** | 0.244 | 0.29 | 0.582 | 0.0887 | 0.183 | 0.281 |
+| Anti-UAV | 0.121 | 0.145 | 0.451 | **0.905** | **0.866** | **0.96** | 0.473 | 0.666 | 0.527 |
+| Halmstad | 0.005 | 0.00581 | 0.378 | 0.0671 | 0.205 | 0.247 | **0.846** | **0.826** | **0.814** |
+
+### Combined Dataset Results
+
+Each experiment is evlauted on the tests sets of each of the initial datasets to see which combinations generalizes the best. Evaluation is run using `src/cross_evaluation.py`.
+
+#### Combined Results for Visual Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo + Anti-UAV | | | | | | | | | |
+| Zenodo + Halmstad | | | | | | | | | |
+| Anti-UAV + Halmstad | | | | | | | | | |
+| All (unweighted) | | | | | | | | | |
+| All (weighted) | | | | | | | | | |
+
+#### Combined Results for Thermal Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo + Anti-UAV | | | | | | | | | |
+| Zenodo + Halmstad | | | | | | | | | |
+| Anti-UAV + Halmstad | | | | | | | | | |
+| All (unweighted) | | | | | | | | | |
+| All (weighted) | | | | | | | | | |
 
 ## Model Fine Tuning
 

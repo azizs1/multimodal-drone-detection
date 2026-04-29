@@ -91,7 +91,7 @@ def preprocess():
 
     #Extracts the image and label information from all images in all videos, and puts them in their dedicated splits.
     for modality in ["Video_IR","Video_V"]:
-        print(f"\n── {modality} ──────────────────────────")
+        print(f"\n-- {modality} --------------------------")
         
         #Gather all of the video files and assign splits for each one.
         video_files = sorted((DATASET_PATH / modality).glob("*.mp4"))
@@ -115,7 +115,7 @@ def preprocess():
                 )
                 total_saved += saved
         
-        print(f"  Saved {total_saved} frames")
+        print(f"Saved {total_saved} frames")
 
     #Writes a data.yaml for each modality to mirror the zenodo datasets.
     for output_path in [THERMAL_OUTPUT, VISUAL_OUTPUT]:

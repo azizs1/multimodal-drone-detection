@@ -79,7 +79,7 @@ def preprocess():
     #Extracts the image and label information for each image in path in each modality in each split.
     for split in ["train", "val", "test"]:
         output_split = "valid" if split == "val" else split
-        print(f"\n── {split} ──────────────────────────")
+        print(f"\n-- {split} --------------------------")
         sequences = [dir for dir in (DATASET_PATH / split).iterdir() if dir.is_dir()]
         total_saved = 0
 
@@ -93,7 +93,7 @@ def preprocess():
                 )
                 total_saved += saved
 
-        print(f"  Saved {total_saved} frames")
+        print(f"Saved {total_saved} frames")
 
     #Writes a data.yaml for each modality to mirror the zenodo datasets.
     for output_path in [THERMAL_OUTPUT, VISUAL_OUTPUT]:
