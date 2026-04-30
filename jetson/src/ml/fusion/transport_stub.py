@@ -28,10 +28,29 @@ from ml.inference.storage import RustFSStorage
 
 from .fusion_core import FusionEngine
 from .schemas import FusedDecision, MediaRef, ModalityPrediction
+from .window_aggregator import WindowAggregator
 
 DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://backend:8000/incidents"
 
 _STORAGE: RustFSStorage | None = None
+
+
+def _emit_winner(winner: FusedDecision, predictions: list[ModalityPrediction]) -> None:
+    """Upload the winner's frame image then POST to backend. Runs in a daemon thread."""
+    _attach_media_urls_from_predictions(fused=winner, predictions=predictions)
+    _post_to_backend_incidents(winner)
+
+
+def _start_flush_thread(aggregator: WindowAggregator, interval: float) -> None:
+    def _loop() -> None:
+        while True:
+            time.sleep(interval)
+            for winner, predictions in aggregator.flush():
+                threading.Thread(
+                    target=_emit_winner, args=(winner, predictions or []), daemon=True
+                ).start()
+
+    threading.Thread(target=_loop, daemon=True, name="window-aggregator-flush").start()
 
 
 def build_router(fusion_engine: FusionEngine) -> Any:
@@ -40,13 +59,37 @@ def build_router(fusion_engine: FusionEngine) -> Any:
 
     router = APIRouter(prefix="/fusion", tags=["fusion"])
 
+    win_cfg = fusion_engine.config.window
+    aggregator = WindowAggregator(
+        window_width_seconds=win_cfg.window_width_seconds,
+    )
+    if win_cfg.enabled:
+        _start_flush_thread(aggregator, win_cfg.flush_interval_seconds)
+
     @router.post("/ingest", response_model=FusedDecision | None)
     def ingest(predictions: list[ModalityPrediction]):
         """Ingest modality predictions, fuse them, and post to backend."""
         fused = fusion_engine.fuse(predictions)
         if fused:
-            _attach_media_urls_from_predictions(fused=fused, predictions=predictions)
-            threading.Thread(target=_post_to_backend_incidents, args=(fused,), daemon=True).start()
+            if win_cfg.enabled:
+                # Upload and post only when the window's winner is emitted,
+                # not on every frame — predictions travel with the candidate.
+                ready = aggregator.feed(fused, context=predictions)
+                print(
+                    f"window decision={fused.decision} "
+                    f"conf={fused.fused_confidence:.3f} "
+                    f"buckets={aggregator.open_bucket_count} "
+                    f"emitting={len(ready)}"
+                )
+                for winner, winner_preds in ready:
+                    threading.Thread(
+                        target=_emit_winner, args=(winner, winner_preds), daemon=True
+                    ).start()
+            else:
+                _attach_media_urls_from_predictions(fused=fused, predictions=predictions)
+                threading.Thread(
+                    target=_post_to_backend_incidents, args=(fused,), daemon=True
+                ).start()
         return fused
 
     return router
