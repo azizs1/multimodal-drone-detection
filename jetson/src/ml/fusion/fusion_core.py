@@ -54,6 +54,7 @@ class FusionEngine:
             latency_ms=latency_ms,
             media=self._media_from_evidence(evidence),
             objects=self._objects_from_preds(filtered),
+            timestamp=max(p.timestamp for p in filtered),
         )
         self.fused_history.append(fused)
 

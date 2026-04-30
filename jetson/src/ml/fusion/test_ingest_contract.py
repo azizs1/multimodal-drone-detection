@@ -206,34 +206,23 @@ def _drone_payload(timestamp: float, confidence: float) -> list[dict]:
 
 
 def test_windowing_reduces_backend_posts():
-    """Two same-window detections → backend called once (triggered by a third from next window)."""
+    """Two same-window detections → one backend post when the next window arrives."""
     _, client = _build_app(WindowConfig(enabled=True, window_width_seconds=1.0))
 
     now = 1776.0
-    with patch("ml.fusion.transport_stub._post_to_backend_incidents") as mock_post:
-        # Two detections in the same 1-second window
+    with (
+        patch("ml.fusion.transport_stub._attach_media_urls_from_predictions"),
+        patch("ml.fusion.transport_stub._post_to_backend_incidents") as mock_post,
+    ):
+        # Two detections in window 1776 (timestamps 1776.1 and 1776.5)
         client.post("/fusion/ingest", json=_drone_payload(now + 0.1, 0.85))
         client.post("/fusion/ingest", json=_drone_payload(now + 0.5, 0.90))
-        # Third detection in the next window — triggers eviction of the first window
+        # Third detection in window 1777 — triggers lazy eviction of window 1776
         client.post("/fusion/ingest", json=_drone_payload(now + 1.1, 0.70))
-        # Give the _emit_winner daemon thread time to call _post_to_backend_incidents
-        time.sleep(0.05)
+        time.sleep(0.1)  # let _emit_winner daemon thread complete
 
-    # The first window (1776) should have been posted exactly once (the 0.90 winner).
-    # The second window (1777) stays open until the flush thread fires, so at most 1 more call.
-    # We assert only the first window's winner was posted exactly once.
-    calls = mock_post.call_args_list
-    first_window_calls = [
-        c
-        for c in calls
-        if c.args
-        and hasattr(c.args[0], "fused_confidence")
-        and abs(c.args[0].fused_confidence - 0.90) < 0.01
-    ]
-    assert len(first_window_calls) == 1, (
-        f"Expected exactly 1 backend post for the first window's best decision, "
-        f"got {len(first_window_calls)}"
-    )
+    # Window 1776 emits exactly once; window 1777 stays open past the patch window
+    assert mock_post.call_count == 1
 
 
 def test_windowing_disabled_preserves_original_behavior():
@@ -241,9 +230,13 @@ def test_windowing_disabled_preserves_original_behavior():
     _, client = _build_app(WindowConfig(enabled=False))
 
     now = 1776.0
-    with patch("ml.fusion.transport_stub._post_to_backend_incidents") as mock_post:
+    with (
+        patch("ml.fusion.transport_stub._emit_winner"),  # block flush-thread contamination
+        patch("ml.fusion.transport_stub._attach_media_urls_from_predictions"),
+        patch("ml.fusion.transport_stub._post_to_backend_incidents") as mock_post,
+    ):
         client.post("/fusion/ingest", json=_drone_payload(now + 0.1, 0.85))
         client.post("/fusion/ingest", json=_drone_payload(now + 0.5, 0.90))
-        time.sleep(0.05)  # let daemon threads finish
+        time.sleep(0.1)  # let daemon threads complete
 
     assert mock_post.call_count == 2

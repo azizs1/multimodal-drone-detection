@@ -33,6 +33,7 @@ from .window_aggregator import WindowAggregator
 DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://backend:8000/incidents"
 
 _STORAGE: RustFSStorage | None = None
+_STORAGE_CHECKED: bool = False  # True after first attempt, whether it succeeded or not
 
 
 def _emit_winner(winner: FusedDecision, predictions: list[ModalityPrediction]) -> None:
@@ -146,10 +147,11 @@ def _post_to_backend_incidents(fused: FusedDecision) -> None:
 
 
 def _get_storage() -> RustFSStorage | None:
-    global _STORAGE
-    if _STORAGE is not None:
+    global _STORAGE, _STORAGE_CHECKED
+    if _STORAGE_CHECKED:
         return _STORAGE
 
+    _STORAGE_CHECKED = True
     try:
         _STORAGE = RustFSStorage.from_env()
         _STORAGE.ensure_bucket_public()
