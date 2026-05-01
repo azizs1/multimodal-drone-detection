@@ -9,8 +9,8 @@ services:
       - DISPLAY=${DISPLAY}
       - INFERENCE_SOURCE=${INFERENCE_SOURCE:-stream}
       - MAX_FRAMES=${MAX_FRAMES:-0}
-      - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
-      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
+      - RGB_MODEL_PATH=/app/offline_ml/weights/anti_uav_visual_best.pt
+      - THERMAL_MODEL_PATH=/app/offline_ml/weights/anti_uav_thermal_best.pt
       - RGB_VIDEO_PATH=/app/simulator/videos/drone_visual.mp4
       - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest

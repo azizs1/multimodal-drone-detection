@@ -15,11 +15,10 @@ import numpy as np
 import zmq
 
 from .adapters import adapt_yolo_results
-from .frame_publisher import build_publishers
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
-DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
+DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/anti_uav_visual_best.pt"
+DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/anti_uav_thermal_best.pt"
 DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
 DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://127.0.0.1:8000/incidents"
 DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
@@ -314,6 +313,7 @@ def main() -> int:
     print(f"thermal classes: {getattr(thermal_model, 'names', {})}")
     backend_publisher: BackendIncidentPublisher | None = None
     publishers = None
+    publishers_unavailable = False
     if backend_incident_endpoint:
         backend_publisher = BackendIncidentPublisher(
             backend_endpoint=backend_incident_endpoint,
@@ -322,8 +322,19 @@ def main() -> int:
         backend_publisher.start()
 
     def _ensure_publishers(rgb_frame, thermal_frame):
-        nonlocal publishers
+        nonlocal publishers, publishers_unavailable
+        if publishers_unavailable:
+            return
         if publishers is None:
+            try:
+                from .frame_publisher import build_publishers
+            except ImportError as exc:
+                publishers_unavailable = True
+                print(
+                    "frame publisher unavailable; continuing without fused stream overlay publish: "
+                    f"{exc}"
+                )
+                return
             publishers = build_publishers(
                 rgb_shape=rgb_frame.shape,
                 thermal_shape=thermal_frame.shape,
