@@ -300,7 +300,7 @@ def main() -> int:
                 continue
 
             # check timestamp diff in ms and skip if too far apart
-            diff_ms = abs(timestamps["rgb"]-timestamps["thermal"])*1000.0
+            diff_ms = abs(timestamps["rgb"] - timestamps["thermal"]) * 1000.0
             if diff_ms > pair_tolerance_ms:
                 continue
 
@@ -319,7 +319,7 @@ def main() -> int:
             print(f"[thermal] frame in pair: shape={current_frames['thermal'].shape}\n")
 
             # rgb img is too big so downscale to half resolution (640x360)
-            rgb_small = cv2.resize(current_frames["rgb"], (meta["width"]//2, meta["height"]//2))
+            rgb_small = cv2.resize(current_frames["rgb"], (meta["width"] // 2, meta["height"] // 2))
 
             _infer_and_send(
                 rgb_model=rgb_model,
@@ -331,7 +331,6 @@ def main() -> int:
                 pair_tolerance_ms=pair_tolerance_ms,
                 frame_index=frame_count,
             )
-
 
     except KeyboardInterrupt:
         print("ml.inference stopped")
