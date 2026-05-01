@@ -30,7 +30,7 @@ iface eth0 inet static
 From repository root, run the following commands to build and run Jetson services:
 ```bash
 docker build -t jetson-si-ml -f jetson/Dockerfile jetson
-sudo docker run --rm -it --runtime nvidia --network host --privileged --env-file .env -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket --device /dev/video0 jetson-si-ml
+sudo docker run --rm -it --runtime nvidia --network host --privileged -e NVIDIA_DRIVER_CAPABILITIES=all -v /tmp/argus_socket:/tmp/argus_socket -v $(pwd)/offline_ml:/app/offline_ml --device /dev/video0 jetson-si-ml
 ```
 >Note that `--network host` must be used to allow for the use of the Jetson Nano network settings for the container.
 ### Debugging Ingestion

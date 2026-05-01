@@ -16,7 +16,7 @@ import zmq
 
 from .adapters import adapt_yolo_results
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
 DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
 DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
@@ -214,6 +214,10 @@ def main() -> int:
     socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
     current_frames = {"rgb": None, "thermal": None}
 
+    # store latest frames and timestamps
+    current_frames = {"rgb": None, "thermal": None}
+    timestamps = {"rgb": None, "thermal": None}
+
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     backend_incident_endpoint = os.getenv(
         "BACKEND_INCIDENT_ENDPOINT", DEFAULT_BACKEND_INCIDENT_ENDPOINT
@@ -244,6 +248,7 @@ def main() -> int:
         )
         backend_publisher.start()
 
+    frame_count = 0
     try:
         if source_mode == "videos":
             rgb_video_path = Path(os.getenv("RGB_VIDEO_PATH", str(DEFAULT_RGB_VIDEO_PATH)))
@@ -255,7 +260,6 @@ def main() -> int:
             print(f"thermal video path: {thermal_video_path}")
             if max_frames > 0:
                 print(f"max frames: {max_frames}")
-            frame_count = 0
             for rgb_frame, thermal_frame in _iter_video_frames(rgb_video_path, thermal_video_path):
                 frame_count += 1
                 _infer_and_send(
@@ -276,7 +280,6 @@ def main() -> int:
         print("waiting for frame source integration (sensor ingestion -> inference bridge)")
 
         while True:
-            # multipart: [topic, meta_json, raw_bytes]
             topic, meta_raw, frame_raw = socket.recv_multipart()
 
             modality = topic.decode("utf-8")
@@ -287,27 +290,47 @@ def main() -> int:
 
             print(f"[{modality}] frame received: shape={frame.shape}")
 
+            # store latest frame and timestamp
             current_frames[modality] = frame
+            timestamps[modality] = meta["timestamp"]
 
-            if current_frames["rgb"] is not None and current_frames["thermal"] is not None:
-                print("both frames ready")
+            # need both frames at least once, this just skips at the beginning until we have both
+            if current_frames["rgb"] is None or current_frames["thermal"] is None:
+                continue
 
-                # preview = cv2.resize(current_frames["rgb"], (320, 240))
-                # cv2.imshow(f"inference_rgb", preview)
-                # cv2.waitKey(1)
+            # check timestamp diff in ms and skip if too far apart
+            diff_ms = abs(timestamps["rgb"]-timestamps["thermal"])*1000.0
+            if diff_ms > pair_tolerance_ms:
+                continue
 
-                # preview = cv2.resize(current_frames["thermal"], (320, 240))
-                # cv2.imshow(f"inference_thermal", preview)
-                # cv2.waitKey(1)
+            # preview = cv2.resize(current_frames["rgb"], (320, 240))
+            # cv2.imshow(f"inference_rgb", preview)
+            # cv2.waitKey(1)
 
-                _infer_and_send(
-                    rgb_model,
-                    thermal_model,
-                    current_frames["rgb"],
-                    current_frames["thermal"],
-                    fusion_endpoint,
-                )
-                current_frames = {"rgb": None, "thermal": None}
+            # preview = cv2.resize(current_frames["thermal"], (320, 240))
+            # cv2.imshow(f"inference_thermal", preview)
+            # cv2.waitKey(1)
+
+            # valid pair so run inference here
+            frame_count += 1
+            print(f"\nframe pair (diff={diff_ms:.1f}ms) ===")
+            print(f"[rgb] frame in pair: shape={current_frames['rgb'].shape}")
+            print(f"[thermal] frame in pair: shape={current_frames['thermal'].shape}\n")
+
+            # rgb img is too big so downscale to half resolution (640x360)
+            rgb_small = cv2.resize(current_frames["rgb"], (meta["width"] // 2, meta["height"] // 2))
+
+            _infer_and_send(
+                rgb_model=rgb_model,
+                thermal_model=thermal_model,
+                rgb_frame=rgb_small,
+                thermal_frame=current_frames["thermal"],
+                fusion_endpoint=fusion_endpoint,
+                backend_publisher=backend_publisher,
+                pair_tolerance_ms=pair_tolerance_ms,
+                frame_index=frame_count,
+            )
+
 
     except KeyboardInterrupt:
         print("ml.inference stopped")
