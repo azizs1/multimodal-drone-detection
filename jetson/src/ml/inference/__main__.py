@@ -318,7 +318,7 @@ def main() -> int:
             print(f"[thermal] frame in pair: shape={current_frames['thermal'].shape}\n")
 
             # rgb img is too big so downscale to half resolution (640x360)
-            rgb_small = cv2.resize(current_frames["rgb"], (meta["width"] // 2, meta["height"] // 2))
+            rgb_small = cv2.resize(current_frames["rgb"], (meta["width"]//2, meta["height"]//2))
 
             _infer_and_send(
                 rgb_model=rgb_model,
