@@ -25,6 +25,9 @@ from gi.repository import GLib, Gst  # noqa: E402
 
 load_dotenv()
 
+RGB_DEVICE = "/dev/video0"
+THERMAL_DEVICE = "/dev/video2"
+
 send_lock = threading.Lock()
 
 # init zeromq
@@ -69,7 +72,7 @@ def build_gst_pipeline():
 
     rgb_src = Gst.ElementFactory.make("v4l2src", "rgb_src")
     # double-check with v4l2-ctl that this is the right device for rgb
-    rgb_src.set_property("device", "/dev/video0")
+    rgb_src.set_property("device", RGB_DEVICE)
 
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
     # not specifying dimensions, we do that in scale_caps
@@ -133,7 +136,7 @@ def build_gst_pipeline():
 
     thermal_src = Gst.ElementFactory.make("v4l2src", "thermal_src")
     # double-check with v4l2-ctl that this is the right device for rgb
-    thermal_src.set_property("device", "/dev/video2")
+    thermal_src.set_property("device", THERMAL_DEVICE)
 
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
     thermal_caps.set_property(
