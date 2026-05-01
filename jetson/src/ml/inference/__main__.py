@@ -11,6 +11,7 @@ from queue import Empty, Full, Queue
 from threading import Event, Thread
 from urllib import error, request
 
+import cv2
 import numpy as np
 import zmq
 
