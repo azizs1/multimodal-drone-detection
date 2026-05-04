@@ -4,7 +4,7 @@ from ultralytics import YOLO
 
 #Configure weights, data, and output directories.
 WEIGHTS_PATH = Path("weights")
-DATASETS_PATH = Path("datasets")
+DATASETS_PATH = Path("/localscratch-nvme/5232701")
 PROJECT_PATH = Path("runs/cross_evaluation")
 
 #Evaluate each weight in the weights directory on the datasets in the datasets that match the weight's modality.
@@ -14,6 +14,7 @@ def evaluate():
 
     #Get all weights and datasets.
     weights = list(WEIGHTS_PATH.glob("*.pt"))
+    print(weights)
     datasets = [dataset for dataset in DATASETS_PATH.iterdir() if dataset.is_dir()]
 
     #Separate by modality.

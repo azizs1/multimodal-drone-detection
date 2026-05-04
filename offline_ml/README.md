@@ -219,17 +219,17 @@ The results show strong performance when evaluated on the same dataset. However,
 
 | Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
 |-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo | **0.914** | **0.889** | **0.891** | 0.0448 | 0.0697 | 0.175 | 0.0657 | 0.41 | 0.105 |
-| Anti-UAV | 0.126 | 0.162 | 0.359 | **0.924** | **0.878** | **0.969** | 0.0418 | 0.137 | 0.159 |
-| Halmstad | 0.0299 | 0.0509 | 0.367 | 8.77e-07 | 0.000876 | 0.000143 | **0.718** | **0.754** | **0.74** |
+| Zenodo | **0.914** | **0.889** | **0.891** | 0.045 | 0.070 | 0.175 | 0.066 | 0.410 | 0.105 |
+| Anti-UAV | 0.126 | 0.162 | 0.359 | **0.924** | **0.878** | **0.969** | 0.042 | 0.137 | 0.159 |
+| Halmstad | 0.030 | 0.051 | 0.367 | 0.000 | 0.001 | 0.000 | **0.718** | **0.754** | **0.740** |
 
 #### Individual Results for Thermal Models/Datasets
 
 | Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
 |-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo | **0.994** | **0.978** | **0.994** | 0.244 | 0.29 | 0.582 | 0.0887 | 0.183 | 0.281 |
+| Zenodo | **0.994** | **0.978** | **0.994** | 0.244 | 0.290 | 0.582 | 0.089 | 0.183 | 0.281 |
 | Anti-UAV | 0.121 | 0.145 | 0.451 | **0.905** | **0.866** | **0.96** | 0.473 | 0.666 | 0.527 |
-| Halmstad | 0.005 | 0.00581 | 0.378 | 0.0671 | 0.205 | 0.247 | **0.846** | **0.826** | **0.814** |
+| Halmstad | 0.005 | 0.006 | 0.378 | 0.067 | 0.205 | 0.247 | **0.846** | **0.826** | **0.814** |
 
 ### Combined Dataset Results
 
@@ -239,21 +239,21 @@ Each experiment is evlauted on the tests sets of each of the initial datasets to
 
 | Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
 |-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo + Anti-UAV | | | | | | | | | |
-| Zenodo + Halmstad | | | | | | | | | |
-| Anti-UAV + Halmstad | | | | | | | | | |
-| All (unweighted) | | | | | | | | | |
-| All (weighted) | | | | | | | | | |
+| Zenodo + Anti-UAV | 0.930 | 0.894 | 0.913 | 0.933 | 0.892 | 0.965 | 0.100 | 0.133 | 0.231 |
+| Zenodo + Halmstad | 0.909 | 0.833 | 0.894 | 0.000 | 0.002 | 0.001 | 0.750 | 0.782 | 0.769 |
+| Anti-UAV + Halmstad | 0.015 | 0.083 | 0.125 | 0.932 | 0.889 | 0.963 | 0.717 | 0.792 | 0.766 |
+| All (unweighted) | 0.931 | 0.898 | 0.941 | 0.945 | 0.900 | 0.968 | 0.723 | 0.789 | 0.787 |
+| All (weighted) | 0.919 | 0.914 | 0.900 | 0.934 | 0.883 | 0.958 | 0.777 | 0.798 | 0.771 |
 
 #### Combined Results for Thermal Models/Datasets
 
 | Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
 |-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo + Anti-UAV | | | | | | | | | |
-| Zenodo + Halmstad | | | | | | | | | |
-| Anti-UAV + Halmstad | | | | | | | | | |
-| All (unweighted) | | | | | | | | | |
-| All (weighted) | | | | | | | | | |
+| Zenodo + Anti-UAV | 0.978 | 0.942 | 0.969 | 0.893 | 0.843 | 0.964 | 0.516 | 0.726 | 0.571 |
+| Zenodo + Halmstad | 0.907 | 0.859 | 0.787 | 0.323 | 0.317 | 0.488 | 0.818 | 0.848 | 0.814 |
+| Anti-UAV + Halmstad | 0.087 | 0.116 | 0.567 | 0.891 | 0.841 | 0.966 | 0.888 | 0.909 | 0.879 |
+| All (unweighted) | 0.967 | 0.884 | 0.916 | 0.900 | 0.851 | 0.971 | 0.893 | 0.89 | 0.872 |
+| All (weighted) | 0.991 | 0.986 | 0.971 | 0.888 | 0.843 | 0.96 | 0.862 | 0.895 | 0.853 |
 
 ## Model Fine Tuning
 

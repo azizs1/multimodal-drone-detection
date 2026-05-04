@@ -65,52 +65,6 @@ def train(args):
     # Save specific datasets that should all be trained with YOLOv8.
     experiments = [
         {
-            "name": "visual_zenodo_antiuav",
-            "datasets": ["zenodo_visual_no_augmentation", "anti_uav_visual_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "visual_zenodo_halmstad",
-            "datasets": ["zenodo_visual_no_augmentation", "halmstad_visual_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "visual_antiuav_halmstad",
-            "datasets": ["anti_uav_visual_no_augmentation", "halmstad_visual_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "visual_all",
-            "datasets": ["zenodo_visual_no_augmentation", "anti_uav_visual_no_augmentation", "halmstad_visual_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "visual_all_weighted",
-            "datasets": ["zenodo_visual_no_augmentation", "anti_uav_visual_no_augmentation", "halmstad_visual_no_augmentation"],
-            "weighted": True,
-            "weights": [14, 1, 3]
-        },
-        {
-            "name": "thermal_zenodo_antiuav",
-            "datasets": ["zenodo_thermal_no_augmentation", "anti_uav_thermal_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "thermal_zenodo_halmstad",
-            "datasets": ["zenodo_thermal_no_augmentation", "halmstad_thermal_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "thermal_antiuav_halmstad",
-            "datasets": ["anti_uav_thermal_no_augmentation", "halmstad_thermal_no_augmentation"],
-            "weighted": False
-        },
-        {
-            "name": "thermal_all",
-            "datasets": ["zenodo_thermal_no_augmentation", "anti_uav_thermal_no_augmentation", "halmstad_thermal_no_augmentation"],
-            "weighted": False
-        },
-        {
             "name": "thermal_all_weighted",
             "datasets": ["zenodo_thermal_no_augmentation", "anti_uav_thermal_no_augmentation", "halmstad_thermal_no_augmentation"],
             "weighted": True,

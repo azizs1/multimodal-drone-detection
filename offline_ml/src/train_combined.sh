@@ -5,8 +5,8 @@
 #SBATCH --account=lnn
 
 #General node to run on and time allocated.
-#SBATCH --partition=h200_normal_q
-#SBATCH --time=48:00:00
+#SBATCH --partition=a100_normal_q
+#SBATCH --time=55:00:00
 
 #Specific compute resources.
 #SBATCH --nodes=1
@@ -43,13 +43,13 @@ python offline_ml/src/train_combined.py \
     --epochs 50
 
 # Add the updated weights to the weights directory to be committed.
-cp /scratch/eymauger26/runs/visual_zenodo_antiuav/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_zenodo_antiuav_best.pt
-cp /scratch/eymauger26/runs/visual_zenodo_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_zenodo_halmstad_best.pt
-cp /scratch/eymauger26/runs/visual_antiuav_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_antiuav_halmstad_best.pt
-cp /scratch/eymauger26/runs/visual_all/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_all_best.pt
-cp /scratch/eymauger26/runs/visual_all_weighted/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_all_weighted_best.pt
-cp /scratch/eymauger26/runs/thermal_zenodo_antiuav/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_zenodo_antiuav_best.pt
-cp /scratch/eymauger26/runs/thermal_zenodo_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_zenodo_halmstad_best.pt
-cp /scratch/eymauger26/runs/thermal_antiuav_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_antiuav_halmstad_best.pt
-cp /scratch/eymauger26/runs/thermal_all/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_all_best.pt
+# cp /scratch/eymauger26/runs/visual_zenodo_antiuav/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_zenodo_antiuav_best.pt
+# cp /scratch/eymauger26/runs/visual_zenodo_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_zenodo_halmstad_best.pt
+# cp /scratch/eymauger26/runs/visual_antiuav_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_antiuav_halmstad_best.pt
+# cp /scratch/eymauger26/runs/visual_all/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_all_best.pt
+# cp /scratch/eymauger26/runs/visual_all_weighted/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/visual_all_weighted_best.pt
+# cp /scratch/eymauger26/runs/thermal_zenodo_antiuav/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_zenodo_antiuav_best.pt
+# cp /scratch/eymauger26/runs/thermal_zenodo_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_zenodo_halmstad_best.pt
+# cp /scratch/eymauger26/runs/thermal_antiuav_halmstad/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_antiuav_halmstad_best.pt
+# cp /scratch/eymauger26/runs/thermal_all/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_all_best.pt
 cp /scratch/eymauger26/runs/thermal_all_weighted/weights/best.pt ~/multimodal-drone-detection/offline_ml/weights/thermal_all_weighted_best.pt
