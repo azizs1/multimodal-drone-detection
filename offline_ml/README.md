@@ -144,144 +144,6 @@ python src/train.py --data datasets --epochs 1
 ```
 
 
-# Model Robustness
-
-To improve model robustness beyond the initial Zenodo baselines, additional datasets have been integrated to address key gaps identified during data analysis:
-
-Key Gaps in Zenodo Data:
-- Limited Drone Diversity
-- No Hard Negatives
-- Limited Range
-- No Nighttime Data
-
-## Datasets Added
-
-- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) - 296,901 frames of paired RGB and thermal drone footage across 320 videos. Provides small bounding boxes (long range drones), nighttime footage, and a few examples of images without drones present (negatives).
-- [Halmstad Multi-Sensor](https://github.com/DroneDetectionThesis/Drone-detection-dataset/tree/master/Data) - Specifically integrated to provide a robust negative sample set. It includes annotated frames of birds, airplanes, and helicopters, which are critical for reducing false positives.
-
-## Updated Dataset Summary
-
-| Dataset | Visual Images | Thermal Images | Notes |
-|---------|--------------|----------------|-------|
-| Zenodo | 2,145 | 1,760 | Close range, suburban/campus/foiliage backgrounds, no negatives |
-| Anti-UAV | 29,727 | 29,727 | Long range, nighttime, ~5.6% visual / ~1.2% thermal negatives |
-| Halmstad | 8,928 | 11,570 | ~60% negatives (birds/planes/helicopters), mostly clear sky backgrounds |
-| **Total** | **40,800** | **43,057** | |
-
-## Planned Datasets
-
-The following datasets could be added with future work and prior approval, but are only sets with RGB data:
-- [WOSDETC Drone-vs-Bird](https://github.com/wosdetc/challenge) - This dataset includes ground camera videos with both drone and bird annotations. To get access to this data, send an email request to wosdetc@googlegroups.com. You will then be asked to sign and return a data usage agreement.
-- [LRDDv2](research.coe.drexel.edu/ece/imaple/lrddv2) - This dataset includes videos of drones from up to 1km away, providing more training data for the model to train on drones from further away. To get access to this data, fill out the google form on their website.
-- [FBD-SV-2024](https://github.com/Ziwei89/FBD-SV-2024_github/blob/master/README.md) - This dataset specifically includes labeled birds in images with heavy noise. No prior approval is needed for this dataset.
-
-## Training Strategy
-
-Training is structured in two phases. First, each dataset is trained independently to establish baselines and understand what each dataset contributes individually. Second, datasets are combined in various configurations to improve generalization across deployment scenarios. All training is configured in `src/train.py` for individual baselines and `src/train_combined.py` for combined experiments.
-
-### Individual Baselines
-
-Each dataset is trained independently using `src/train.py`:
-- `zenodo_visual_baseline`
-- `zenodo_thermal_baseline`
-- `anti_uav_visual_baseline`
-- `anti_uav_thermal_baseline`
-- `halmstad_visual_baseline`
-- `halmstad_thermal_baseline`
-
-### Combined Dataset Training
-
-Based on individual baseline results showing poor cross-dataset generalization, datasets are combined in various configurations called *experiments* using `src/train_combined.py`. Both unweighted and weighted experiments are tested, where weighting oversamples smaller datasets to prevent larger datasets from dominating training:
-
-Visual Experiments:
-- `visual_zenodo_antiuav`
-- `visual_zenodo_halmstad`
-- `visual_antiuav_halmstad`
-- `visual_all`
-- `visual_all_weighted` (zenodo oversampled 14x and halmstad 3x relative to anti_uav)
-
-Thermal Experiments:
-- `thermal_zenodo_antiuav`
-- `thermal_zenodo_halmstad`
-- `thermal_antiuav_halmstad`
-- `thermal_all`
-- `thermal_all_weighted` — (zenodo oversampled 17x and halmstad 3x relative to anti_uav)
-
-## Results
-
-### Individual Baseline Results
-
-Each model is evaluated on its own test set (diagonal) and on the other datasets' test sets to measure generalization. Evaluation is run using `src/cross_evaluation.py`.
-
-The results show strong performance when evaluated on the same dataset. However, models did very poorly when evaluated on other datasets, showing lackluster cross-dataset generalization. Overall, this is expected due to the differences between datasets. After all, if two initial datasets performed well on this task, it might mean that they are too similar and don't bring anything new to the training space. The results show that thermal models generalize slightly better than visual ones, possibly due to less variation in color signature, making the thermal modality a solid replacement to regular RGB/visual cameras. The results lead to the conclusion that combined training will be necessary in order to improve model performance, in addition to proving that the initial model lacked robustness for a problem where the data that the model will be deployed on isn't provided.
-
-#### Individual Results for Visual Models/Datasets
-
-| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
-|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo | **0.914** | **0.889** | **0.891** | 0.045 | 0.070 | 0.175 | 0.066 | 0.410 | 0.105 |
-| Anti-UAV | 0.126 | 0.162 | 0.359 | **0.924** | **0.878** | **0.969** | 0.042 | 0.137 | 0.159 |
-| Halmstad | 0.030 | 0.051 | 0.367 | 0.000 | 0.001 | 0.000 | **0.718** | **0.754** | **0.740** |
-
-#### Individual Results for Thermal Models/Datasets
-
-| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
-|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo | **0.994** | **0.978** | **0.994** | 0.244 | 0.290 | 0.582 | 0.089 | 0.183 | 0.281 |
-| Anti-UAV | 0.121 | 0.145 | 0.451 | **0.905** | **0.866** | **0.96** | 0.473 | 0.666 | 0.527 |
-| Halmstad | 0.005 | 0.006 | 0.378 | 0.067 | 0.205 | 0.247 | **0.846** | **0.826** | **0.814** |
-
-### Combined Dataset Results
-
-Each experiment is evlauted on the tests sets of each of the initial datasets to see which combinations generalizes the best. Evaluation is run using `src/cross_evaluation.py`.
-
-#### Combined Results for Visual Models/Datasets
-
-| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
-|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo + Anti-UAV | 0.930 | 0.894 | 0.913 | 0.933 | 0.892 | 0.965 | 0.100 | 0.133 | 0.231 |
-| Zenodo + Halmstad | 0.909 | 0.833 | 0.894 | 0.000 | 0.002 | 0.001 | 0.750 | 0.782 | 0.769 |
-| Anti-UAV + Halmstad | 0.015 | 0.083 | 0.125 | 0.932 | 0.889 | 0.963 | 0.717 | 0.792 | 0.766 |
-| All (unweighted) | 0.931 | 0.898 | 0.941 | 0.945 | 0.900 | 0.968 | 0.723 | 0.789 | 0.787 |
-| All (weighted) | 0.919 | 0.914 | 0.900 | 0.934 | 0.883 | 0.958 | 0.777 | 0.798 | 0.771 |
-
-#### Combined Results for Thermal Models/Datasets
-
-| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
-|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
-| Zenodo + Anti-UAV | 0.978 | 0.942 | 0.969 | 0.893 | 0.843 | 0.964 | 0.516 | 0.726 | 0.571 |
-| Zenodo + Halmstad | 0.907 | 0.859 | 0.787 | 0.323 | 0.317 | 0.488 | 0.818 | 0.848 | 0.814 |
-| Anti-UAV + Halmstad | 0.087 | 0.116 | 0.567 | 0.891 | 0.841 | 0.966 | 0.888 | 0.909 | 0.879 |
-| All (unweighted) | 0.967 | 0.884 | 0.916 | 0.900 | 0.851 | 0.971 | 0.893 | 0.89 | 0.872 |
-| All (weighted) | 0.991 | 0.986 | 0.971 | 0.888 | 0.843 | 0.96 | 0.862 | 0.895 | 0.853 |
-
-## Model Fine Tuning
-
-<!-- TODO: Add fine tuning here -->
-
-<!-- TODO: Combine datasets together:
-
-Key considerations for combined training:
-- Zenodo (~1.5% of total data) should be overweighted relative to its size as it is the closest match to the deployment scenario
-- Halmstad's high negative ratio (~54%) will significantly increase combined dataset negative rates - monitor for the model becoming overly conservative
-- Anti-UAV visual contains a reticle watermark consistent across all frames
-
--->
-
-<!-- TODO: Fix yolo26n problem to make the different types of models modularizable:
-
-To prevent the script from downloading the same model every time, a base yolo model has been downloaded in the offline_ml/weights directory. train.py points to this model, and if additional types of yolo models want to be used for training they can be downloaded using the commands below:
-```bash
-cd ~/multimodal-drone-detection
-python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" 
-mv yolov8n.pt offline_ml/weights/
-```
-
-Additional types of YOLO models include yolov8s.pt, yolov8m.pt, yolov8l.pt, and yolov8x.pt.
-
--->
-
-
 # ARC Cluster Setup
 
 To be able to run python scripts connected to the rest of the repository but ran on GPUs, we utilized the GPU power of the Virginia Tech Advanced Research and Computing (ARC) Cluster. The following instructions note how to get started, however, it should be noted that to get the full use out of the VT ARC Cluster an instructor must create an account to give you access. The following setup is based on our instructor giving us Instructional Allocation to the ARC Cluster.
@@ -440,3 +302,166 @@ find /scratch/<PID>/runs -name "best.pt"
 ```
 
 The slurm script automatically saves these weights into the weights directory and can then be commited to git or removed.
+
+
+# Model Robustness
+
+To improve model robustness beyond the initial Zenodo baselines, additional datasets have been integrated to address key gaps identified during data analysis:
+
+Key Gaps in Zenodo Data:
+- Limited Drone Diversity
+- No Hard Negatives
+- Limited Range
+- No Nighttime Data
+
+## Datasets Added
+
+- [Anti-UAV](https://github.com/ZhaoJ9014/Anti-UAV) - 296,901 frames of paired RGB and thermal drone footage across 320 videos. Provides small bounding boxes (long range drones), nighttime footage, and a few examples of images without drones present (negatives).
+- [Halmstad Multi-Sensor](https://github.com/DroneDetectionThesis/Drone-detection-dataset/tree/master/Data) - Specifically integrated to provide a robust negative sample set. It includes annotated frames of birds, airplanes, and helicopters, which are critical for reducing false positives.
+
+## Updated Dataset Summary
+
+| Dataset | Visual Images | Thermal Images | Notes |
+|---------|--------------|----------------|-------|
+| Zenodo | 2,145 | 1,760 | Close range, suburban/campus/foiliage backgrounds, no negatives |
+| Anti-UAV | 29,727 | 29,727 | Long range, nighttime, ~5.6% visual / ~1.2% thermal negatives |
+| Halmstad | 8,928 | 11,570 | ~60% negatives (birds/planes/helicopters), mostly clear sky backgrounds |
+| **Total** | **40,800** | **43,057** | |
+
+## Planned Datasets
+
+The following datasets could be added with future work and prior approval, but are only sets with RGB data:
+- [WOSDETC Drone-vs-Bird](https://github.com/wosdetc/challenge) - This dataset includes ground camera videos with both drone and bird annotations. To get access to this data, send an email request to wosdetc@googlegroups.com. You will then be asked to sign and return a data usage agreement.
+- [LRDDv2](research.coe.drexel.edu/ece/imaple/lrddv2) - This dataset includes videos of drones from up to 1km away, providing more training data for the model to train on drones from further away. To get access to this data, fill out the google form on their website.
+- [FBD-SV-2024](https://github.com/Ziwei89/FBD-SV-2024_github/blob/master/README.md) - This dataset specifically includes labeled birds in images with heavy noise. No prior approval is needed for this dataset.
+
+## Training Strategy
+
+Training is structured in two phases. First, each dataset is trained independently to establish baselines and understand what each dataset contributes individually. Second, datasets are combined in various configurations to improve generalization across deployment scenarios. All training is configured in `src/train.py` for individual baselines and `src/train_combined.py` for combined experiments.
+
+### Individual Baselines
+
+Each dataset is trained independently using `src/train.py`:
+- `zenodo_visual_baseline`
+- `zenodo_thermal_baseline`
+- `anti_uav_visual_baseline`
+- `anti_uav_thermal_baseline`
+- `halmstad_visual_baseline`
+- `halmstad_thermal_baseline`
+
+### Combined Dataset Training
+
+Based on individual baseline results showing poor cross-dataset generalization, datasets are combined in various configurations called *experiments* using `src/train_combined.py`. Both unweighted and weighted experiments are tested, where weighting oversamples smaller datasets to prevent larger datasets from dominating training:
+
+Visual Experiments:
+- `visual_zenodo_antiuav`
+- `visual_zenodo_halmstad`
+- `visual_antiuav_halmstad`
+- `visual_all`
+- `visual_all_weighted` (zenodo oversampled 14x and halmstad 3x relative to anti_uav)
+
+Thermal Experiments:
+- `thermal_zenodo_antiuav`
+- `thermal_zenodo_halmstad`
+- `thermal_antiuav_halmstad`
+- `thermal_all`
+- `thermal_all_weighted` — (zenodo oversampled 17x and halmstad 3x relative to anti_uav)
+
+## Results
+
+### Individual Baseline Results
+
+Each model is evaluated on its own test set (diagonal) and on the other datasets' test sets to measure generalization. Evaluation is run using `src/cross_evaluation.py`.
+
+#### Individual Results for Visual Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo | **0.914** | **0.889** | **0.891** | 0.045 | 0.070 | 0.175 | 0.066 | 0.410 | 0.105 |
+| Anti-UAV | 0.126 | 0.162 | 0.359 | **0.924** | **0.878** | **0.969** | 0.042 | 0.137 | 0.159 |
+| Halmstad | 0.030 | 0.051 | 0.367 | 0.000 | 0.001 | 0.000 | **0.718** | **0.754** | **0.740** |
+
+#### Individual Results for Thermal Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo | **0.994** | **0.978** | **0.994** | 0.244 | 0.290 | 0.582 | 0.089 | 0.183 | 0.281 |
+| Anti-UAV | 0.121 | 0.145 | 0.451 | **0.905** | **0.866** | **0.96** | 0.473 | 0.666 | 0.527 |
+| Halmstad | 0.005 | 0.006 | 0.378 | 0.067 | 0.205 | 0.247 | **0.846** | **0.826** | **0.814** |
+
+### Combined Dataset Results
+
+Each experiment is evlauted on the tests sets of each of the initial datasets to see which combinations generalizes the best. Evaluation is run using `src/cross_evaluation.py`.
+
+#### Combined Results for Visual Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo + Anti-UAV | 0.930 | 0.894 | 0.913 | 0.933 | 0.892 | 0.965 | 0.100 | 0.133 | 0.231 |
+| Zenodo + Halmstad | 0.909 | 0.833 | 0.894 | 0.000 | 0.002 | 0.001 | 0.750 | 0.782 | 0.769 |
+| Anti-UAV + Halmstad | 0.015 | 0.083 | 0.125 | 0.932 | 0.889 | 0.963 | 0.717 | 0.792 | 0.766 |
+| All (unweighted) | 0.931 | 0.898 | 0.941 | 0.945 | 0.900 | 0.968 | 0.723 | 0.789 | 0.787 |
+| All (weighted) | 0.919 | 0.914 | 0.900 | 0.934 | 0.883 | 0.958 | 0.777 | 0.798 | 0.771 |
+
+#### Combined Results for Thermal Models/Datasets
+
+| Model Trained On | Zenodo mAP50 | Zenodo Recall | Zenodo Precision | Anti-UAV mAP50 | Anti-UAV Recall | Anti-UAV Precision | Halmstad mAP50 | Halmstad Recall | Halmstad Precision |
+|-----------------|-------------|---------------|-----------------|----------------|-----------------|-------------------|----------------|-----------------|-------------------|
+| Zenodo + Anti-UAV | 0.978 | 0.942 | 0.969 | 0.893 | 0.843 | 0.964 | 0.516 | 0.726 | 0.571 |
+| Zenodo + Halmstad | 0.907 | 0.859 | 0.787 | 0.323 | 0.317 | 0.488 | 0.818 | 0.848 | 0.814 |
+| Anti-UAV + Halmstad | 0.087 | 0.116 | 0.567 | 0.891 | 0.841 | 0.966 | 0.888 | 0.909 | 0.879 |
+| All (unweighted) | 0.967 | 0.884 | 0.916 | 0.900 | 0.851 | 0.971 | 0.893 | 0.89 | 0.872 |
+| All (weighted) | 0.991 | 0.986 | 0.971 | 0.888 | 0.843 | 0.96 | 0.862 | 0.895 | 0.853 |
+
+### Analysis
+
+The results show strong performance when evaluated on the same dataset. However, models did very poorly when evaluated on other datasets, showing lackluster cross-dataset generalization. This concept is known as a *domain shift*, which is when a model is highly sensitive to each dataset's specific qualities/backgrounds. This could be caused due to how different the makeups of the datasets are, or could just be a challenge of image detection.
+
+Below is a heatmap that shows this gap between models trained on both individual and combined datasets. There is a clear diagonal pattern, showing this trend cleary, and showing how it applies to all of the models and datasets. 
+
+![Visual Heatmap](cross_generalization_heatmap.png)
+
+These findings suggest that when trying to deploy a model to detect drones on foreign data, the best course of action is to train a model on a variety of different datasets. The combined dataset results show that unweighted models performed better than the weighted ones, leading to the conclusion that small amounts of data from one dataset is perfectly fine, as long as the images are high quality.  
+
+The results also show that thermal models generalize slightly better than visual ones, possibly due to less variation in color signature, making the thermal modality a solid replacement to regular RGB/visual cameras. While the thermal modality is quite new in the drone detection space, these findings suggest that it could lead to more accurate results.
+
+# Conclusion
+
+The following section reflects on this project as a whole and goes into detail about what worked and what didn't, the main skills that were developed, and future work.
+
+## What Went Well
+
+Overall, a lot went well on this project, being able to produce interesting findings on a tough detection problem. The main highlights are below:
+
+- Moving to the Virginia Tech ARC Cluster from Google Colab was a huge win and saved a bunch of time and money on training models, especially when more datasets and model combination was added.
+- Using YOLO was a great choice for this application, as training is really easy to run and the format is standardized. YOLO helped make preprocessing easy because the end goal was just to get the data in the correct directory structure, and for the most part YOLO handled the rest.
+- Data exploration at the start of the project really helped to shape the kind of data that should be used and what gaps each dataset had. This was probably the most important part of the project, as it shaped the future datasets and ensured that the model was trained on robust quality data.
+
+## What Went Wrong
+
+- Trying to get a model trained on one dataset to generalize was a big hurdle, since generalization is such a big aspect of this problem, but it helped to shape future work in adding more datasets and understanding how to overcome the domain shift. The domain shift is a problem in all projects in drone detection, not just this one.
+- Significant time was spent preprocessing and researching/trying to get access to datasets. For example, a big chunk of time was spent trying to decode .mat files in MATLAB when initial Python dependencies didn't help. However, in the Halmstad dataset README, it explained clearly to use mcos-decoder.
+- As the end of the semester arrived, the ARC Cluster got busier and busier, leading to delays in producing final combined weights for deployment. This delay also limited the additional work that could have been done, such as hyperparameter fine-tuning.
+
+## What Was Learned
+
+### Process
+
+- Test set accuracy is only accurate if it comes from the same source as training data. If the model's deployment scenario is unknown or differs greatly from the test set, accuracy isn't a valid metric to determine success.
+- Combining datasets is super valuable for this use case and lead to a robust model that would effectively track drones across all datasets.
+- Thermal imagery, while not as explored as RGB, is as useful if not more useful that visual data for this use case, and should be explored more to test if it should become a primary modality in drone detection.
+- It is important to not sample every frame of a video from a dataset but sample in intervals so the model doesn't get overtrained on virtually the same image. This is supported by the drop in accuracy when dataset weighting was introduced.
+
+### Personal
+
+- Code that is modular and parameterizable is extremely effective as it allows seamless transitions between machines and makes adding new parameters easy without having to change existing code.
+- Developed more skills with GitHub, specifically on submitting and reviewing pull requests.
+- Learned more about file manipulation specifically in Python instead of using more primative bash scripts.
+
+### Future Work
+
+- Continue analysis on combined datasets to determine how successful the models were at limiting false positives.
+- Tune visual_all and thermal_all (unweighted) models on different YOLO model sizes, resolution, augmentation, and more.
+- Refactor the training script to allow model size to be parameterizable and to prevent the script from downloading the base model weights every time/
+- Add more datasets and test different types of models other than YOLO.
+- Determine the confidence thresholds that reduce false positives without missing drones.
