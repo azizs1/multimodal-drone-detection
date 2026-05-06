@@ -186,7 +186,7 @@ The frontend dashboard is built with:
 Current routes:
 - `/live-feed`
 - `/incidents`
-- `/settings`
+- `/system-info`
 
 Theme support:
 - Light / Dark toggle is available in the top navigation bar.
