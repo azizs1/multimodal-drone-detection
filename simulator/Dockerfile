@@ -1,5 +1,5 @@
 # Dockerfile for running video ingestion with uv
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -11,19 +11,17 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:0.4.27 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.9.14 /uv /usr/local/bin/uv
 
 # Set working directory
-WORKDIR /app
+WORKDIR /app/simulator
 
-# Copy workspace configuration from root
-COPY pyproject.toml uv.lock* /app/
-
-# Copy simulator package
+# Copy simulator project metadata and source
+COPY simulator/pyproject.toml ./pyproject.toml
 COPY simulator /app/simulator
 
 # Install dependencies using uv
-RUN cd simulator && uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 # Environment variables for video paths and settings
 ENV RGB_VIDEO_PATH=videos/visible.mp4
@@ -34,9 +32,6 @@ ENV RGB_WIDTH=1280
 ENV RGB_HEIGHT=720
 ENV THERMAL_WIDTH=160
 ENV THERMAL_HEIGHT=120
-
-# Set working directory to simulator
-WORKDIR /app/simulator
 
 # Run video ingestion
 CMD ["uv", "run", "python3", "-m", "src.video_ingestion"]

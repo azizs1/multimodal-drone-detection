@@ -46,6 +46,9 @@ services:
       - "9001:9001" # Console
     volumes:
       - ./storage:/data
+    environment:
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
     networks:
       - drone-network
     command: /data
@@ -58,26 +61,79 @@ services:
       dockerfile: simulator/Dockerfile
     container_name: stream-simulator
     environment:
-      - SIM_STREAM_MODE=rtsp
-      - SIM_STREAM_HOST=mediamtx
-      - SIM_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
-      - SIM_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
       - PLAYBACK_FPS=20
-      - SIM_STREAM_FPS=12
-      - SIM_VISUAL_OUT_WIDTH=640
-      - SIM_VISUAL_OUT_HEIGHT=360
-      - SIM_THERMAL_OUT_WIDTH=160
-      - SIM_THERMAL_OUT_HEIGHT=120
-      - SIM_X264_CRF=30
-      - SIM_X264_MAXRATE=900
-      - SIM_X264_BUFSIZE=900
-      - SIM_X264_KEYINT=12
       - LOOP_VIDEO=true
       - OPENCV_VIDEOIO_PRIORITY_FFMPEG=1000
     networks:
       - drone-network
     depends_on:
       - mediamtx
+    restart: always
+
+  # ML Inference (subscribes to ZeroMQ frames from simulator)
+  ml-inference:
+    build:
+      context: .
+      dockerfile: jetson/Dockerfile-dev
+    container_name: ml-inference
+    volumes:
+      - ./offline_ml/weights:/app/offline_ml/weights:ro
+    environment:
+      # ZeroMQ frame transport
+      - ZMQ_FRAME_CONNECT_ENDPOINT=tcp://stream-simulator:5560
+      - FUSION_ENDPOINT=http://fusion:8050/fusion/ingest
+      - FRAME_PAIR_TOLERANCE_MS=300
+      - RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt
+      - THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt
+      # RTSP publishing is always enabled in ml-inference
+      - INFERENCE_VISUAL_RTSP_URL=rtsp://mediamtx:8554/visual
+      - INFERENCE_THERMAL_RTSP_URL=rtsp://mediamtx:8554/thermal
+      # Output frame sizing
+      - INFERENCE_VISUAL_OUT_WIDTH=640
+      - INFERENCE_VISUAL_OUT_HEIGHT=360
+      - INFERENCE_THERMAL_OUT_WIDTH=160
+      - INFERENCE_THERMAL_OUT_HEIGHT=120
+      # Encoding parameters for RTSP output
+      - INFERENCE_X264_CRF=30
+      - INFERENCE_X264_MAXRATE=900
+      - INFERENCE_X264_BUFSIZE=900
+      - INFERENCE_X264_KEYINT=12
+    networks:
+      - drone-network
+    depends_on:
+      - mediamtx
+      - stream-simulator
+      - fusion
+      - rustfs
+    restart: always
+
+  # Fusion service (aggregates RGB/thermal predictions and posts to backend)
+  fusion:
+    build:
+      context: .
+      dockerfile: jetson/Dockerfile-dev
+    container_name: fusion
+    environment:
+      - FUSION_HOST=0.0.0.0
+      - FUSION_PORT=8050
+      - BACKEND_INCIDENT_ENDPOINT=http://backend:8000/incidents
+      - RUSTFS_ENDPOINT=http://rustfs:9000
+      - RUSTFS_PUBLIC_BASE_URL=http://localhost:9000
+      - RUSTFS_BUCKET=drone-detection
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+      - RUSTFS_SKIP_BOOTSTRAP=false
+      - RUSTFS_STARTUP_PROBE=true
+    ports:
+      - "8050:8050"
+    networks:
+      - drone-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    entrypoint: ["uv", "run", "python", "-m", "ml.fusion_service"]
     restart: always
 
   # Backend
@@ -92,6 +148,7 @@ services:
       - DATABASE_URL=postgresql://droneuser:dronepass@postgres:5432/drone_detection
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
+
       - POSTGRES_DB=drone_detection
       - POSTGRES_USER=droneuser
       - POSTGRES_PASSWORD=dronepass

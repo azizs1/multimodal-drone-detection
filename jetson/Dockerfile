@@ -41,7 +41,7 @@ COPY mediamtx.yml ./mediamtx.yml
 COPY pyproject.toml ./
 COPY src/ ./src/
 
-# MediaMTX ports: 
+# MediaMTX ports:
 # 8554: RTSP
 # 8888: HLS (backend proxy)
 # 8889: MediaMTX API

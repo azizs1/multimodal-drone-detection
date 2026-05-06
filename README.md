@@ -6,12 +6,13 @@ This MEng capstone project aims to build a drone detection system with an AI-ena
 
 ## Architecture
 
-The system consists of four main components:
+The system consists of five main components:
 
-1. **Simulator** - Video streamer that loops drone footage to RTSP
+1. **Simulator** - Video streamer that loops drone footage and publishes synchronized frames over ZeroMQ
 2. **MediaMTX** - RTSP/HLS media server that handles stream distribution
-3. **Backend** - FastAPI service providing REST API and stream information
-4. **Jetson** - Edge AI processing on Jetson Nano (ML + sensor ingestion)
+3. **Jetson Inference** - Edge AI detection and annotation on Jetson Nano (ML + ZeroMQ inference bridge)
+4. **Fusion** - Late-fusion service that aggregates modality predictions, uploads evidence to RustFS, and posts incidents
+5. **Backend** - FastAPI service providing REST APIs, stream information, and incident storage/query
 
 ### Streaming Pipeline
 
@@ -23,11 +24,22 @@ The streaming pipeline uses different encoders depending on the environment:
 | **Production (Jetson Nano)** | GStreamer | `docker-compose.jetson.yaml` | Hardware-accelerated encoding via NVENC on the Jetson Nano |
 
 ```
-[Simulator] --RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
-                           ^
-                           |
-                      [Backend API]
+[Simulator] --ZeroMQ--> [Jetson Inference] --HTTP--> [Fusion] --POST /incidents--> [Backend]
+   |                                           |
+   +--RTSP--> [MediaMTX] --HLS--> [Frontend]   +--Upload evidence--> [RustFS]
 ```
+
+### Incident Evidence Flow
+
+1. Jetson inference publishes per-modality predictions (RGB and thermal) to fusion.
+2. Fusion builds a fused decision and decodes annotated frame payloads from prediction metadata.
+3. Fusion uploads available annotated frames to RustFS and sets `media.rgb.frame_uri` and/or `media.thermal.frame_uri`.
+4. Fusion then POSTs the fused payload to backend `POST /incidents`.
+5. If RustFS upload fails, fusion logs the upload error and still posts the incident (non-fatal upload behavior).
+
+Fusion runtime logging now includes a pre-send line for incident posting:
+- `posting /incidents endpoint=... timestamp=... objects=... media=...`
+- `backend incident status=...`
 
 ## Quick Start
 
@@ -113,36 +125,27 @@ uv run pytest
 ## How to Use
 
 ### Simulator
-The simulator loops drone video footage over RTSP to the MediaMTX server using **FFmpeg**.
-
-- **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** (`libx264`, `ultrafast` preset) for software-based RTSP streaming. Works on any development machine without special hardware.
-- **Production (`docker-compose.jetson.yaml`):** Uses **GStreamer** with hardware-accelerated encoding on the **Jetson Nano**.
+The `stream-simulator` service reads paired RGB and thermal video files and publishes synchronized frame pairs over **ZeroMQ**. The Jetson inference service consumes those frames, runs detection, and publishes annotated RTSP streams to MediaMTX.
 
 **Directory:** `simulator/`
 
-The Docker Compose dev file launches **two simulator containers** — one per stream:
+The Docker Compose dev file launches a single `stream-simulator` container:
 
-| Container               | Stream Name | Video File          | RTSP URL                       |
-| ----------------------- | ----------- | ------------------- | ------------------------------ |
-| `gst-visual-simulator`  | `visual`    | `drone_visual.mp4`  | `rtsp://mediamtx:8554/visual`  |
-| `gst-thermal-simulator` | `thermal`   | `drone_thermal.mp4` | `rtsp://mediamtx:8554/thermal` |
-
-Both containers use the same Dockerfile; behavior is controlled by the `STREAM_NAME` and `VIDEO_FILE` environment variables.
+| Container          | Role                                        | Output                     |
+| ------------------ | ------------------------------------------- | -------------------------- |
+| `stream-simulator` | Publishes ZeroMQ frame pairs from video     | `tcp://*:5560` (ZMQ PUB)  |
+| `ml-inference`     | Runs YOLO detection + streams RTSP output   | `rtsp://mediamtx:8554/...` |
 
 **Configuration:**
 - Video files: Place `.mp4` files in `simulator/videos/`
 - Default videos: `drone_visual.mp4`, `drone_thermal.mp4`
+- Bind endpoint: `ZMQ_FRAME_BIND_ENDPOINT=tcp://*:5560`
 
 **Standalone Build:**
 ```bash
 cd simulator
 docker build -t drone-simulator .
-
-# Stream visual feed
-docker run --network host -e STREAM_NAME=visual -e VIDEO_FILE=drone_visual.mp4 drone-simulator
-
-# Stream thermal feed
-docker run --network host -e STREAM_NAME=thermal -e VIDEO_FILE=drone_thermal.mp4 drone-simulator
+docker run --network host drone-simulator
 ```
 
 ### MediaMTX (Streaming Server)

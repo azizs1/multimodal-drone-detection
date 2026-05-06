@@ -11,6 +11,7 @@ __pycache__/
 
 #rustfs
 .rustfs.sys/
+storage/drone-detection/*
 
 #IDE
 .vscode/*

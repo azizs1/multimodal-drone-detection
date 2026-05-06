@@ -10,6 +10,13 @@ class DebounceConfig:
 
 
 @dataclass
+class WindowConfig:
+    enabled: bool = True
+    window_width_seconds: float = 1.0
+    flush_interval_seconds: float = 1.0
+
+
+@dataclass
 class FusionConfig:
     weights: dict[str, float] = field(default_factory=lambda: {"rgb": 0.6, "thermal": 0.4})
     alert_threshold: float = 0.75
@@ -19,6 +26,7 @@ class FusionConfig:
     )
     eo_ir_required: bool = False  # set True to require thermal confirmation when available
     debounce: DebounceConfig = field(default_factory=DebounceConfig)
+    window: WindowConfig = field(default_factory=WindowConfig)
     topics: dict[str, str] = field(
         default_factory=lambda: {
             "rgb": "inference.rgb",

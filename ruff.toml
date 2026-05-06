@@ -14,8 +14,8 @@ exclude = [
 # Set line length
 line-length = 100
 
-# Target Python 3.12
-target-version = "py312"
+# Target Python 3.10 — constrained by JetPack 6.1 (Jetson hardware)
+target-version = "py310"
 
 [lint]
 # Enable recommended rules

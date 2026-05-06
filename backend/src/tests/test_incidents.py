@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from app.main import app
 from fastapi.testclient import TestClient
@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def _incident_payload(incident_id: str, decision: str = "drone", confidence: float = 0.83):
-    now_ts = datetime.now(UTC).timestamp()
+    now_ts = datetime.now(timezone.utc).timestamp()
     return {
         "incident_id": incident_id,
         "has_drone": decision == "drone",

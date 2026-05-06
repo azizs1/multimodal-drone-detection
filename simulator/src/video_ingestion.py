@@ -1,37 +1,13 @@
-"""
-Video ingestion for simulator - reads video files and populates shared buffer.
-
-This can be run standalone or imported as a module for use in your inference code.
-
-Example usage:
-    # Standalone
-    python -m src.video_ingestion
-
-    # In your inference code
-    from src.video_ingestion import start_ingestion
-    import threading
-
-    # Start ingestion in background thread
-    thread = threading.Thread(target=start_ingestion, daemon=True)
-    thread.start()
-
-    # Your inference code here
-    from src import buffer
-    while True:
-        frame_data = buffer.get()
-        if frame_data:
-            # Process frames...
-"""
+"""Video ingestion for simulator - reads video files and publishes frame pairs over ZeroMQ."""
 
 import logging
 import os
-import threading
 import time
 from pathlib import Path
 
 import cv2
 
-from . import buffer
+from .frame_pair_transport import DEFAULT_FRAME_PUB_BIND_ENDPOINT, encode_frame_pair
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +17,15 @@ DEFAULT_THERMAL_VIDEO = "videos/infrared.mp4"
 
 RGB_VIDEO_PATH = os.getenv("RGB_VIDEO_PATH", DEFAULT_RGB_VIDEO)
 THERMAL_VIDEO_PATH = os.getenv("THERMAL_VIDEO_PATH", DEFAULT_THERMAL_VIDEO)
-PLAYBACK_FPS = int(os.getenv("PLAYBACK_FPS", 30))
+PLAYBACK_FPS = int(os.getenv("PLAYBACK_FPS", "30"))
 LOOP_VIDEO = os.getenv("LOOP_VIDEO", "true").lower() == "true"
+ZMQ_FRAME_BIND_ENDPOINT = os.getenv("ZMQ_FRAME_BIND_ENDPOINT", DEFAULT_FRAME_PUB_BIND_ENDPOINT)
 
 # Target dimensions (matching jetson expectations)
-RGB_TARGET_WIDTH = int(os.getenv("RGB_WIDTH", 1280))
-RGB_TARGET_HEIGHT = int(os.getenv("RGB_HEIGHT", 720))
-THERMAL_TARGET_WIDTH = int(os.getenv("THERMAL_WIDTH", 160))
-THERMAL_TARGET_HEIGHT = int(os.getenv("THERMAL_HEIGHT", 120))
+RGB_TARGET_WIDTH = int(os.getenv("RGB_WIDTH", "1280"))
+RGB_TARGET_HEIGHT = int(os.getenv("RGB_HEIGHT", "720"))
+THERMAL_TARGET_WIDTH = int(os.getenv("THERMAL_WIDTH", "160"))
+THERMAL_TARGET_HEIGHT = int(os.getenv("THERMAL_HEIGHT", "120"))
 
 
 def resize_frame(frame, target_width, target_height):
@@ -66,7 +43,12 @@ def ensure_bgr(frame):
 
 
 def start_ingestion():
-    """Main ingestion function that can be called from other modules."""
+    """Main ingestion function that publishes synchronized frames over ZeroMQ."""
+    try:
+        import zmq
+    except ImportError as exc:  # pragma: no cover - runtime dependency
+        raise RuntimeError("pyzmq is required for simulator frame publishing.") from exc
+
     # Resolve video paths relative to simulator root
     script_dir = Path(__file__).parent.parent
     rgb_video_path = script_dir / RGB_VIDEO_PATH
@@ -97,6 +79,9 @@ def start_ingestion():
     if not thermal_cap.isOpened():
         raise RuntimeError(f"Failed to open thermal video: {thermal_video_path}")
 
+    context = None
+    pub_socket = None
+
     # Get video properties
     rgb_fps = rgb_cap.get(cv2.CAP_PROP_FPS)
     thermal_fps = thermal_cap.get(cv2.CAP_PROP_FPS)
@@ -117,9 +102,15 @@ def start_ingestion():
     max_sleep_time = 0
 
     print("Starting video ingestion... Press Ctrl+C to stop")
+    print(f"ZeroMQ publish endpoint: {ZMQ_FRAME_BIND_ENDPOINT}")
     print()
 
     try:
+        context = zmq.Context()
+        pub_socket = context.socket(zmq.PUB)
+        pub_socket.setsockopt(zmq.LINGER, 0)
+        pub_socket.bind(ZMQ_FRAME_BIND_ENDPOINT)
+
         while True:
             loop_start = time.time()
 
@@ -133,7 +124,7 @@ def start_ingestion():
             # Check if we've reached the end of either video
             if not rgb_ret or not thermal_ret:
                 if LOOP_VIDEO:
-                    logger.info(f"Reached end at frame {frame_count}, looping...")
+                    logger.info("Reached end at frame %s, looping...", frame_count)
                     rgb_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     thermal_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
@@ -149,9 +140,9 @@ def start_ingestion():
             rgb_frame = ensure_bgr(rgb_frame)
             thermal_frame = ensure_bgr(thermal_frame)
 
-            # Update shared buffer with timestamp (microseconds)
-            timestamp = int(time.time() * 1_000_000)
-            buffer.update(timestamp, rgb_frame, thermal_frame)
+            # Publish the synchronized frame pair over ZeroMQ.
+            timestamp = time.time()
+            pub_socket.send_multipart(encode_frame_pair(timestamp, rgb_frame, thermal_frame))
 
             frame_count += 1
 
@@ -163,12 +154,12 @@ def start_ingestion():
                     f"Frame {frame_count:6d} | "
                     f"Elapsed: {elapsed:6.1f}s | "
                     f"FPS: {fps:5.1f} | "
-                    f"Buffer updated"
+                    f"ZeroMQ frame-pair published"
                 )
 
             # Log slow frame reads
             if read_duration > 0.005:  # >5ms for frame read
-                logger.warning(f"Slow frame read: {read_duration * 1000:.1f}ms")
+                logger.warning("Slow frame read: %.1fms", read_duration * 1000)
 
             # Maintain playback rate
             if frame_delay > 0:
@@ -180,17 +171,18 @@ def start_ingestion():
                 elif elapsed_in_loop > frame_delay * 1.5:
                     # If we're running behind, log it
                     logger.warning(
-                        f"Ingestion lag: frame processing took {elapsed_in_loop * 1000:.1f}ms "
-                        f"(expected {frame_delay * 1000:.1f}ms)"
+                        "Ingestion lag: frame processing took %.1fms (expected %.1fms)",
+                        elapsed_in_loop * 1000,
+                        frame_delay * 1000,
                     )
 
             # Log lag stats periodically
             now = time.time()
             if now - last_lag_report > 10.0:
                 logger.info(
-                    f"Ingestion stats: "
-                    f"max_frame_read={max_frame_read_time * 1000:.1f}ms, "
-                    f"max_sleep={max_sleep_time * 1000:.1f}ms"
+                    "Ingestion stats: max_frame_read=%.1fms, max_sleep=%.1fms",
+                    max_frame_read_time * 1000,
+                    max_sleep_time * 1000,
                 )
                 max_frame_read_time = 0
                 max_sleep_time = 0
@@ -202,6 +194,10 @@ def start_ingestion():
     finally:
         rgb_cap.release()
         thermal_cap.release()
+        if pub_socket is not None:
+            pub_socket.close()
+        if context is not None:
+            context.term()
         elapsed = time.time() - start_time
         avg_fps = frame_count / elapsed if elapsed > 0 else 0
         print()
@@ -215,24 +211,7 @@ def start_ingestion():
 
 
 def main():
-    """Entry point for module execution.
-
-    Starts inference in the background and ingestion in the foreground.
-    """
-    # Import here to avoid circular imports
-    try:
-        from .inference import run_inference
-
-        # Start inference in background thread
-        inference_thread = threading.Thread(target=run_inference, daemon=True)
-        inference_thread.start()
-
-        # Give inference time to initialize
-        time.sleep(0.5)
-    except ImportError as exc:
-        print(f"Warning: failed to import inference module ({exc}), running ingestion only")
-
-    # Run ingestion in main thread
+    """Entry point for module execution."""
     start_ingestion()
 
 
