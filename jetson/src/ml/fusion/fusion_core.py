@@ -46,6 +46,7 @@ class FusionEngine:
             gating_reason=reason,
             latency_ms=latency_ms,
             objects=self._objects_from_preds(filtered),
+            timestamp=max(p.timestamp for p in filtered),
         )
         self.fused_history.append(fused)
 

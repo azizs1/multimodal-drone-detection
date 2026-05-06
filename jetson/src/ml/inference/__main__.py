@@ -17,14 +17,82 @@ import zmq
 from .adapters import adapt_yolo_results
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/visual_no_augmentation_best.pt"
-DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/thermal_no_augmentation_best.pt"
+DEFAULT_RGB_MODEL_PATH = REPO_ROOT / "offline_ml/weights/anti_uav_visual_best.pt"
+DEFAULT_THERMAL_MODEL_PATH = REPO_ROOT / "offline_ml/weights/anti_uav_thermal_best.pt"
 DEFAULT_FUSION_ENDPOINT = "http://127.0.0.1:8050/fusion/ingest"
 DEFAULT_BACKEND_INCIDENT_ENDPOINT = "http://127.0.0.1:8000/incidents"
 DEFAULT_RGB_VIDEO_PATH = REPO_ROOT / "simulator/videos/visible.mp4"
 DEFAULT_THERMAL_VIDEO_PATH = REPO_ROOT / "simulator/videos/infrared.mp4"
 DEFAULT_FRAME_PAIR_TOLERANCE_MS = 100.0
 DEFAULT_BACKEND_POST_QUEUE_SIZE = 256
+
+
+def _draw_fused_boxes(frame, fused_decision: dict | None, modality: str):
+    if fused_decision is None:
+        return frame
+
+    try:
+        import cv2
+    except ImportError:
+        return frame
+
+    annotated = frame.copy()
+    objects = fused_decision.get("objects") or []
+    color = (0, 255, 0) if modality == "rgb" else (0, 165, 255)
+
+    height, width = annotated.shape[:2]
+    for obj in objects:
+        if obj.get("modality") != modality:
+            continue
+        bbox = obj.get("bbox")
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            continue
+
+        x1, y1, x2, y2 = [int(round(float(v))) for v in bbox]
+        x1 = max(0, min(width - 1, x1))
+        y1 = max(0, min(height - 1, y1))
+        x2 = max(0, min(width - 1, x2))
+        y2 = max(0, min(height - 1, y2))
+        if x2 <= x1 or y2 <= y1:
+            continue
+
+        cls_name = str(obj.get("class_id", "obj"))
+        conf = obj.get("confidence")
+        if isinstance(conf, (int, float)):
+            label = f"{cls_name} {float(conf):.2f}"
+        else:
+            label = cls_name
+
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(
+            annotated,
+            label,
+            (x1, max(15, y1 - 6)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            2,
+            cv2.LINE_AA,
+        )
+
+    decision = fused_decision.get("decision")
+    score = fused_decision.get("fused_confidence")
+    if decision is not None:
+        text = f"decision={decision}"
+        if isinstance(score, (int, float)):
+            text += f" conf={float(score):.2f}"
+        cv2.putText(
+            annotated,
+            text,
+            (10, 24),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
+
+    return annotated
 
 
 def _load_models():
@@ -138,23 +206,19 @@ def _infer_and_send(
     thermal_frame,
     fusion_endpoint: str,
     backend_publisher: BackendIncidentPublisher | None,
-    pair_tolerance_ms: float,
     frame_index: int,
+    pair_id: str,
+    pair_timestamp: float,
+    sync_ok: bool,
+    rgb_capture_ts: float | None = None,
+    thermal_capture_ts: float | None = None,
+    publishers=None,
 ) -> None:
-    rgb_ts = time.time()
-    rgb_result = rgb_model(rgb_frame, verbose=False)[0]
-    thermal_ts = time.time()
-    thermal_result = thermal_model(thermal_frame, verbose=False)[0]
+    rgb_ts = rgb_capture_ts if rgb_capture_ts is not None else pair_timestamp
+    thermal_ts = thermal_capture_ts if thermal_capture_ts is not None else pair_timestamp
 
-    if not _within_pair_tolerance(
-        rgb_ts=rgb_ts, thermal_ts=thermal_ts, tolerance_ms=pair_tolerance_ms
-    ):
-        print(
-            "skipping unpaired frame: "
-            f"rgb_ts={rgb_ts:.6f} thermal_ts={thermal_ts:.6f} "
-            f"tolerance_ms={pair_tolerance_ms}"
-        )
-        return
+    rgb_result = rgb_model(rgb_frame, verbose=False)[0]
+    thermal_result = thermal_model(thermal_frame, verbose=False)[0]
 
     rgb_predictions = adapt_yolo_results(
         modality="rgb",
@@ -173,12 +237,23 @@ def _infer_and_send(
     frame_id = f"frame-{frame_index:06d}"
     for pred in rgb_predictions + thermal_predictions:
         pred.meta["frame_id"] = frame_id
+        pred.meta["pair_id"] = pair_id
+        pred.meta["pair_timestamp"] = f"{pair_timestamp:.6f}"
+        pred.meta["sync_ok"] = "true" if sync_ok else "false"
 
     payload = [pred.model_dump() for pred in rgb_predictions + thermal_predictions]
+    fused_decision = None
     if payload:
         fused_decision = _post_to_fusion(fusion_endpoint=fusion_endpoint, payload=payload)
         if fused_decision and backend_publisher is not None:
             backend_publisher.publish(fused_decision)
+
+    if publishers is not None:
+        rgb_publisher, thermal_publisher = publishers
+        rgb_frame_out = _draw_fused_boxes(rgb_frame, fused_decision, modality="rgb")
+        thermal_frame_out = _draw_fused_boxes(thermal_frame, fused_decision, modality="thermal")
+        rgb_publisher.publish(rgb_frame_out)
+        thermal_publisher.publish(thermal_frame_out)
 
 
 def _iter_video_frames(rgb_video_path: Path, thermal_video_path: Path):
@@ -212,7 +287,7 @@ def main() -> int:
     socket.connect("ipc:///tmp/frame_bus")
     socket.setsockopt(zmq.SUBSCRIBE, b"rgb")
     socket.setsockopt(zmq.SUBSCRIBE, b"thermal")
-    current_frames = {"rgb": None, "thermal": None}
+    current_frames: dict[str, dict[str, object] | None] = {"rgb": None, "thermal": None}
 
     fusion_endpoint = os.getenv("FUSION_ENDPOINT", DEFAULT_FUSION_ENDPOINT)
     backend_incident_endpoint = os.getenv(
@@ -224,7 +299,7 @@ def main() -> int:
     pair_tolerance_ms = float(
         os.getenv("FRAME_PAIR_TOLERANCE_MS", str(DEFAULT_FRAME_PAIR_TOLERANCE_MS))
     )
-    source_mode = os.getenv("INFERENCE_SOURCE", "idle").lower()
+    source_mode = os.getenv("INFERENCE_SOURCE", "stream").lower()
     print("ml.inference starting")
     print(f"fusion endpoint: {fusion_endpoint}")
     print(f"backend incidents endpoint: {backend_incident_endpoint}")
@@ -237,12 +312,36 @@ def main() -> int:
     print(f"rgb classes: {getattr(rgb_model, 'names', {})}")
     print(f"thermal classes: {getattr(thermal_model, 'names', {})}")
     backend_publisher: BackendIncidentPublisher | None = None
+    publishers = None
+    publishers_unavailable = False
     if backend_incident_endpoint:
         backend_publisher = BackendIncidentPublisher(
             backend_endpoint=backend_incident_endpoint,
             queue_size=backend_post_queue_size,
         )
         backend_publisher.start()
+
+    def _ensure_publishers(rgb_frame, thermal_frame):
+        nonlocal publishers, publishers_unavailable
+        if publishers_unavailable:
+            return
+        if publishers is None:
+            try:
+                from .frame_publisher import build_publishers
+            except ImportError as exc:
+                publishers_unavailable = True
+                print(
+                    "frame publisher unavailable; continuing without fused stream overlay publish: "
+                    f"{exc}"
+                )
+                return
+            publishers = build_publishers(
+                rgb_shape=rgb_frame.shape,
+                thermal_shape=thermal_frame.shape,
+                fps=int(os.getenv("INFERENCE_STREAM_FPS", "20")),
+            )
+            publishers[0].start()
+            publishers[1].start()
 
     try:
         if source_mode == "videos":
@@ -258,6 +357,8 @@ def main() -> int:
             frame_count = 0
             for rgb_frame, thermal_frame in _iter_video_frames(rgb_video_path, thermal_video_path):
                 frame_count += 1
+                pair_timestamp = time.time()
+                _ensure_publishers(rgb_frame, thermal_frame)
                 _infer_and_send(
                     rgb_model=rgb_model,
                     thermal_model=thermal_model,
@@ -265,8 +366,11 @@ def main() -> int:
                     thermal_frame=thermal_frame,
                     fusion_endpoint=fusion_endpoint,
                     backend_publisher=backend_publisher,
-                    pair_tolerance_ms=pair_tolerance_ms,
                     frame_index=frame_count,
+                    pair_id=f"pair-{frame_count:06d}",
+                    pair_timestamp=pair_timestamp,
+                    sync_ok=True,
+                    publishers=publishers,
                 )
                 if max_frames > 0 and frame_count >= max_frames:
                     break
@@ -274,6 +378,7 @@ def main() -> int:
             return 0
 
         print("waiting for frame source integration (sensor ingestion -> inference bridge)")
+        frame_index = 0
 
         while True:
             # multipart: [topic, meta_json, raw_bytes]
@@ -287,7 +392,8 @@ def main() -> int:
 
             print(f"[{modality}] frame received: shape={frame.shape}")
 
-            current_frames[modality] = frame
+            capture_ts = float(meta.get("timestamp", time.time()))
+            current_frames[modality] = {"frame": frame, "timestamp": capture_ts}
 
             if current_frames["rgb"] is not None and current_frames["thermal"] is not None:
                 print("both frames ready")
@@ -300,12 +406,44 @@ def main() -> int:
                 # cv2.imshow(f"inference_thermal", preview)
                 # cv2.waitKey(1)
 
+                rgb_frame = current_frames["rgb"]["frame"]
+                thermal_frame = current_frames["thermal"]["frame"]
+                rgb_ts = float(current_frames["rgb"]["timestamp"])
+                thermal_ts = float(current_frames["thermal"]["timestamp"])
+
+                frame_index += 1
+                pair_id = f"pair-{frame_index:06d}"
+                pair_timestamp = max(rgb_ts, thermal_ts)
+                sync_ok = _within_pair_tolerance(
+                    rgb_ts=rgb_ts,
+                    thermal_ts=thermal_ts,
+                    tolerance_ms=pair_tolerance_ms,
+                )
+
+                if not sync_ok:
+                    print(
+                        "skipping unpaired frame from sensor timestamps: "
+                        f"pair_id={pair_id} rgb_ts={rgb_ts:.6f} "
+                        f"thermal_ts={thermal_ts:.6f} tolerance_ms={pair_tolerance_ms}"
+                    )
+                    current_frames = {"rgb": None, "thermal": None}
+                    continue
+
+                _ensure_publishers(rgb_frame, thermal_frame)
                 _infer_and_send(
-                    rgb_model,
-                    thermal_model,
-                    current_frames["rgb"],
-                    current_frames["thermal"],
-                    fusion_endpoint,
+                    rgb_model=rgb_model,
+                    thermal_model=thermal_model,
+                    rgb_frame=rgb_frame,
+                    thermal_frame=thermal_frame,
+                    fusion_endpoint=fusion_endpoint,
+                    backend_publisher=backend_publisher,
+                    frame_index=frame_index,
+                    pair_id=pair_id,
+                    pair_timestamp=pair_timestamp,
+                    sync_ok=sync_ok,
+                    rgb_capture_ts=rgb_ts,
+                    thermal_capture_ts=thermal_ts,
+                    publishers=publishers,
                 )
                 current_frames = {"rgb": None, "thermal": None}
 
@@ -315,6 +453,9 @@ def main() -> int:
     finally:
         if backend_publisher is not None:
             backend_publisher.stop()
+        if publishers is not None:
+            publishers[0].stop()
+            publishers[1].stop()
 
 
 if __name__ == "__main__":
