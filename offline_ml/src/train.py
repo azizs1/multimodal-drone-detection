@@ -13,7 +13,7 @@ def parse_args():
         "--project", type=str, default="../runs", help="Path to save training outputs"
     )
     parser.add_argument(
-        "--model", type=str, default="../weights/yolov8n.pt", help="YOLO model size"
+        "--model", type=str, default="../weights/yolo26n.pt", help="YOLO model size"
     )
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     return parser.parse_args()
@@ -27,19 +27,31 @@ def train(args):
     project_dir = Path(args.project).resolve()
 
     # Save specific datasets that should all be trained with YOLOv8.
-    # These can be changed in the future, but the train.py code will have to be modified.
+    # ADD ADDITIONAL DATASETS HERE.
     datasets = [
         {
             "data": data_dir / "zenodo_visual_no_augmentation/data.yaml",
-            "name": "visual_no_augmentation_baseline",
+            "name": "zenodo_visual_baseline",
         },
         {
             "data": data_dir / "zenodo_thermal_no_augmentation/data.yaml",
-            "name": "thermal_no_augmentation_baseline",
+            "name": "zenodo_thermal_baseline",
         },
         {
-            "data": data_dir / "zenodo_thermal_augmented/data.yaml",
-            "name": "thermal_augmented_baseline",
+            "data": data_dir / "anti_uav_visual_no_augmentation/data.yaml",
+            "name": "anti_uav_visual_baseline",
+        },
+        {
+            "data": data_dir / "anti_uav_thermal_no_augmentation/data.yaml",
+            "name": "anti_uav_thermal_baseline",
+        },
+        {
+            "data": data_dir / "halmstad_visual_no_augmentation/data.yaml",
+            "name": "halmstad_visual_baseline",
+        },
+        {
+            "data": data_dir / "halmstad_thermal_no_augmentation/data.yaml",
+            "name": "halmstad_thermal_baseline",
         },
     ]
 
