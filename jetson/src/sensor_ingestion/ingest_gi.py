@@ -25,6 +25,9 @@ from gi.repository import GLib, Gst  # noqa: E402
 
 load_dotenv()
 
+RGB_DEVICE = "/dev/video0"
+THERMAL_DEVICE = "/dev/video2"
+
 send_lock = threading.Lock()
 
 # init zeromq
@@ -69,7 +72,7 @@ def build_gst_pipeline():
 
     rgb_src = Gst.ElementFactory.make("v4l2src", "rgb_src")
     # double-check with v4l2-ctl that this is the right device for rgb
-    rgb_src.set_property("device", "/dev/video0")
+    rgb_src.set_property("device", RGB_DEVICE)
 
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
     # not specifying dimensions, we do that in scale_caps
@@ -127,13 +130,17 @@ def build_gst_pipeline():
     rgb_udp_sink.set_property("qos", False)
 
     # thermal source (currently test)
-    thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
-    thermal_src.set_property("pattern", 18)
-    thermal_src.set_property("is-live", True)
+    # thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
+    # thermal_src.set_property("pattern", 18)
+    # thermal_src.set_property("is-live", True)
+
+    thermal_src = Gst.ElementFactory.make("v4l2src", "thermal_src")
+    # double-check with v4l2-ctl that this is the right device for rgb
+    thermal_src.set_property("device", THERMAL_DEVICE)
 
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
     thermal_caps.set_property(
-        "caps", Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1")
+        "caps", Gst.Caps.from_string("video/x-raw,format=Y16,width=256,height=192,framerate=25/1")
     )
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
@@ -143,7 +150,9 @@ def build_gst_pipeline():
     thermal_inf_convert = Gst.ElementFactory.make("videoconvert", "thermal_inf_convert")
 
     thermal_inf_bgr_caps = Gst.ElementFactory.make("capsfilter", "thermal_inf_bgr_caps")
-    thermal_inf_bgr_caps.set_property("caps", Gst.Caps.from_string("video/x-raw,format=BGR"))
+    thermal_inf_bgr_caps.set_property(
+        "caps", Gst.Caps.from_string("video/x-raw,format=BGR,width=256,height=192")
+    )
 
     thermal_appsink = Gst.ElementFactory.make("appsink", "thermal_appsink")
     thermal_appsink.set_property("emit-signals", True)
@@ -154,6 +163,11 @@ def build_gst_pipeline():
     # thermal to webrtc (live stream)
     thermal_rtp_queue = Gst.ElementFactory.make("queue", "thermal_rtp_queue")
     thermal_rtp_convert = Gst.ElementFactory.make("videoconvert", "thermal_rtp_convert")
+
+    thermal_rtp_caps = Gst.ElementFactory.make("capsfilter", "thermal_rtp_caps")
+    thermal_rtp_caps.set_property(
+        "caps", Gst.Caps.from_string("video/x-raw,format=I420,width=256,height=192")
+    )
 
     # same as before, we use sw encoder
     thermal_encoder = Gst.ElementFactory.make("x264enc", "thermal_encoder")
@@ -202,6 +216,7 @@ def build_gst_pipeline():
         thermal_appsink,
         thermal_rtp_queue,
         thermal_rtp_convert,
+        thermal_rtp_caps,
         thermal_encoder,
         thermal_ts_mux,
         thermal_udp_sink,
