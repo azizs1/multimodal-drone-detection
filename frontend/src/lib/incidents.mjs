@@ -32,6 +32,11 @@
  *   decision: IncidentDecision;
  *   alertLevel: IncidentConfidenceBand;
  *   fusedConfidence: number;
+ *   avgFusedConfidence: number | null;
+ *   frameCount: number | null;
+ *   droneFrameCount: number | null;
+ *   lastSeenAt: string | null;
+ *   isAggregated: boolean;
  * }} IncidentTableRow
  */
 
@@ -82,6 +87,15 @@
  *   thermalMedia: IncidentMediaReference;
  *   thresholds: IncidentThresholdItem[];
  *   objects: IncidentObjectSummary[];
+ *   isAggregated: boolean;
+ *   startedAt: string | null;
+ *   lastSeenAt: string | null;
+ *   endedAt: string | null;
+ *   avgFusedConfidence: number | null;
+ *   frameCount: number | null;
+ *   droneFrameCount: number | null;
+ *   representativeIncidentId: string | null;
+ *   rawIncidentIds: string[];
  * }} IncidentDetailPanelData
  */
 
@@ -152,7 +166,9 @@ function toDisplayValue(value) {
  * @returns {IncidentThresholdItem[]}
  */
 function mapThresholdItems(thresholds) {
-  const entries = Object.entries(thresholds ?? {});
+  const entries = Object.entries(thresholds ?? {}).filter(
+    ([key]) => key !== "aggregation_window_seconds" && key !== "drone_gap_seconds",
+  );
 
   if (entries.length === 0) {
     return [];
@@ -236,15 +252,38 @@ function mapMediaReference(mediaRef) {
 
 /**
  * @param {IncidentResponse} incident
+ * @returns {string}
+ */
+export function getIncidentDisplayId(incident) {
+  return incident.aggregate_id ?? incident.incident_id;
+}
+
+/**
+ * @param {IncidentResponse} incident
+ * @returns {string}
+ */
+function getIncidentDisplayTimestamp(incident) {
+  return incident.started_at ?? incident.detected_at;
+}
+
+/**
+ * @param {IncidentResponse} incident
  * @returns {IncidentTableRow}
  */
 export function mapIncidentResponseToRow(incident) {
   return {
-    incidentId: incident.incident_id,
-    detectedAt: incident.detected_at,
+    incidentId: getIncidentDisplayId(incident),
+    detectedAt: getIncidentDisplayTimestamp(incident),
     decision: incident.decision,
     alertLevel: incident.alert_level,
     fusedConfidence: incident.fused_confidence,
+    avgFusedConfidence:
+      typeof incident.avg_fused_confidence === "number" ? incident.avg_fused_confidence : null,
+    frameCount: typeof incident.frame_count === "number" ? incident.frame_count : null,
+    droneFrameCount:
+      typeof incident.drone_frame_count === "number" ? incident.drone_frame_count : null,
+    lastSeenAt: incident.last_seen_at ?? null,
+    isAggregated: typeof incident.aggregate_id === "string",
   };
 }
 
@@ -253,9 +292,11 @@ export function mapIncidentResponseToRow(incident) {
  * @returns {IncidentDetailPanelData}
  */
 export function mapIncidentResponseToDetail(incident) {
+  const isAggregated = typeof incident.aggregate_id === "string";
+
   return {
-    id: incident.incident_id,
-    timestamp: incident.detected_at,
+    id: getIncidentDisplayId(incident),
+    timestamp: getIncidentDisplayTimestamp(incident),
     fusedConfidence: incident.fused_confidence,
     confidenceBand: formatConfidenceBand(incident.confidence_band),
     decision: incident.decision === "drone" ? "Drone" : "No Drone",
@@ -269,6 +310,20 @@ export function mapIncidentResponseToDetail(incident) {
     thermalMedia: mapMediaReference(incident.media?.thermal),
     thresholds: mapThresholdItems(incident.thresholds),
     objects: mapObjectSummaries(incident.objects),
+    isAggregated,
+    startedAt: incident.started_at ?? null,
+    lastSeenAt: incident.last_seen_at ?? null,
+    endedAt: incident.ended_at ?? null,
+    avgFusedConfidence:
+      typeof incident.avg_fused_confidence === "number" ? incident.avg_fused_confidence : null,
+    frameCount: typeof incident.frame_count === "number" ? incident.frame_count : null,
+    droneFrameCount:
+      typeof incident.drone_frame_count === "number" ? incident.drone_frame_count : null,
+    representativeIncidentId:
+      typeof incident.representative_incident_id === "string"
+        ? incident.representative_incident_id
+        : null,
+    rawIncidentIds: Array.isArray(incident.raw_incident_ids) ? incident.raw_incident_ids : [],
   };
 }
 
@@ -308,5 +363,14 @@ export function mapIncidentRowToDetail(row) {
     },
     thresholds: [],
     objects: [],
+    isAggregated: false,
+    startedAt: null,
+    lastSeenAt: null,
+    endedAt: null,
+    avgFusedConfidence: null,
+    frameCount: null,
+    droneFrameCount: null,
+    representativeIncidentId: null,
+    rawIncidentIds: [],
   };
 }

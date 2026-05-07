@@ -13,6 +13,10 @@ class StreamInfo(BaseModel):
     description: str = Field(..., description="Stream description")
     rtsp_url: str = Field(..., description="RTSP streaming URL")
     hls_url: str = Field(..., description="HLS streaming URL")
+    webrtc_url: str | None = Field(None, description="MediaMTX WebRTC viewer URL")
+    width: int | None = Field(None, ge=1, description="Stream frame width in pixels")
+    height: int | None = Field(None, ge=1, description="Stream frame height in pixels")
+    fps: int | None = Field(None, ge=1, description="Expected stream frames per second")
     status: Literal["active", "inactive", "error"] = Field(..., description="Stream status")
 
     model_config = ConfigDict(
@@ -22,6 +26,10 @@ class StreamInfo(BaseModel):
                 "description": "Main drone detection stream",
                 "rtsp_url": "rtsp://mediamtx:8554/drone",
                 "hls_url": "http://mediamtx:8888/drone/index.m3u8",
+                "webrtc_url": "http://mediamtx:9998/drone/",
+                "width": 1280,
+                "height": 720,
+                "fps": 15,
                 "status": "active",
             }
         }
@@ -169,6 +177,42 @@ class IncidentResponse(BaseModel):
     is_confirmed: bool
     fused_confidence: float
     stream_name: str
+    primary_frame_url: str | None = None
+    primary_thumbnail_url: str | None = None
+    per_modality_scores: dict[Modality, float]
+    thresholds: dict[str, float]
+    gating_reason: str
+    latency_ms: float
+    evidence: dict[Modality, FusionModalityPrediction | None]
+    media: dict[Modality, FusionMediaRef | None]
+    objects: list[FusionObjectConfidence]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class IncidentAggregateResponse(BaseModel):
+    id: UUID = Field(..., description="Unique aggregate row id")
+    aggregate_id: str
+    incident_id: str = Field(..., description="Compatibility id for incident views")
+    stream_name: str
+    started_at: datetime
+    last_seen_at: datetime
+    ended_at: datetime | None = None
+    detected_at: datetime = Field(..., description="Compatibility timestamp for incident views")
+    source_timestamp: float = Field(..., description="Last seen timestamp as Unix epoch seconds")
+    decision: Decision
+    has_drone: bool
+    confidence_band: ConfidenceBand
+    alert_level: ConfidenceBand
+    is_confirmed: bool
+    fused_confidence: float
+    avg_fused_confidence: float
+    frame_count: int
+    drone_frame_count: int
+    representative_incident_id: str
+    raw_incident_ids: list[str]
     primary_frame_url: str | None = None
     primary_thumbnail_url: str | None = None
     per_modality_scores: dict[Modality, float]

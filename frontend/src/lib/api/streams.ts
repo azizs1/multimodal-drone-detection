@@ -5,6 +5,10 @@ export type StreamInfo = {
   description: string;
   rtsp_url: string;
   hls_url: string;
+  webrtc_url?: string | null;
+  width?: number | null;
+  height?: number | null;
+  fps?: number | null;
   status: StreamStatus;
 };
 

@@ -1,0 +1,71 @@
+services:
+  postgres:
+    build:
+      context: ./sql
+      dockerfile: Dockerfile
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=drone_detection
+      - POSTGRES_USER=droneuser
+      - POSTGRES_PASSWORD=dronepass
+    networks:
+      - drone-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U droneuser -d drone_detection"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://droneuser:dronepass@postgres:5432/drone_detection
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=drone_detection
+      - POSTGRES_USER=droneuser
+      - POSTGRES_PASSWORD=dronepass
+      - STREAM_RTSP_BASE_URL=${STREAM_RTSP_BASE_URL:-rtsp://10.0.0.95:8554}
+      - STREAM_HLS_BASE_URL=${STREAM_HLS_BASE_URL:-http://10.0.0.95:8888}
+      - STREAM_WEBRTC_BASE_URL=${STREAM_WEBRTC_BASE_URL:-http://10.0.0.95:9998}
+      - VISUAL_STREAM_WIDTH=${VISUAL_STREAM_WIDTH:-1280}
+      - VISUAL_STREAM_HEIGHT=${VISUAL_STREAM_HEIGHT:-720}
+      - VISUAL_STREAM_FPS=${VISUAL_STREAM_FPS:-15}
+      - THERMAL_STREAM_WIDTH=${THERMAL_STREAM_WIDTH:-160}
+      - THERMAL_STREAM_HEIGHT=${THERMAL_STREAM_HEIGHT:-120}
+      - THERMAL_STREAM_FPS=${THERMAL_STREAM_FPS:-15}
+    networks:
+      - drone-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - drone-network
+    depends_on:
+      - backend
+    restart: always
+
+networks:
+  drone-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

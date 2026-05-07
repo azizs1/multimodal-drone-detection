@@ -1,4 +1,5 @@
 import logging
+import os
 
 import httpx
 from fastapi import APIRouter, HTTPException, status
@@ -23,29 +24,85 @@ def _resolve_hls_content_type(file_path: str, upstream_content_type: str | None)
     return "application/octet-stream"
 
 
+def _base_url(env_name: str, default: str) -> str:
+    return os.getenv(env_name, default).rstrip("/")
+
+
+def _int_env(env_name: str, default: int) -> int:
+    raw_value = os.getenv(env_name)
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except ValueError:
+        logging.warning("Invalid integer for %s=%r; using %s", env_name, raw_value, default)
+        return default
+    return value if value > 0 else default
+
+
+def _stream_info(
+    stream_name: str,
+    description: str,
+    *,
+    width: int,
+    height: int,
+    fps: int,
+) -> StreamInfo:
+    rtsp_base_url = _base_url("STREAM_RTSP_BASE_URL", "rtsp://mediamtx:8554")
+    hls_base_url = _base_url("STREAM_HLS_BASE_URL", "http://mediamtx:8888")
+    webrtc_base_url = _base_url("STREAM_WEBRTC_BASE_URL", "http://mediamtx:9998")
+    return StreamInfo(
+        name=stream_name,
+        description=description,
+        rtsp_url=f"{rtsp_base_url}/{stream_name}",
+        hls_url=f"{hls_base_url}/{stream_name}/index.m3u8",
+        webrtc_url=f"{webrtc_base_url}/{stream_name}/",
+        width=width,
+        height=height,
+        fps=fps,
+        status="active",
+    )
+
+
 router = APIRouter(
     prefix="/streams",
     tags=["streams"],
     responses={404: {"description": "Not found"}},
 )
 
-# Available stream configurations
-STREAMS = {
-    "thermal": StreamInfo(
-        name="thermal",
-        description="Thermal camera stream",
-        rtsp_url="rtsp://mediamtx:8554/thermal",
-        hls_url="http://mediamtx:8888/thermal/index.m3u8",
-        status="active",
-    ),
-    "visual": StreamInfo(
-        name="visual",
-        description="Visual camera stream",
-        rtsp_url="rtsp://mediamtx:8554/visual",
-        hls_url="http://mediamtx:8888/visual/index.m3u8",
-        status="active",
-    ),
+STREAM_CONFIG = {
+    "thermal": {
+        "description": "Thermal camera stream",
+        "width_env": "THERMAL_STREAM_WIDTH",
+        "height_env": "THERMAL_STREAM_HEIGHT",
+        "fps_env": "THERMAL_STREAM_FPS",
+        "default_width": 160,
+        "default_height": 120,
+        "default_fps": 15,
+    },
+    "visual": {
+        "description": "Visual camera stream",
+        "width_env": "VISUAL_STREAM_WIDTH",
+        "height_env": "VISUAL_STREAM_HEIGHT",
+        "fps_env": "VISUAL_STREAM_FPS",
+        "default_width": 1280,
+        "default_height": 720,
+        "default_fps": 15,
+    },
 }
+
+
+def _streams() -> dict[str, StreamInfo]:
+    return {
+        stream_name: _stream_info(
+            stream_name,
+            config["description"],
+            width=_int_env(config["width_env"], config["default_width"]),
+            height=_int_env(config["height_env"], config["default_height"]),
+            fps=_int_env(config["fps_env"], config["default_fps"]),
+        )
+        for stream_name, config in STREAM_CONFIG.items()
+    }
 
 
 @router.get(
@@ -60,7 +117,8 @@ async def list_streams() -> StreamListResponse:
 
     Returns information about RTSP and HLS URLs for each stream.
     """
-    return StreamListResponse(streams=list(STREAMS.values()), total=len(STREAMS))
+    streams = _streams()
+    return StreamListResponse(streams=list(streams.values()), total=len(streams))
 
 
 @router.get(
@@ -77,11 +135,12 @@ async def get_stream_info(stream_name: str) -> StreamInfo:
 
     Returns RTSP and HLS connection URLs and stream status.
     """
-    if stream_name not in STREAMS:
+    streams = _streams()
+    if stream_name not in streams:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Stream '{stream_name}' not found"
         )
-    return STREAMS[stream_name]
+    return streams[stream_name]
 
 
 @router.get(
@@ -98,12 +157,13 @@ async def get_hls(stream_name: str, file_path: str = "index.m3u8"):
 
     Use in video player: http://localhost:8000/streams/thermal/hls/index.m3u8
     """
-    if stream_name not in STREAMS:
+    if stream_name not in STREAM_CONFIG:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Stream '{stream_name}' not found"
         )
 
-    mediamtx_url = f"http://mediamtx:8888/{stream_name}/{file_path}"
+    hls_base_url = _base_url("STREAM_HLS_BASE_URL", "http://mediamtx:8888")
+    mediamtx_url = f"{hls_base_url}/{stream_name}/{file_path}"
 
     try:
         async with httpx.AsyncClient() as client:

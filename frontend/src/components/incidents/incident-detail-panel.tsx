@@ -52,6 +52,26 @@ function formatLatency(value: number): string {
   return `${latencyFormatter.format(value)} ms`;
 }
 
+function formatCount(value: number | null): string {
+  return typeof value === "number" ? String(value) : "--";
+}
+
+function formatDuration(start: string | null, end: string | null): string {
+  if (!start || !end) {
+    return "--";
+  }
+
+  const startTime = new Date(start).getTime();
+  const endTime = new Date(end).getTime();
+
+  if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
+    return "--";
+  }
+
+  const seconds = Math.max(0, (endTime - startTime) / 1000);
+  return `${latencyFormatter.format(seconds)} s`;
+}
+
 function DetailBlock({
   label,
   value,
@@ -166,6 +186,41 @@ export function IncidentDetailPanel({
         { label: "Alert Level", value: "--" },
         { label: "Confidence Band", value: "--" },
       ];
+  const aggregateItems =
+    incident && incident.isAggregated
+      ? [
+          { label: "Event Start", value: formatIncidentTimestamp(incident.startedAt ?? incident.timestamp) },
+          {
+            label: "Last Seen",
+            value: formatIncidentTimestamp(incident.lastSeenAt ?? incident.timestamp),
+          },
+          {
+            label: "Event End",
+            value: incident.endedAt ? formatIncidentTimestamp(incident.endedAt) : "--",
+          },
+          { label: "Total Frames", value: formatCount(incident.frameCount) },
+          { label: "Drone Frames", value: formatCount(incident.droneFrameCount) },
+          {
+            label: "Duration",
+            value: formatDuration(incident.startedAt, incident.lastSeenAt),
+          },
+          {
+            label: "Avg Confidence",
+            value:
+              typeof incident.avgFusedConfidence === "number"
+                ? formatPercent(incident.avgFusedConfidence)
+                : "--",
+          },
+          { label: "Representative Raw ID", value: incident.representativeIncidentId ?? "--" },
+          {
+            label: "Raw IDs",
+            value:
+              incident.rawIncidentIds.length > 0
+                ? incident.rawIncidentIds.slice(0, 4).join(", ")
+                : "--",
+          },
+        ]
+      : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -202,23 +257,43 @@ export function IncidentDetailPanel({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Decision Summary
+                      {incident?.isAggregated ? "Aggregated Decision Summary" : "Decision Summary"}
                     </p>
                     <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
                       {incident ? formatPercent(incident.fusedConfidence) : "--"}
                     </p>
                     <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                      Fused confidence
+                      {incident?.isAggregated ? "Max fused confidence" : "Fused confidence"}
                     </p>
                   </div>
 
                   <div className="min-w-44 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                    <DetailBlock label="Decision" value={incident?.decision ?? "--"} />
-                    <DetailBlock label="Band" value={incident?.confidenceBand ?? "--"} />
-                    <DetailBlock
-                      label="Latency"
-                      value={incident ? formatLatency(incident.latencyMs) : "--"}
-                    />
+                    {incident?.isAggregated ? (
+                      <>
+                        <DetailBlock label="Frames" value={formatCount(incident.frameCount)} />
+                        <DetailBlock
+                          label="Avg Confidence"
+                          value={
+                            typeof incident.avgFusedConfidence === "number"
+                              ? formatPercent(incident.avgFusedConfidence)
+                              : "--"
+                          }
+                        />
+                        <DetailBlock
+                          label="Duration"
+                          value={formatDuration(incident.startedAt, incident.lastSeenAt)}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <DetailBlock label="Decision" value={incident?.decision ?? "--"} />
+                        <DetailBlock label="Band" value={incident?.confidenceBand ?? "--"} />
+                        <DetailBlock
+                          label="Latency"
+                          value={incident ? formatLatency(incident.latencyMs) : "--"}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -232,9 +307,22 @@ export function IncidentDetailPanel({
                 </div>
               </section>
 
+              {incident?.isAggregated ? (
+                <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Aggregate Event
+                  </p>
+                  <div className="mt-4">
+                    <MetadataGrid items={aggregateItems} />
+                  </div>
+                </section>
+              ) : null}
+
               <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Per-Modality Scores
+                  {incident?.isAggregated
+                    ? "Average Per-Modality Scores"
+                    : "Per-Modality Scores"}
                 </p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">

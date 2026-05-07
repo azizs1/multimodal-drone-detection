@@ -4,6 +4,7 @@ import {
   buildServiceItems,
   buildStreamPlaylistUrl,
   buildVideoSubLabel,
+  deriveJetsonStatus,
   toServiceStatus,
 } from "./live-feed-state.mjs";
 
@@ -36,6 +37,12 @@ test("buildStreamPlaylistUrl trims trailing slash and encodes stream name", () =
     buildStreamPlaylistUrl("visual feed", "http://localhost:8000/"),
     "http://localhost:8000/streams/visual%20feed/hls/index.m3u8",
   );
+});
+
+test("deriveJetsonStatus follows live stream availability", () => {
+  assert.equal(deriveJetsonStatus({ status: "active" }, undefined), "Connected");
+  assert.equal(deriveJetsonStatus({ status: "inactive" }, { status: "inactive" }), "Disconnected");
+  assert.equal(deriveJetsonStatus({ status: "active" }, { status: "error" }), "Unstable");
 });
 
 test("buildServiceItems falls back to disconnected when streams are unavailable", () => {

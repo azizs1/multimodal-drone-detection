@@ -7,10 +7,11 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   type IncidentDetailPanelData,
   type IncidentTableRow,
+  getIncidentDisplayId,
   mapIncidentResponseToDetail,
   mapIncidentResponseToRow,
 } from "@/lib/incidents.mjs";
-import { getIncidents, type IncidentResponse } from "@/lib/api/incidents";
+import { getIncidents, getRawIncidents, type IncidentResponse } from "@/lib/api/incidents";
 import { IncidentDetailPanel } from "@/components/incidents/incident-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ type DateTimePickerProps = {
 };
 
 type QuickRangeKey = "lastHour" | "today" | "last7Days";
+type IncidentView = "aggregated" | "raw";
 
 function formatDisplayTimestamp(value: string): string {
   const date = new Date(value);
@@ -64,6 +66,10 @@ function formatConfidencePercentage(value: number): string {
   return `${Math.round(normalized)}%`;
 }
 
+function formatCount(value: number | null): string {
+  return typeof value === "number" ? String(value) : "--";
+}
+
 function getDecisionBadgeClasses(decision: IncidentTableRow["decision"]): string {
   return decision === "drone"
     ? "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
@@ -80,6 +86,12 @@ function getAlertLevelBadgeClasses(alertLevel: IncidentTableRow["alertLevel"]): 
   }
 
   return "border-transparent bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+}
+
+function getIncidentViewButtonClasses(view: IncidentView, activeView: IncidentView): string {
+  return view === activeView
+    ? "border-slate-900 bg-slate-900 text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900"
+    : "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700";
 }
 
 function formatPickerLabel(value: Date | undefined): string {
@@ -257,6 +269,7 @@ function DateTimePicker({ label, value, onChange, onCommit }: DateTimePickerProp
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
+  const [activeView, setActiveView] = useState<IncidentView>("aggregated");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [draftStartDate, setDraftStartDate] = useState<Date | undefined>(undefined);
@@ -286,7 +299,8 @@ export default function IncidentsPage() {
       setErrorMessage(null);
 
       try {
-        const response = await getIncidents({
+        const fetchIncidents = activeView === "raw" ? getRawIncidents : getIncidents;
+        const response = await fetchIncidents({
           limit: hasTimeRange ? RANGE_LIMIT : DEFAULT_LIMIT,
           decision: appliedDecision !== "all" ? appliedDecision : undefined,
           fromTs: formatApiDateTime(appliedStartDate),
@@ -313,7 +327,7 @@ export default function IncidentsPage() {
     return () => {
       controller.abort();
     };
-  }, [appliedDecision, appliedEndDate, appliedStartDate, hasTimeRange]);
+  }, [activeView, appliedDecision, appliedEndDate, appliedStartDate, hasTimeRange]);
 
   const tableRows = useMemo(
     () => incidents.map((incident) => mapIncidentResponseToRow(incident)),
@@ -338,7 +352,7 @@ export default function IncidentsPage() {
   );
 
   const openIncidentDetail = (row: IncidentTableRow) => {
-    const incident = incidents.find((entry) => entry.incident_id === row.incidentId);
+    const incident = incidents.find((entry) => getIncidentDisplayId(entry) === row.incidentId);
 
     if (!incident) {
       return;
@@ -406,6 +420,37 @@ export default function IncidentsPage() {
             }
           }}
         />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setActiveView("aggregated");
+              setCurrentPage(1);
+              setSelectedIncident(null);
+              setIsDetailOpen(false);
+            }}
+            className={getIncidentViewButtonClasses("aggregated", activeView)}
+          >
+            Aggregated
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setActiveView("raw");
+              setCurrentPage(1);
+              setSelectedIncident(null);
+              setIsDetailOpen(false);
+            }}
+            className={getIncidentViewButtonClasses("raw", activeView)}
+          >
+            Raw Frames
+          </Button>
+        </div>
 
         <div className="rounded-sm border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
           {filterErrorMessage ? (
@@ -538,14 +583,26 @@ export default function IncidentsPage() {
             </div>
           ) : null}
 
-          <Table className="min-w-[880px] text-left text-sm text-slate-700 dark:text-slate-200">
+          <Table className="min-w-[960px] text-left text-sm text-slate-700 dark:text-slate-200">
             <TableHeader className="text-slate-500 dark:text-slate-400">
-              <TableRow className="border-b border-slate-300 hover:bg-transparent dark:border-slate-700">
-                <TableHead className="px-2 py-3 font-semibold">Detected At</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Decision</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Alert Level</TableHead>
-                <TableHead className="px-2 py-3 font-semibold">Fused Confidence</TableHead>
-              </TableRow>
+              {activeView === "aggregated" ? (
+                <TableRow className="border-b border-slate-300 hover:bg-transparent dark:border-slate-700">
+                  <TableHead className="px-2 py-3 font-semibold">Event Start</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Last Seen</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Frames</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Drone Frames</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Max Confidence</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Avg Confidence</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Alert Level</TableHead>
+                </TableRow>
+              ) : (
+                <TableRow className="border-b border-slate-300 hover:bg-transparent dark:border-slate-700">
+                  <TableHead className="px-2 py-3 font-semibold">Detected At</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Decision</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Alert Level</TableHead>
+                  <TableHead className="px-2 py-3 font-semibold">Fused Confidence</TableHead>
+                </TableRow>
+              )}
             </TableHeader>
             <TableBody>
               {pagedRows.map((row) => (
@@ -566,34 +623,68 @@ export default function IncidentsPage() {
                     }
                   }}
                 >
-                  <TableCell className="px-2 py-3">
-                    {formatDisplayTimestamp(row.detectedAt)}
-                  </TableCell>
-                  <TableCell className="px-2 py-3">
-                    <Badge className={`px-3 py-1 text-sm font-semibold uppercase ${getDecisionBadgeClasses(row.decision)}`}>
-                      {row.decision}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-2 py-3">
-                    <Badge
-                      className={`px-3 py-1 text-sm font-semibold uppercase ${getAlertLevelBadgeClasses(row.alertLevel)}`}
-                    >
-                      {row.alertLevel}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-2 py-3">{formatConfidencePercentage(row.fusedConfidence)}</TableCell>
+                  {activeView === "aggregated" ? (
+                    <>
+                      <TableCell className="px-2 py-3">
+                        {formatDisplayTimestamp(row.detectedAt)}
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        {row.lastSeenAt ? formatDisplayTimestamp(row.lastSeenAt) : "--"}
+                      </TableCell>
+                      <TableCell className="px-2 py-3">{formatCount(row.frameCount)}</TableCell>
+                      <TableCell className="px-2 py-3">
+                        {formatCount(row.droneFrameCount)}
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        {formatConfidencePercentage(row.fusedConfidence)}
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        {row.avgFusedConfidence == null
+                          ? "--"
+                          : formatConfidencePercentage(row.avgFusedConfidence)}
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        <Badge
+                          className={`px-3 py-1 text-sm font-semibold uppercase ${getAlertLevelBadgeClasses(row.alertLevel)}`}
+                        >
+                          {row.alertLevel}
+                        </Badge>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell className="px-2 py-3">
+                        {formatDisplayTimestamp(row.detectedAt)}
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        <Badge className={`px-3 py-1 text-sm font-semibold uppercase ${getDecisionBadgeClasses(row.decision)}`}>
+                          {row.decision}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        <Badge
+                          className={`px-3 py-1 text-sm font-semibold uppercase ${getAlertLevelBadgeClasses(row.alertLevel)}`}
+                        >
+                          {row.alertLevel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-2 py-3">
+                        {formatConfidencePercentage(row.fusedConfidence)}
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               ))}
               {!isLoading && pagedRows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={4}>
+                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={activeView === "aggregated" ? 7 : 4}>
                     No incidents found for current filters.
                   </TableCell>
                 </TableRow>
               ) : null}
               {isLoading ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={4}>
+                  <TableCell className="px-2 py-6 text-center text-slate-500 dark:text-slate-400" colSpan={activeView === "aggregated" ? 7 : 4}>
                     Loading incidents...
                   </TableCell>
                 </TableRow>

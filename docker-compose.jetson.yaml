@@ -33,7 +33,7 @@ services:
     environment:
       - INFERENCE_SOURCE=idle
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
-      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
+      - BACKEND_INCIDENT_ENDPOINT=${BACKEND_INCIDENT_ENDPOINT:-http://127.0.0.1:8000/incidents}
     command: uv run python3 -m ml.inference
     restart: unless-stopped
 
@@ -52,6 +52,6 @@ services:
       - RGB_VIDEO_PATH=/app/simulator/videos/drone_visual.mp4
       - THERMAL_VIDEO_PATH=/app/simulator/videos/drone_thermal.mp4
       - FUSION_ENDPOINT=http://127.0.0.1:8050/fusion/ingest
-      - BACKEND_INCIDENT_ENDPOINT=http://127.0.0.1:8000/incidents
+      - BACKEND_INCIDENT_ENDPOINT=${BACKEND_INCIDENT_ENDPOINT:-http://127.0.0.1:8000/incidents}
     command: uv run python3 -m ml.inference
     restart: unless-stopped

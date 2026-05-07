@@ -63,6 +63,72 @@ test("mapIncidentResponseToRow returns the API-backed incident table fields", ()
     decision: "drone",
     alertLevel: "high",
     fusedConfidence: 0.94,
+    avgFusedConfidence: null,
+    frameCount: null,
+    droneFrameCount: null,
+    lastSeenAt: null,
+    isAggregated: false,
+  });
+});
+
+test("mapIncidentResponseToRow handles aggregated incident fields", () => {
+  const row = mapIncidentResponseToRow({
+    id: "2f963c85-71de-4d87-b84a-d07cfed3fe0e",
+    aggregate_id: "agg-014",
+    incident_id: "agg-014",
+    detected_at: "2026-02-19T14:32:07Z",
+    started_at: "2026-02-19T14:32:07Z",
+    last_seen_at: "2026-02-19T14:32:11Z",
+    ended_at: "2026-02-19T14:32:11Z",
+    source_timestamp: 1771511531,
+    has_drone: true,
+    decision: "drone",
+    confidence_band: "high",
+    alert_level: "high",
+    is_confirmed: true,
+    fused_confidence: 0.94,
+    avg_fused_confidence: 0.9,
+    frame_count: 2,
+    drone_frame_count: 2,
+    representative_incident_id: "INC-014-B",
+    raw_incident_ids: ["INC-014-A", "INC-014-B"],
+    stream_name: "fusion",
+    primary_frame_url: null,
+    primary_thumbnail_url: null,
+    per_modality_scores: {
+      rgb: 0.92,
+      thermal: 0.89,
+    },
+    thresholds: {
+      alert: 0.75,
+      hold: 0.55,
+    },
+    gating_reason: "rgb+thermal",
+    latency_ms: 86,
+    evidence: {
+      rgb: null,
+      thermal: null,
+    },
+    media: {
+      rgb: null,
+      thermal: null,
+    },
+    objects: [],
+    created_at: "2026-02-19T14:32:08Z",
+    updated_at: "2026-02-19T14:32:11Z",
+  });
+
+  assert.deepEqual(row, {
+    incidentId: "agg-014",
+    detectedAt: "2026-02-19T14:32:07Z",
+    decision: "drone",
+    alertLevel: "high",
+    fusedConfidence: 0.94,
+    avgFusedConfidence: 0.9,
+    frameCount: 2,
+    droneFrameCount: 2,
+    lastSeenAt: "2026-02-19T14:32:11Z",
+    isAggregated: true,
   });
 });
 
@@ -152,7 +218,81 @@ test("mapIncidentResponseToDetail maps API incidents into the detail panel shape
         bboxLabel: "0.10, 0.20, 0.30, 0.40",
       },
     ],
+    isAggregated: false,
+    startedAt: null,
+    lastSeenAt: null,
+    endedAt: null,
+    avgFusedConfidence: null,
+    frameCount: null,
+    droneFrameCount: null,
+    representativeIncidentId: null,
+    rawIncidentIds: [],
   });
+});
+
+test("mapIncidentResponseToDetail exposes aggregate event metadata", () => {
+  const detail = mapIncidentResponseToDetail({
+    id: "2f963c85-71de-4d87-b84a-d07cfed3fe0e",
+    aggregate_id: "agg-014",
+    incident_id: "agg-014",
+    detected_at: "2026-02-19T14:32:07Z",
+    started_at: "2026-02-19T14:32:07Z",
+    last_seen_at: "2026-02-19T14:32:11Z",
+    ended_at: "2026-02-19T14:32:11Z",
+    source_timestamp: 1771511531,
+    has_drone: true,
+    decision: "drone",
+    confidence_band: "high",
+    alert_level: "high",
+    is_confirmed: true,
+    fused_confidence: 0.94,
+    avg_fused_confidence: 0.9,
+    frame_count: 2,
+    drone_frame_count: 2,
+    representative_incident_id: "INC-014-B",
+    raw_incident_ids: ["INC-014-A", "INC-014-B"],
+    stream_name: "fusion",
+    primary_frame_url: null,
+    primary_thumbnail_url: null,
+    per_modality_scores: {
+      rgb: 0.88,
+      thermal: 0.84,
+    },
+    thresholds: {
+      alert: 0.75,
+      hold: 0.55,
+      aggregation_window_seconds: 5,
+      drone_gap_seconds: 10,
+    },
+    gating_reason: "rgb+thermal",
+    latency_ms: 86,
+    evidence: {
+      rgb: null,
+      thermal: null,
+    },
+    media: {
+      rgb: null,
+      thermal: null,
+    },
+    objects: [],
+    created_at: "2026-02-19T14:32:08Z",
+    updated_at: "2026-02-19T14:32:11Z",
+  });
+
+  assert.equal(detail.id, "agg-014");
+  assert.equal(detail.isAggregated, true);
+  assert.equal(detail.startedAt, "2026-02-19T14:32:07Z");
+  assert.equal(detail.lastSeenAt, "2026-02-19T14:32:11Z");
+  assert.equal(detail.endedAt, "2026-02-19T14:32:11Z");
+  assert.equal(detail.avgFusedConfidence, 0.9);
+  assert.equal(detail.frameCount, 2);
+  assert.equal(detail.droneFrameCount, 2);
+  assert.equal(detail.representativeIncidentId, "INC-014-B");
+  assert.deepEqual(detail.rawIncidentIds, ["INC-014-A", "INC-014-B"]);
+  assert.deepEqual(detail.thresholds, [
+    { key: "alert", label: "Alert", value: 0.75 },
+    { key: "hold", label: "Hold", value: 0.55 },
+  ]);
 });
 
 test("mapIncidentResponseToDetail falls back cleanly when optional incident fields are missing", () => {

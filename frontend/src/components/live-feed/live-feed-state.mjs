@@ -26,7 +26,10 @@ export function buildVideoSubLabel(stream, fallback) {
     return `${fallback} • Not available`;
   }
 
-  return `${fallback} • ${stream.status.toUpperCase()}`;
+  const hasResolution = Number.isFinite(stream.width) && Number.isFinite(stream.height);
+  const resolution = hasResolution ? `${stream.width}x${stream.height}` : fallback;
+
+  return `${resolution} • ${stream.status.toUpperCase()}`;
 }
 
 /**
@@ -39,6 +42,25 @@ export function buildStreamPlaylistUrl(streamName, apiBaseUrl = undefined) {
     .replace(/\/+$/, "");
   const encodedStreamName = encodeURIComponent(streamName);
   return `${baseUrl}/streams/${encodedStreamName}/hls/index.m3u8`;
+}
+
+/**
+ * @param {{ status: "active" | "inactive" | "error" } | undefined} visualStream
+ * @param {{ status: "active" | "inactive" | "error" } | undefined} thermalStream
+ * @returns {ServiceStatus}
+ */
+export function deriveJetsonStatus(visualStream, thermalStream) {
+  const statuses = [visualStream?.status, thermalStream?.status].filter(Boolean);
+
+  if (statuses.includes("error")) {
+    return "Unstable";
+  }
+
+  if (statuses.includes("active")) {
+    return "Connected";
+  }
+
+  return "Disconnected";
 }
 
 /**

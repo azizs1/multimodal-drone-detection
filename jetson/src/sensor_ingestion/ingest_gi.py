@@ -73,17 +73,17 @@ def build_gst_pipeline():
 
     rgb_caps = Gst.ElementFactory.make("capsfilter", "rgb_caps")
     # not specifying dimensions, we do that in scale_caps
-    rgb_caps.set_property("caps", Gst.Caps.from_string("image/jpeg,framerate=30/1"))
+    rgb_caps.set_property("caps", Gst.Caps.from_string("image/jpeg,width=1280,height=960,framerate=15/1"))
 
     # decode mjpeg to raw video
     rgb_jpegdec = Gst.ElementFactory.make("jpegdec", "rgb_jpegdec")
     # scale to ensure consistent output
     rgb_scale = Gst.ElementFactory.make("videoscale", "rgb_scale")
 
-    # force raw RGB at 1280x720, we already did fps caps
+    # Keep RGB lower-res for live inference latency on Orin Nano.
     rgb_scale_caps = Gst.ElementFactory.make("capsfilter", "rgb_scale_caps")
     rgb_scale_caps.set_property(
-        "caps", Gst.Caps.from_string("video/x-raw,width=1280,height=720,format=RGB")
+        "caps", Gst.Caps.from_string("video/x-raw,width=1280,height=960,format=RGB")
     )
 
     rgb_tee = Gst.ElementFactory.make("tee", "rgb_tee")
@@ -121,20 +121,21 @@ def build_gst_pipeline():
 
     rgb_udp_sink = Gst.ElementFactory.make("udpsink", "rgb_udp_sink")
     rgb_udp_sink.set_property("host", "127.0.0.1")
-    rgb_udp_sink.set_property("port", 5000)
+    rgb_udp_sink.set_property("port", 6100)
     rgb_udp_sink.set_property("sync", False)
     rgb_udp_sink.set_property("async", False)
     rgb_udp_sink.set_property("qos", False)
 
     # thermal source (currently test)
-    thermal_src = Gst.ElementFactory.make("videotestsrc", "thermal_src")
-    thermal_src.set_property("pattern", 18)
-    thermal_src.set_property("is-live", True)
+    thermal_src = Gst.ElementFactory.make("v4l2src", "thermal_src")
+    thermal_src.set_property("device", os.getenv("THERMAL_CAMERA_DEVICE", "/dev/video2"))
+    thermal_src.set_property("do-timestamp", True)
 
     thermal_caps = Gst.ElementFactory.make("capsfilter", "thermal_caps")
     thermal_caps.set_property(
-        "caps", Gst.Caps.from_string("video/x-raw,width=160,height=120,framerate=30/1")
-    )
+    "caps",
+    Gst.Caps.from_string("video/x-raw,format=YUY2,width=512,height=384,framerate=25/1"),
+	)
 
     thermal_tee = Gst.ElementFactory.make("tee", "thermal_tee")
 
@@ -171,7 +172,7 @@ def build_gst_pipeline():
 
     thermal_udp_sink = Gst.ElementFactory.make("udpsink", "thermal_udp_sink")
     thermal_udp_sink.set_property("host", "127.0.0.1")
-    thermal_udp_sink.set_property("port", 5002)
+    thermal_udp_sink.set_property("port", 6102)
     thermal_udp_sink.set_property("sync", False)
     thermal_udp_sink.set_property("async", False)
     thermal_udp_sink.set_property("qos", False)

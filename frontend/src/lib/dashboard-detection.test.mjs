@@ -50,7 +50,33 @@ test("maps backend incidents into dashboard rows", () => {
   assert.equal(mapped.fusedConfidence, 72);
   assert.equal(mapped.visualConfidence, 70);
   assert.equal(mapped.thermalConfidence, 58);
-  assert.equal(mapped.decision, "drone");
+  assert.equal(mapped.avgFusedConfidence, null);
+  assert.equal(mapped.frameCount, null);
+  assert.equal(mapped.lastSeenAt, null);
+});
+
+test("maps aggregated backend incidents into dashboard rows", () => {
+  const mapped = mapIncidentToDashboardRow({
+    ...BASE_INCIDENT,
+    aggregate_id: "agg-demo-011",
+    incident_id: "agg-demo-011",
+    started_at: "2026-04-04T16:37:30.779219Z",
+    last_seen_at: "2026-04-04T16:37:33.779219Z",
+    frame_count: 2,
+    drone_frame_count: 2,
+    avg_fused_confidence: 0.7,
+    representative_incident_id: "incident-demo-011",
+    raw_incident_ids: ["incident-demo-010", "incident-demo-011"],
+  });
+
+  assert.equal(mapped.id, "agg-demo-011");
+  assert.match(mapped.occurredAt, /^[A-Z][a-z]{2} \d{2}, \d{1,2}:\d{2} [AP]M$/);
+  assert.equal(mapped.fusedConfidence, 72);
+  assert.equal(mapped.visualConfidence, 70);
+  assert.equal(mapped.thermalConfidence, 58);
+  assert.equal(mapped.avgFusedConfidence, 70);
+  assert.equal(mapped.frameCount, 2);
+  assert.equal(mapped.lastSeenAt, "2026-04-04T16:37:33.779219Z");
 });
 
 test("derives dashboard summary metrics from latest incident", () => {

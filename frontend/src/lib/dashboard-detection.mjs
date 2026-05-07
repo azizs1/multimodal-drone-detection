@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { getIncidentDisplayId } from "./incidents.mjs";
 
 /**
  * @typedef {"Confirmed" | "Pending" | "False Positive"} DashboardIncidentStatus
@@ -19,7 +20,9 @@ import { format } from "date-fns";
   *   fusedConfidence: number;
  *   visualConfidence: number;
  *   thermalConfidence: number;
- *   decision: string;
+ *   avgFusedConfidence: number | null;
+ *   frameCount: number | null;
+ *   lastSeenAt: string | null;
  * }} DashboardIncidentRow
  */
 
@@ -42,12 +45,17 @@ import { format } from "date-fns";
  */
 export function mapIncidentToDashboardRow(incident) {
   return {
-    id: incident.incident_id,
-    occurredAt: format(new Date(incident.detected_at), "MMM dd, h:mm a"),
+    id: getIncidentDisplayId(incident),
+    occurredAt: format(new Date(incident.started_at ?? incident.detected_at), "MMM dd, h:mm a"),
     fusedConfidence: Math.round(incident.fused_confidence * 100),
     visualConfidence: Math.round((incident.per_modality_scores.rgb ?? 0) * 100),
     thermalConfidence: Math.round((incident.per_modality_scores.thermal ?? 0) * 100),
-    decision: incident.decision,
+    avgFusedConfidence:
+      typeof incident.avg_fused_confidence === "number"
+        ? Math.round(incident.avg_fused_confidence * 100)
+        : null,
+    frameCount: typeof incident.frame_count === "number" ? incident.frame_count : null,
+    lastSeenAt: incident.last_seen_at ?? null,
   };
 }
 

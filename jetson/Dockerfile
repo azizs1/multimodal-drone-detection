@@ -1,5 +1,5 @@
 FROM bluenviron/mediamtx:latest AS mediamtx_source
-FROM nvcr.io/nvidia/l4t-jetpack:r36.2.0
+FROM nvcr.io/nvidia/l4t-jetpack:r36.4.0
 
 WORKDIR /app
 
@@ -20,8 +20,23 @@ RUN apt-get update && apt-get install -y \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-ugly \
+    libopenblas-dev \
+    wget \
+    xz-utils \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://developer.download.nvidia.com/compute/cusparselt/redist/libcusparse_lt/linux-sbsa/libcusparse_lt-linux-sbsa-0.5.2.1-archive.tar.xz \
+    && tar xf libcusparse_lt-linux-sbsa-0.5.2.1-archive.tar.xz \
+    && cp -a libcusparse_lt-linux-sbsa-0.5.2.1-archive/include/* /usr/local/cuda/include/ \
+    && cp -a libcusparse_lt-linux-sbsa-0.5.2.1-archive/lib/* /usr/local/cuda/lib64/ \
+    && ldconfig \
+    && rm -rf libcusparse_lt-linux-sbsa-0.5.2.1-archive*
+
+RUN pip3 install --no-cache-dir numpy==1.26.4
+RUN pip3 install --no-cache-dir \
+    https://developer.download.nvidia.com/compute/redist/jp/v61/pytorch/torch-2.5.0a0+872d972e41.nv24.08.17622132-cp310-cp310-linux_aarch64.whl \
+    https://github.com/ultralytics/assets/releases/download/v0.0.0/torchvision-0.20.0a0+afc54f7-cp310-cp310-linux_aarch64.whl
 
 RUN pip3 install --no-cache-dir \
     uv \
@@ -33,8 +48,7 @@ RUN pip3 install --no-cache-dir \
     ultralytics \
     pyzmq
 
-RUN pip3 install --no-cache-dir --extra-index-url https://jetson-ai-lab.dev torch torchvision
-RUN pip3 install --no-cache-dir numpy==1.26.4
+RUN pip3 install --no-cache-dir --force-reinstall "numpy<2"
 
 #COPY pyproject.toml uv.lock ./
 COPY mediamtx.yml ./mediamtx.yml

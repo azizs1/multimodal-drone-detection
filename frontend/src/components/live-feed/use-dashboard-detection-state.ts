@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildServiceItems } from "@/components/live-feed/live-feed-state.mjs";
+import { buildServiceItems, deriveJetsonStatus } from "@/components/live-feed/live-feed-state.mjs";
 import {
   mapIncidentToDashboardRow,
   mapIncidentToDashboardSummary,
@@ -12,12 +12,6 @@ import {
 } from "@/lib/dashboard-detection.mjs";
 import { getIncidents, type IncidentResponse } from "@/lib/api/incidents";
 import { getHealthReady } from "@/lib/api/health";
-
-const BASE_SYSTEM_STATUS: DashboardSystemStatusItem[] = [
-  // TODO: Replace this placeholder once the frontend has a real Jetson/device
-  // health source. Backend and websocket status are already live below.
-  { name: "Jetson Nano", status: "Unstable", source: "mock" },
-];
 
 export type UseDashboardDetectionStateResult = {
   summary: DashboardDetectionSummary;
@@ -65,7 +59,6 @@ export function useDashboardDetectionState({
   }, []);
 
   // Remaining live-feed gap after this integration pass:
-  // - Jetson Nano/device health is still placeholder-only.
   // - The dashboard currently refreshes incidents by refetching the list when a
   //   websocket alert arrives; if a richer dashboard-specific stream is added
   //   later, this hook should switch to consuming that directly.
@@ -193,11 +186,12 @@ export function useDashboardDetectionState({
     }));
 
     const serviceHealthItems: DashboardSystemStatusItem[] = [
+      { name: "Jetson Nano", status: deriveJetsonStatus(visualStream, thermalStream), source: "live" },
       { name: "Backend", status: backendStatus, source: "live" },
       { name: "WebSocket", status: websocketStatus, source: "live" },
     ];
 
-    return [...liveServices, ...serviceHealthItems, ...BASE_SYSTEM_STATUS];
+    return [...liveServices, ...serviceHealthItems];
   }, [backendStatus, thermalStream, visualStream, websocketStatus]);
 
   return {

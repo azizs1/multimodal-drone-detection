@@ -6,6 +6,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 import pytest
 from app.database.database import Base, get_db
 from app.main import app
+from app.models.incident import Incident
+from app.models.incident_aggregate import IncidentAggregate
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -39,3 +41,14 @@ def setup_database():
     test_engine.dispose()
     if os.path.exists("./test.db"):
         os.remove("./test.db")
+
+
+@pytest.fixture(autouse=True)
+def clean_database():
+    db = TestingSessionLocal()
+    try:
+        db.query(IncidentAggregate).delete()
+        db.query(Incident).delete()
+        db.commit()
+    finally:
+        db.close()

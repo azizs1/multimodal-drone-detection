@@ -1,343 +1,259 @@
-# Multimodal Drone Detection
-**Authors:** Chia-Yu Chang, Yu-Chieh Cheng, Li-Chieh Kung, Ethan Mauger, Aziz Shaik
-**Course:** CS 5934: Capstone Design (Spring 2026)
+# Multimodal Drone Detection - Field Test Branch
 
-This MEng capstone project aims to build a drone detection system with an AI-enabled multimodal approach.
+This branch contains the code used for drone field testing.
 
-## Architecture
+It is intended to run across two machines:
 
-The system consists of four main components:
+- **Jetson Orin Nano**: runs `jetson-core`
+- **Laptop / Mac**: runs the backend, database, and frontend
 
-1. **Simulator** - Video streamer that loops drone footage to RTSP
-2. **MediaMTX** - RTSP/HLS media server that handles stream distribution
-3. **Backend** - FastAPI service providing REST API and stream information
-4. **Jetson** - Edge AI processing on Jetson Nano (ML + sensor ingestion)
+This branch is not intended to be merged into `main`.
 
-### Streaming Pipeline
+## Field Test Architecture
 
-The streaming pipeline uses different encoders depending on the environment:
+```text
+Jetson Orin Nano
+  - RGB camera
+  - Thermal camera
+  - ML inference
+  - Fusion logic
+  - RTSP / HLS / WebRTC stream publishing
+  - Incident POST requests to laptop backend
 
-| Environment                  | Encoder   | Compose File                 | Notes                                                      |
-| ---------------------------- | --------- | ---------------------------- | ---------------------------------------------------------- |
-| **Local Development**        | FFmpeg    | `docker-compose-dev.yml`     | Software encoding; runs on any machine                     |
-| **Production (Jetson Nano)** | GStreamer | `docker-compose.jetson.yaml` | Hardware-accelerated encoding via NVENC on the Jetson Nano |
-
-```
-[Simulator] --RTSP--> [MediaMTX] --HLS--> [Clients/Frontend]
-                           ^
-                           |
-                      [Backend API]
+Laptop / Mac
+  - PostgreSQL database
+  - FastAPI backend
+  - Next.js frontend dashboard
 ```
 
-## Quick Start
+Expected dashboard URL on the laptop:
 
-### Using Docker Compose (Recommended)
-
-Start all services:
-```bash
-docker compose -f docker-compose-dev.yml up --build
+```text
+http://localhost:3000/live-feed
 ```
 
-Access points:
-- **Video Stream (HLS Player):** http://localhost:8888/drone/
-- **Backend API:** http://localhost:8000/
-- **Stream Info:** http://localhost:8000/info/drone
-- **Health Check:** http://localhost:8000/health
+## Network Configuration
 
-### Individual Services
+The IP addresses can change between field-test sessions. Before running the system, confirm:
 
-Stop all services:
-```bash
-docker compose -f docker-compose-dev.yml down
-```
+- Jetson IP address
+- Laptop IP address
+- Backend incident endpoint
+- Stream base URLs
 
-Rebuild specific service:
-```bash
-docker compose -f docker-compose-dev.yml up -d --build backend
-```
+Where these IPs are used:
 
-## Prerequisites
+- `BACKEND_INCIDENT_ENDPOINT` should point from Jetson to the laptop backend.
+- `STREAM_RTSP_BASE_URL`, `STREAM_HLS_BASE_URL`, and `STREAM_WEBRTC_BASE_URL` should point from the laptop backend/frontend to the Jetson stream host.
 
-### Python Package Manager: uv
-This project uses [uv](https://github.com/astral-sh/uv) as the Python package manager for the backend, machine learning, and sensor ingestion components.
+## Laptop / Mac Setup
 
-#### Installing uv
-
-**macOS and Linux:**
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**Windows:**
-```powershell
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-**Alternative (via pip):**
-```bash
-pip install uv
-```
-
-#### Using uv
-
-After installing uv, navigate to the project directory and sync dependencies:
+Run the laptop-side services from the repository root on the Mac.
 
 ```bash
-# Install dependencies from uv.lock
-uv sync
-
-# Install development dependencies
-uv sync --dev
-
-# Install only production dependencies
-uv sync --no-dev
+STREAM_RTSP_BASE_URL=rtsp://<JETSON_IP>:8554 \
+STREAM_HLS_BASE_URL=http://<JETSON_IP>:8888 \
+STREAM_WEBRTC_BASE_URL=http://<JETSON_IP>:9998 \
+VISUAL_STREAM_WIDTH=1280 \
+VISUAL_STREAM_HEIGHT=720 \
+VISUAL_STREAM_FPS=15 \
+THERMAL_STREAM_WIDTH=512 \
+THERMAL_STREAM_HEIGHT=384 \
+THERMAL_STREAM_FPS=25 \
+docker compose -f docker-compose.mac-jetson.yml up -d --build --force-recreate backend frontend
 ```
 
-When running Python scripts, use `uv run`:
+This starts the laptop-side services needed for the field test:
+
+- `postgres`
+- `backend`
+- `frontend`
+
+Open the dashboard:
+
+```text
+http://localhost:3000/live-feed
+```
+
+Useful laptop commands:
+
 ```bash
-uv run python your_script.py
+docker compose -f docker-compose.mac-jetson.yml ps
+docker compose -f docker-compose.mac-jetson.yml logs -f backend
+docker compose -f docker-compose.mac-jetson.yml logs -f frontend
+docker compose -f docker-compose.mac-jetson.yml down
 ```
 
-For package-specific commands:
+## Jetson Setup
+
+SSH from the Mac into the Jetson:
+
 ```bash
-
-cd backend
-
-# Run the backend server
-uv run uvicorn backend.src.app.main:app --reload
-
-# Run tests
-uv run pytest
+ssh capstone26@<JETSON_IP>
 ```
 
-## How to Use
+Go to the project directory on the Jetson:
 
-### Simulator
-The simulator loops drone video footage over RTSP to the MediaMTX server using **FFmpeg**.
-
-- **Local dev (`docker-compose-dev.yml`):** Uses **FFmpeg** (`libx264`, `ultrafast` preset) for software-based RTSP streaming. Works on any development machine without special hardware.
-- **Production (`docker-compose.jetson.yaml`):** Uses **GStreamer** with hardware-accelerated encoding on the **Jetson Nano**.
-
-**Directory:** `simulator/`
-
-The Docker Compose dev file launches **two simulator containers** — one per stream:
-
-| Container               | Stream Name | Video File          | RTSP URL                       |
-| ----------------------- | ----------- | ------------------- | ------------------------------ |
-| `gst-visual-simulator`  | `visual`    | `drone_visual.mp4`  | `rtsp://mediamtx:8554/visual`  |
-| `gst-thermal-simulator` | `thermal`   | `drone_thermal.mp4` | `rtsp://mediamtx:8554/thermal` |
-
-Both containers use the same Dockerfile; behavior is controlled by the `STREAM_NAME` and `VIDEO_FILE` environment variables.
-
-**Configuration:**
-- Video files: Place `.mp4` files in `simulator/videos/`
-- Default videos: `drone_visual.mp4`, `drone_thermal.mp4`
-
-**Standalone Build:**
 ```bash
-cd simulator
-docker build -t drone-simulator .
-
-# Stream visual feed
-docker run --network host -e STREAM_NAME=visual -e VIDEO_FILE=drone_visual.mp4 drone-simulator
-
-# Stream thermal feed
-docker run --network host -e STREAM_NAME=thermal -e VIDEO_FILE=drone_thermal.mp4 drone-simulator
+cd ~/multimodal-drone-detection
 ```
 
-### MediaMTX (Streaming Server)
-MediaMTX handles RTSP ingestion and HLS distribution.
+Build the Jetson core image:
 
-**Configuration:** `mediamtx.yml`
-
-**Features:**
-- RTSP server on port 8554
-- HLS server on port 8888
-- Built-in web player
-
-**Access:**
-- RTSP URL: `rtsp://localhost:8554/drone`
-- HLS URL: `http://localhost:8888/drone/index.m3u8`
-- Web Player: `http://localhost:8888/drone/`
-
-### Frontend
-#### Development
-The frontend dashboard is built with:
-- Next.js 16
-- React 19
-- Tailwind CSS v4
-- shadcn/ui + Lucide icons
-
-1. Go to the frontend folder:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-4. Open:
-   - `http://localhost:3000`
-
-Current routes:
-- `/live-feed`
-- `/incidents`
-- `/system-info`
-
-Theme support:
-- Light / Dark toggle is available in the top navigation bar.
-- Theme preference is saved in browser local storage.
-
-#### Deployment
-Build and run the frontend container from repository root:
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 \
-  -t drone-detection-frontend \
-  -f frontend/Dockerfile frontend
-docker run --rm -p 3000:3000 drone-detection-frontend
+  -t multimodal-drone-detection-jetson-core \
+  -f jetson/Dockerfile \
+  jetson
 ```
-For non-local environments, replace `http://localhost:8000` with your backend URL.
 
-### Backend
-Backend provides REST API for stream information and system management.
+Stop and remove any existing `jetson-core` container:
 
-**Directory:** `backend/`
-**Tech Stack:** FastAPI, Python 3.12, uv
-
-#### API Endpoints
-- `GET /` - API information and quick links
-- `GET /streams` - List all available streams
-- `GET /streams/{stream_name}` - Get stream details
-- `GET /health` - Health check
-
-#### Development
-1. Install uv (see Prerequisites above)
-2. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-3. Install dependencies:
-   ```bash
-   uv sync
-   ```
-4. Run the development server:
-   ```bash
-   uv run uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-#### Deployment
-Using Docker Compose:
 ```bash
-docker compose -f docker-compose-dev.yml up -d backend
+docker stop jetson-core 2>/dev/null
+docker rm jetson-core 2>/dev/null
 ```
 
-Standalone:
+Run `jetson-core`:
+
 ```bash
-docker build -t drone-detection-backend -f backend/Dockerfile ./backend
-docker run -p 8000:8000 drone-detection-backend
+docker run -d \
+  --name jetson-core \
+  --runtime nvidia \
+  --network host \
+  --privileged \
+  -e NVIDIA_DRIVER_CAPABILITIES=all \
+  -e BACKEND_INCIDENT_ENDPOINT=http://<LAPTOP_IP>:8000/incidents \
+  -e RGB_MODEL_PATH=/app/offline_ml/weights/visual_no_augmentation_best.pt \
+  -e THERMAL_MODEL_PATH=/app/offline_ml/weights/thermal_no_augmentation_best.pt \
+  -e THERMAL_CAMERA_DEVICE=/dev/video2 \
+  -v /tmp/argus_socket:/tmp/argus_socket \
+  -v ~/multimodal-drone-detection/offline_ml/weights:/app/offline_ml/weights:ro \
+  --device /dev/video0 \
+  --device /dev/video2 \
+  multimodal-drone-detection-jetson-core
 ```
 
-### Jetson
-Jetson components handle edge AI processing and sensor ingestion.
+Important values to update when the network changes:
 
-**Directory:** `jetson/`
-**Hardware:** NVIDIA Jetson Nano
-**Tech Stack:** Python, uv
+```text
+BACKEND_INCIDENT_ENDPOINT=http://<LAPTOP_IP>:8000/incidents
+```
 
-#### Development
-1. Install uv (see Prerequisites above)
-2. Navigate to the jetson directory:
-   ```bash
-   cd jetson
-   ```
-3. Install dependencies:
-   ```bash
-   uv sync
-   ```
-4. Run the components:
-   ```bash
-   uv run python src/run_both.py
-   ```
+Camera/device values used by the previous field-test setup:
 
-#### Deployment
-Using Docker Compose (Jetson-specific):
+```text
+RGB camera device: /dev/video0
+Thermal camera device: /dev/video2
+Thermal env var: THERMAL_CAMERA_DEVICE=/dev/video2
+```
+
+## Jetson Logs
+
+Follow the Jetson container logs:
+
 ```bash
-docker compose -f docker-compose.jetson.yaml up --build
+docker logs -f jetson-core
 ```
+
+Expected successful log messages:
+
+```text
+loaded RGB and thermal models
+[path visual] stream is available
+[rgb] frame received
+[thermal] frame received
+fusion response status=200
+```
+
+The exact ordering may vary, but the important checks are:
+
+- Both RGB and thermal models load.
+- Both RGB and thermal frames are received.
+- Fusion posts to the laptop backend successfully.
+- The backend returns HTTP `200`.
+
+## Buffer Recovery
+
+If the Jetson stream or inference pipeline appears to have buffer buildup, restart the Jetson container:
+
+```bash
+docker restart jetson-core
+```
+
+Then watch logs again:
+
+```bash
+docker logs -f jetson-core
+```
+
+## Field Test Startup Checklist
+
+1. Confirm the Jetson and laptop are on the expected network.
+2. Confirm the current Jetson IP and laptop IP.
+3. On the laptop, start backend, database, and frontend with `docker-compose.mac-jetson.yml`.
+4. SSH into the Jetson.
+5. Rebuild and run `jetson-core`.
+6. Watch `docker logs -f jetson-core`.
+7. Open `http://localhost:3000/live-feed` on the laptop.
+8. Confirm RGB stream, thermal stream, detections, and incidents are visible.
 
 ## Troubleshooting
 
-### No video in HLS player
-1. Check if simulator is streaming:
-   ```bash
-   docker logs gst-visual-simulator --tail 20
-   ```
-2. Verify MediaMTX is receiving the stream:
-   ```bash
-   docker logs mediamtx --tail 20
-   ```
-   Look for: `[HLS] [muxer drone] is converting into HLS`
+### Dashboard loads but streams are unavailable
 
-3. Wait 10-15 seconds after starting services for HLS segments to generate
+Check that the laptop-side stream URLs point to the current Jetson IP:
 
-### Stream keeps reconnecting
-- The simulator loops the video file, causing brief disconnections
-- This is normal behavior; the stream will reconnect automatically
-
-### Port conflicts
-If you get "port already in use" errors:
 ```bash
-# Check what's using the ports
-netstat -an | findstr "8000 8554 8888"
-
-# Stop conflicting services or change ports in docker-compose-dev.yml
+STREAM_RTSP_BASE_URL=rtsp://<JETSON_IP>:8554
+STREAM_HLS_BASE_URL=http://<JETSON_IP>:8888
+STREAM_WEBRTC_BASE_URL=http://<JETSON_IP>:9998
 ```
 
-### Backend can't find HLS files
-- MediaMTX serves HLS dynamically via HTTP, not by writing to disk
-- Access streams via MediaMTX port 8888, not through backend static files
+Restart the laptop services after changing these values.
 
-## Project Structure
+### Jetson detects frames but incidents do not appear
 
-```
-multimodal-drone-detection/
-├── simulator/              # GStreamer video streamer
-│   ├── Dockerfile
-│   └── videos/            # Video files
-│       └── drone_visual.mp4
-|       └── drone_thermal.mp4
-├── backend/               # FastAPI backend service
-│   ├── Dockerfile
-│   ├── pyproject.toml
-│   └── src/
-│       └── app/
-│           └── main.py
-├── frontend/              # Frontend application
-│   ├── Dockerfile
-│   └── src/
-├── jetson/                # Jetson Nano components
-│   ├── Dockerfile
-│   ├── pyproject.toml
-│   └── src/
-│       ├── ml/           # Machine learning models
-│       └── sensor_ingestion/
-├── mediamtx.yml          # MediaMTX configuration
-├── docker-compose-dev.yml # Development compose file
-└── docker-compose.jetson.yaml  # Jetson-specific compose
+Check that `BACKEND_INCIDENT_ENDPOINT` points to the current laptop IP:
+
+```bash
+BACKEND_INCIDENT_ENDPOINT=http://<LAPTOP_IP>:8000/incidents
 ```
 
-## Contributing
+Also check the backend logs on the laptop:
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests: `uv run pytest`
-4. Submit a pull request
+```bash
+docker compose -f docker-compose.mac-jetson.yml logs -f backend
+```
 
-## License
+### Camera frames are missing
 
-[Add license information]
+Check the Jetson device mappings:
+
+```bash
+ls /dev/video*
+```
+
+The previous field-test setup used:
+
+```text
+/dev/video0
+/dev/video2
+```
+
+If the device numbers change, update both the `--device` arguments and `THERMAL_CAMERA_DEVICE`.
+
+### Model files are missing
+
+The Jetson container expects model weights mounted from:
+
+```text
+~/multimodal-drone-detection/offline_ml/weights
+```
+
+Expected paths inside the container:
+
+```text
+/app/offline_ml/weights/visual_no_augmentation_best.pt
+/app/offline_ml/weights/thermal_no_augmentation_best.pt
+```

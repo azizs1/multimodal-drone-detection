@@ -13,6 +13,7 @@ import { useLiveStreams } from "@/components/live-feed/use-live-streams";
 import { VideoPanel } from "@/components/live-feed/video-panel";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { mapRealtimeAlertToBannerData } from "@/lib/alerts";
+import { type StreamInfo } from "@/lib/api/streams";
 import {
   type DashboardDetectionSummary,
   type DashboardIncidentRow,
@@ -85,6 +86,27 @@ function StreamsMetaErrorBanner({
   );
 }
 
+function StreamVideo({ stream, title }: { stream?: StreamInfo; title: string }) {
+  if (stream?.webrtc_url) {
+    return (
+      <iframe
+        title={title}
+        src={stream.webrtc_url}
+        className="h-full w-full border-0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowFullScreen
+      />
+    );
+  }
+
+  return (
+    <HlsVideoPlayer
+      title={title}
+      src={stream ? buildStreamPlaylistUrl(stream.name) : undefined}
+    />
+  );
+}
+
 function RecentIncidentsTable({
   incidents,
 }: {
@@ -101,11 +123,12 @@ function RecentIncidentsTable({
           <thead className="text-slate-500 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
               <th className="px-3 py-3 font-semibold">Incident ID</th>
-              <th className="px-3 py-3 font-semibold">Time</th>
-              <th className="px-3 py-3 font-semibold">Fused Confidence</th>
-              <th className="px-3 py-3 font-semibold">RGB Confidence</th>
-              <th className="px-3 py-3 font-semibold">Thermal Confidence</th>
-              <th className="px-3 py-3 font-semibold">Decision</th>
+              <th className="px-3 py-3 font-semibold">Event Start</th>
+              <th className="px-3 py-3 font-semibold">Frames</th>
+              <th className="px-3 py-3 font-semibold">Max Confidence</th>
+              <th className="px-3 py-3 font-semibold">Avg Confidence</th>
+              <th className="px-3 py-3 font-semibold">RGB Avg</th>
+              <th className="px-3 py-3 font-semibold">Thermal Avg</th>
             </tr>
           </thead>
           <tbody>
@@ -113,20 +136,13 @@ function RecentIncidentsTable({
               <tr key={row.id + row.occurredAt} className="border-b border-slate-200/80 dark:border-slate-800">
                 <td className="px-3 py-3">{row.id}</td>
                 <td className="px-3 py-3">{row.occurredAt}</td>
+                <td className="px-3 py-3">{row.frameCount ?? "--"}</td>
                 <td className="px-3 py-3">{row.fusedConfidence}%</td>
+                <td className="px-3 py-3">
+                  {row.avgFusedConfidence == null ? "--" : `${row.avgFusedConfidence}%`}
+                </td>
                 <td className="px-3 py-3">{row.visualConfidence}%</td>
                 <td className="px-3 py-3">{row.thermalConfidence}%</td>
-                <td className="px-3 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold uppercase tracking-wide ${
-                      row.decision === "drone"
-                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                        : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    }`}
-                  >
-                    {row.decision}
-                  </span>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -230,27 +246,33 @@ function SystemStatusPanel({ services }: { services: DashboardSystemStatusItem[]
           </ul>
         </div>
 
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Placeholder Services
-          </p>
-          <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300">
-            {placeholderServices.map((service) => (
-              <li key={service.name} className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
-                  <span>{service.name}</span>
-                </div>
-                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Mock
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {placeholderServices.length > 0 ? (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Placeholder Services
+            </p>
+            <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+              {placeholderServices.map((service) => (
+                <li key={service.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`size-3 rounded-full ${statusClasses[service.status]}`} />
+                    <span>{service.name}</span>
+                  </div>
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Mock
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
     </section>
   );
+}
+
+function streamFps(stream: { fps?: number | null } | undefined, fallback: string) {
+  return stream?.fps ? String(stream.fps) : fallback;
 }
 
 export default function LiveFeedPage() {
@@ -284,31 +306,25 @@ export default function LiveFeedPage() {
           <div className="grid gap-4 xl:grid-cols-2">
             <VideoPanel
               title="Visual - RGB"
-              fps="30"
+              fps={streamFps(visualStream, "15")}
               resolution={
                 isLoading && !visualStream
-                  ? "1920x1080 • RGB • LOADING"
-                  : buildVideoSubLabel(visualStream, "1920x1080 • RGB")
+                  ? "1280x720 • RGB • LOADING"
+                  : buildVideoSubLabel(visualStream, "1280x720 • RGB")
               }
             >
-              <HlsVideoPlayer
-                title="Visual RGB stream"
-                src={visualStream ? buildStreamPlaylistUrl(visualStream.name) : undefined}
-              />
+              <StreamVideo stream={visualStream} title="Visual RGB stream" />
             </VideoPanel>
             <VideoPanel
               title="Thermal - IR"
-              fps="30"
+              fps={streamFps(thermalStream, "15")}
               resolution={
                 isLoading && !thermalStream
-                  ? "640x480 • IR • LOADING"
-                  : buildVideoSubLabel(thermalStream, "640x480 • IR")
+                  ? "160x120 • IR • LOADING"
+                  : buildVideoSubLabel(thermalStream, "160x120 • IR")
               }
             >
-              <HlsVideoPlayer
-                title="Thermal IR stream"
-                src={thermalStream ? buildStreamPlaylistUrl(thermalStream.name) : undefined}
-              />
+              <StreamVideo stream={thermalStream} title="Thermal IR stream" />
             </VideoPanel>
           </div>
 

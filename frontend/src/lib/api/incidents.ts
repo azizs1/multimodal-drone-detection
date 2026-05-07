@@ -4,7 +4,11 @@ export type IncidentConfidenceBand = "low" | "medium" | "high";
 export type IncidentResponse = {
   id: string;
   incident_id: string;
+  aggregate_id?: string;
   detected_at: string;
+  started_at?: string;
+  last_seen_at?: string;
+  ended_at?: string | null;
   source_timestamp: number;
   has_drone: boolean;
   decision: IncidentDecision;
@@ -12,6 +16,11 @@ export type IncidentResponse = {
   alert_level: IncidentConfidenceBand;
   is_confirmed: boolean;
   fused_confidence: number;
+  avg_fused_confidence?: number;
+  frame_count?: number;
+  drone_frame_count?: number;
+  representative_incident_id?: string;
+  raw_incident_ids?: string[];
   stream_name: string;
   primary_frame_url: string | null;
   primary_thumbnail_url: string | null;
@@ -121,4 +130,28 @@ export async function getIncidents(params: GetIncidentsParams = {}): Promise<Inc
   }
 
   return fetchApi<IncidentResponse[]>("/incidents", searchParams, params.signal);
+}
+
+export async function getRawIncidents(
+  params: GetIncidentsParams = {},
+): Promise<IncidentResponse[]> {
+  const searchParams = new URLSearchParams();
+
+  if (typeof params.limit === "number") {
+    searchParams.set("limit", String(params.limit));
+  }
+
+  if (params.decision) {
+    searchParams.set("decision", params.decision);
+  }
+
+  if (params.fromTs) {
+    searchParams.set("from_ts", params.fromTs);
+  }
+
+  if (params.toTs) {
+    searchParams.set("to_ts", params.toTs);
+  }
+
+  return fetchApi<IncidentResponse[]>("/incidents/raw", searchParams, params.signal);
 }

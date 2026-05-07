@@ -12,7 +12,7 @@ class DebounceConfig:
 @dataclass
 class FusionConfig:
     weights: dict[str, float] = field(default_factory=lambda: {"rgb": 0.6, "thermal": 0.4})
-    alert_threshold: float = 0.75
+    alert_threshold: float = 0.65
     hold_threshold: float = 0.55
     per_modality_gates: dict[str, float] = field(
         default_factory=lambda: {"rgb": 0.45, "thermal": 0.35}

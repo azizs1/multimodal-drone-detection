@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -7,9 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.api.routers.alert import alert_connection_manager
 from app.database.database import get_db
-from app.database.schemas import FusedDecisionIngest, IncidentResponse
-from app.repositories import IncidentRepository
+from app.database.schemas import FusedDecisionIngest, IncidentAggregateResponse, IncidentResponse
+from app.repositories import IncidentAggregateRepository, IncidentRepository
+from app.services.incident_aggregate_service import aggregate_incident_frame
 from app.services.incident_aggregator import aggregate_fused_decision
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/incidents",
@@ -46,6 +50,12 @@ async def create_incident(
         # If still not found, re-raise
         raise
 
+    try:
+        aggregate_incident_frame(db, db_incident)
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to aggregate incident frame %s", db_incident.incident_id)
+
     if incident_create.has_drone is True and incident_create.decision == "drone":
         websocket_payload = {
             "incident_id": db_incident.incident_id,
@@ -66,11 +76,46 @@ async def create_incident(
 
 @router.get(
     "",
-    response_model=list[IncidentResponse],
+    response_model=list[IncidentAggregateResponse],
     summary="List incidents",
-    description="List incident records with optional filtering.",
+    description="List aggregated incident records with optional filtering.",
 )
 async def list_incidents(
+    db: Annotated[Session, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0, description="Number of records to skip")] = 0,
+    limit: Annotated[int, Query(ge=1, le=1000, description="Maximum records to return")] = 100,
+    decision: Annotated[
+        Literal["drone", "none"] | None, Query(description="Filter by decision")
+    ] = None,
+    stream_name: Annotated[
+        str | None, Query(min_length=1, max_length=100, description="Filter by stream name")
+    ] = None,
+    from_ts: Annotated[
+        datetime | None, Query(description="Filter incidents detected after this timestamp")
+    ] = None,
+    to_ts: Annotated[
+        datetime | None, Query(description="Filter incidents detected before this timestamp")
+    ] = None,
+):
+    repo = IncidentAggregateRepository(db)
+
+    return repo.list(
+        skip=skip,
+        limit=limit,
+        decision=decision,
+        stream_name=stream_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+
+
+@router.get(
+    "/raw",
+    response_model=list[IncidentResponse],
+    summary="List raw incidents",
+    description="List raw frame-level incident records with optional filtering.",
+)
+async def list_raw_incidents(
     db: Annotated[Session, Depends(get_db)],
     skip: Annotated[int, Query(ge=0, description="Number of records to skip")] = 0,
     limit: Annotated[int, Query(ge=1, le=1000, description="Maximum records to return")] = 100,
@@ -100,12 +145,12 @@ async def list_incidents(
 
 
 @router.get(
-    "/{incident_id}",
+    "/raw/{incident_id}",
     response_model=IncidentResponse,
-    summary="Get incident by incident id",
-    description="Retrieve a specific incident record by its incident id.",
+    summary="Get raw incident by incident id",
+    description="Retrieve a specific raw frame-level incident record by its incident id.",
 )
-async def get_incident(
+async def get_raw_incident(
     incident_id: Annotated[str, Path(description="The incident id to retrieve")],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -115,5 +160,25 @@ async def get_incident(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Incident with id {incident_id} not found",
+        )
+    return incident
+
+
+@router.get(
+    "/{incident_id}",
+    response_model=IncidentAggregateResponse,
+    summary="Get aggregated incident by aggregate id",
+    description="Retrieve a specific aggregated incident record by its aggregate id.",
+)
+async def get_incident(
+    incident_id: Annotated[str, Path(description="The aggregate incident id to retrieve")],
+    db: Annotated[Session, Depends(get_db)],
+):
+    repo = IncidentAggregateRepository(db)
+    incident = repo.get_by_aggregate_id(incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident aggregate with id {incident_id} not found",
         )
     return incident
